@@ -411,12 +411,21 @@
     <div class="diary-meta" id="diaryMeta"></div>
     <textarea class="diary-editor" id="diaryContent" placeholder="写下今天发生的事..."></textarea>
     <div class="diary-actions">
-      <button class="btn-delete" id="deleteDiary" style="display:none">删除</button>
-      <button class="btn-primary" id="saveDiary">保存</button>
-    </div>
+      <div class="diary-card">
+  <!-- 🫧 雾化背景层（放图） -->
+  <div class="diary-bg diary-bg-1"></div>
+  <!-- 标题层 -->
+  <div class="diary-title">
+    今天...
   </div>
-</div>
+  <!-- 输入层 -->
+  <div class="diary-body">
+    <textarea class="diary-textarea" placeholder="写下今天发生的事..."></textarea>
 
+    <button class="diary-save">保存</button>
+  </div>
+
+      </div>
 <!-- 纪念日惊喜弹窗 -->
 <div class="modal" id="surpriseModal">
   <div class="modal-box surprise-box">
