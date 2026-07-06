@@ -1080,6 +1080,41 @@ document.getElementById('memNext').addEventListener('click', () => {
 });
 
 renderMemories();
+  // 自动获取模型列表
+document.getElementById('fetchModelsBtn').addEventListener('click', async () => {
+  const baseUrl = document.getElementById('apiBaseUrl').value.trim() 
+    || 'https://api.anthropic.com';
+  const apiKey = document.getElementById('apiKeyInput').value.trim()
+    || localStorage.getItem('apiKey') || '';
+  
+  if (!apiKey) { showToast('请先填写 API Key'); return; }
+  
+  showToast('获取中...');
+  
+  try {
+    const url = baseUrl.replace(/\/+$/, '') + '/models';
+    const res = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'x-api-key': apiKey,
+      }
+    });
+    const data = await res.json();
+    const models = data.data || data.models || [];
+    
+    if (!models.length) { showToast('没有获取到模型'); return; }
+    
+    const select = document.getElementById('modelSelect');
+    select.innerHTML = models.map(m => {
+      const id = m.id || m.name || m;
+      return `<option value="${id}">${id}</option>`;
+    }).join('');
+    
+    showToast(`获取到 ${models.length} 个模型 ✓`);
+  } catch(e) {
+    showToast('获取失败，检查API地址和Key');
+  }
+});
 }
 // 恢复自定义壁纸
 const _customWp=localStorage.getItem('wallpaper-custom');
