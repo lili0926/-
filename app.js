@@ -38,17 +38,9 @@ function initPageSwitch() {
 // 页面加载完成初始化切换
 window.addEventListener('DOMContentLoaded', () => {
   initPageSwitch();
-  document.querySelectorAll(".nav-item").forEach(item => {
-  item.onclick = () => {
-    document.querySelectorAll(".nav-item").forEach(i => i.classList.remove("active"));
-    item.classList.add("active");
+})
 
-    const page = item.dataset.page;
-    console.log("切换页面：", page);
-  };
-});
-  
-})// ====== 状态 ======
+// ====== 状态 ======
 const state = {
   theme: localStorage.getItem('theme') || 'dark',
   wallpaper: localStorage.getItem('wallpaper') || 'none',
@@ -270,7 +262,7 @@ function showPage(pageId){
         p.classList.remove('active');
     });
 
-    const target = document.getElementById(pageId);
+    const target = document.getElementById('page-'+ pageId);
     if(target){
         target.classList.add('active');
     }
@@ -510,7 +502,6 @@ async function sendMessage() {
   try {
     const msgs = state.chatHistory.slice(-20).map(m=>({role:m.role,content:m.content}));
     const useThinking = document.getElementById('thinkingToggle').checked;
-    import { buildAIRequest } from "./API/Adapter.js";
 
 const req = buildAIRequest(aiApiConfig, msgs);
 
@@ -549,7 +540,7 @@ const res = await fetch("/api/proxy", {
     }
 
     // 使用Vercel代理跨域请求
-    const res = await fetch(`/api/proxy?target=${encodeURIComponent(fullUrl)}`,{
+     res = await fetch(`/api/proxy?target=${encodeURIComponent(fullUrl)}`,{
       method:'POST',
       headers: headers,
       body:JSON.stringify(body),
@@ -784,6 +775,8 @@ function setupSettings(){
   document.getElementById('overlaySlider').value=state.overlayOpacity;
   document.getElementById('overlayVal').textContent=state.overlayOpacity+'%';
   if(state.theme==='light') document.getElementById('themeSwitch').classList.add('active');
+document.getElementById('apiBaseUrl').value = localStorage.getItem('apiBaseUrl') || '';
+document.getElementById('apiFormat').value = localStorage.getItem('apiFormat') || 'anthropic';
 }
 
 function saveSettings(){
@@ -801,6 +794,8 @@ function saveSettings(){
   updateGreeting(); updateTogetherDays(); checkApiKey();
   if(state.city) fetchWeather(state.city);
   showToast('设置已保存 ✓');
+localStorage.setItem('apiBaseUrl', document.getElementById('apiBaseUrl').value.trim());
+localStorage.setItem('apiFormat', document.getElementById('apiFormat').value);
 }
 
 // ====== 弹窗 ======
@@ -950,34 +945,7 @@ function bindEvents(){
 const _customWp=localStorage.getItem('wallpaper-custom');
 if(_customWp&&(state.wallpaper==='none'||!state.wallpaper)) state.wallpaper=_customWp;
 
-document.querySelectorAll('.nav-item').forEach(item => {
-
-    item.addEventListener('click', (e) => {
-        e.preventDefault();
-
-        const page = item.dataset.page;
-
-        switchPage(page);
-    });
+window.addEventListener('DOMContentLoaded', () => {
+  init();
 });
-function switchPage(page){
 
-    document.querySelectorAll('.page').forEach(p => {
-        p.classList.remove('active');
-    });
-
-    const target = document.getElementById('page-' + page);
-    if(target){
-        target.classList.add('active');
-    }
-
-    // UI状态更新
-    document.querySelectorAll('.nav-item').forEach(n => {
-        n.classList.remove('active');
-    });
-
-    document.querySelector(`[data-page="${page}"]`)
-        ?.classList.add('active');
-}
-
-init();

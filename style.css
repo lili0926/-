@@ -378,7 +378,11 @@ body.has-wallpaper .message.assistant .bubble{background:rgba(255,255,255,var(--
   .novel-reader{padding:20px}
   .vchar{bottom:100px}
 }
-
+.chat-bottom {
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
 .page.active {
   display: block !important;
 }
@@ -386,16 +390,8 @@ body.has-wallpaper .message.assistant .bubble{background:rgba(255,255,255,var(--
   background: rgba(255,255,255,0.15);
 }
 
-.page.active {
-    display: block;
-}
-.chat-bottom {
-    position: fixed;
-    bottom: 10px;
-    left: 0;
-    right: 0;
-    z-index: 1000;
-}
+
 body {
     padding-bottom: env(safe-area-inset-bottom);
 }
+

@@ -43,13 +43,7 @@
   </header>
 
   <div class="content" id="mainContent">
-<div id="home" class="page active"></div>
-<div id="chat" class="page"></div>
-<div id="tasks" class="page"></div>
-<div id="novel" class="page"></div>
-<div id="music" class="page"></div>
-<div id="diary" class="page"></div>
-<div id="settings" class="page"></div>
+
     
     <!-- 主页 -->
     <section class="page active" id="page-home">
@@ -239,6 +233,17 @@
       <div class="settings-group">
         <div class="settings-title">AI 接入</div>
         <div class="settings-item">
+          <div class="settings-item">
+            <div class="settings-label"><span>API地址</span><small>留空默认Claude</small></div>
+            <input type="text" class="settings-input" id="apiBaseUrl" placeholder="https://api.deepseek.com">
+          </div>
+          <div class="settings-item">
+            <div class="settings-label"><span>接口格式</span></div>
+            <select class="settings-select" id="apiFormat">
+              <option value="anthropic">Claude原生</option>
+              <option value="openai">OpenAI兼容</option>
+            </select>
+          </div>
           <div class="settings-label"><span>API Key</span><small>仅本地存储</small></div>
           <input type="password" class="settings-input" id="apiKeyInput" placeholder="sk-ant-...">
         </div>
@@ -374,33 +379,6 @@
 
 <div class="toast" id="toast"></div>
 <script src="app.js"></script>
-
-  <!-- AI模型自定义API配置面板 -->
-<div id="apiSettingPanel" style="position:fixed;top:20px;right:20px;background:#1a1a2e;padding:16px;border-radius:12px;color:#fff;z-index:9999;width:320px;display:none;">
-  <h3>自定义大模型API</h3>
-  <div style="margin:8px 0;">
-    <label>API根地址</label>
-    <input id="apiBaseUrl" style="width:100%;padding:6px;margin-top:4px;" placeholder="https://api.deepseek.com">
-  </div>
-  <div style="margin:8px 0;">
-    <label>API Key</label>
-    <input id="apiKey" style="width:100%;padding:6px;margin-top:4px;" placeholder="sk-xxx">
-  </div>
-  <div style="margin:8px 0;">
-    <label>模型名称</label>
-    <input id="modelName" style="width:100%;padding:6px;margin-top:4px;" placeholder="deepseek-chat">
-  </div>
-  <div style="margin:8px 0;">
-    <label>接口路径(默认/v1/chat/completions)</label>
-    <input id="apiPath" style="width:100%;padding:6px;margin-top:4px;" value="/v1/chat/completions">
-  </div>
-  <button id="saveApiConfig" style="margin-top:10px;width:100%;padding:8px;background:#e8909f;border:none;border-radius:6px;">保存配置</button>
-  <button id="closePanel" style="margin-top:6px;width:100%;padding:8px;background:#444;border:none;border-radius:6px;">关闭</button>
-</div>
-<button id="openSettingBtn" style="position:fixed;top:20px;right:20px;padding:8px 12px;border-radius:8px;background:#222;color:white;z-index:999;">API设置</button>
-
-  
-<script src="API/Adapter.js"></script>
 
   
 </body>
