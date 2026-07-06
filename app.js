@@ -38,6 +38,15 @@ function initPageSwitch() {
 // 页面加载完成初始化切换
 window.addEventListener('DOMContentLoaded', () => {
   initPageSwitch();
+  document.querySelectorAll(".nav-item").forEach(item => {
+  item.onclick = () => {
+    document.querySelectorAll(".nav-item").forEach(i => i.classList.remove("active"));
+    item.classList.add("active");
+
+    const page = item.dataset.page;
+    console.log("切换页面：", page);
+  };
+});
   
 })// ====== 状态 ======
 const state = {
