@@ -1,0 +1,371 @@
+<html lang="zh" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jasmine's Home ♡</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="wallpaper" class="wallpaper"></div>
+<div class="wallpaper-overlay" id="wallpaperOverlay"></div>
+
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="logo"><span class="logo-icon">🌸</span><span class="logo-text">Jasmine's Home</span></div>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="#" class="nav-item active" data-page="home"><span class="nav-icon">🏠</span><span>主页</span></a>
+    <a href="#" class="nav-item" data-page="chat"><span class="nav-icon">💬</span><span>聊天</span></a>
+    <a href="#" class="nav-item" data-page="tasks"><span class="nav-icon">📋</span><span>行程</span></a>
+    <a href="#" class="nav-item" data-page="novel"><span class="nav-icon">📖</span><span>小说</span></a>
+    <a href="#" class="nav-item" data-page="music"><span class="nav-icon">🎵</span><span>音乐</span></a>
+    <a href="#" class="nav-item" data-page="diary"><span class="nav-icon">📝</span><span>日记</span></a>
+    <a href="#" class="nav-item" data-page="settings"><span class="nav-icon">⚙️</span><span>设置</span></a>
+  </nav>
+  <div class="sidebar-footer">
+    <button class="theme-toggle" id="themeToggle">
+      <span class="theme-icon">🌙</span><span>深色模式</span>
+    </button>
+  </div>
+</aside>
+
+<main class="main" id="main">
+  <header class="topbar">
+    <button class="icon-btn mobile-menu" id="mobileMenu">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+    </button>
+    <div class="page-title" id="pageTitle">主页</div>
+    <div class="topbar-actions">
+      <button class="icon-btn" id="wallpaperBtn" title="更换壁纸">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="content" id="mainContent">
+
+    <!-- 主页 -->
+    <section class="page active" id="page-home">
+      <!-- 纪念日提示 -->
+      <div class="anniversary-banner" id="anniversaryBanner" style="display:none"></div>
+
+      <div class="home-hero">
+        <div class="home-greeting" id="greeting">你好，小猫 🌸</div>
+        <div class="home-date" id="currentDate"></div>
+        <div class="home-meta-row">
+          <!-- 天气 -->
+          <div class="weather-widget" id="weatherWidget">
+            <span class="weather-icon" id="weatherIcon">—</span>
+            <span class="weather-info" id="weatherInfo">加载天气中...</span>
+          </div>
+          <!-- 好感度 -->
+          <div class="fav-widget">
+            <div class="fav-header">
+              <span class="fav-icon">💕</span>
+              <span class="fav-label" id="favLabel">初识</span>
+              <span class="fav-pts" id="favPts">0</span>
+            </div>
+            <div class="fav-bar-bg">
+              <div class="fav-bar" id="favBar"></div>
+            </div>
+          </div>
+        </div>
+        <div class="home-mood">
+          <span class="mood-label">今日心情</span>
+          <div class="mood-options">
+            <button class="mood-btn" data-mood="😊">😊</button>
+            <button class="mood-btn" data-mood="🥰">🥰</button>
+            <button class="mood-btn" data-mood="😴">😴</button>
+            <button class="mood-btn" data-mood="😤">😤</button>
+            <button class="mood-btn" data-mood="🤭">🤭</button>
+            <button class="mood-btn" data-mood="🌧️">🌧️</button>
+          </div>
+          <span class="mood-selected" id="moodSelected"></span>
+        </div>
+      </div>
+
+      <div class="home-grid">
+        <div class="card">
+          <div class="card-header"><span>📝 随手记</span></div>
+          <textarea class="card-textarea" placeholder="今天想说点什么..." id="quickNoteText"></textarea>
+        </div>
+        <div class="card">
+          <div class="card-header"><span>🦉 Aries说</span></div>
+          <div class="aries-quote" id="ariesQuote"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span>⏰ 在一起</span></div>
+          <div class="together-count">
+            <div class="count-num" id="togetherDays">—</div>
+            <div class="count-label">天了</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span>🌸 今日花语</span></div>
+          <div class="flower-msg" id="flowerMsg"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 聊天页 -->
+    <section class="page" id="page-chat">
+      <!-- 天数水印背景（不覆盖内容） -->
+      <div class="chat-days-bg">
+        <div class="chat-days-num" id="chatDaysNum">—</div>
+        <div class="chat-days-txt">天</div>
+      </div>
+
+      <!-- UI小人骨架（后期替换形象） -->
+      <div class="vchar" id="vchar">
+        <div class="vchar-bubble" id="vcharBubble"></div>
+        <div class="vchar-body" id="vcharBody" title="点击互动">
+          <!-- 占位形象，等形象设计好再替换 -->
+          <div class="vchar-face" id="vcharFace">🦉</div>
+          <div class="vchar-shadow"></div>
+        </div>
+      </div>
+
+      <div class="chat-wrap">
+        <div class="chat-messages" id="chatMessages">
+          <div class="chat-welcome" id="chatWelcome">
+            <div class="welcome-icon">🌸</div>
+            <div class="welcome-text">你好，今天想聊什么？</div>
+            <div class="welcome-hint" id="apiHint"></div>
+          </div>
+        </div>
+        <div class="chat-bottom">
+          <div class="chat-opts">
+            <button class="chat-opt-btn" id="clearChat">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6"/></svg>
+              清空
+            </button>
+            <label class="thinking-label">
+              <input type="checkbox" id="thinkingToggle">
+              <span class="thinking-chip">💭 思考链</span>
+            </label>
+          </div>
+          <div class="chat-input-row">
+            <textarea class="chat-input" id="chatInput" placeholder="说点什么..." rows="1"></textarea>
+            <button class="send-btn" id="sendBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9 22,2"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 行程页 -->
+    <section class="page" id="page-tasks">
+      <div class="tasks-wrap">
+        <div class="tasks-add-row">
+          <input type="text" class="task-input-field" id="taskInput" placeholder="添加新待办事项...">
+          <input type="date" class="task-date-field" id="taskDate">
+          <button class="btn-primary" id="addTaskBtn">添加</button>
+        </div>
+        <div class="tasks-columns">
+          <div class="tasks-col">
+            <div class="tasks-col-header todo-header">
+              <span>📋 待办</span>
+              <span class="tasks-count" id="todoCount">0</span>
+            </div>
+            <div class="tasks-list" id="todoList">
+              <div class="tasks-empty">暂无待办 ✨</div>
+            </div>
+          </div>
+          <div class="tasks-col">
+            <div class="tasks-col-header done-header">
+              <span>✅ 已办</span>
+              <span class="tasks-count" id="doneCount">0</span>
+            </div>
+            <div class="tasks-list" id="doneList">
+              <div class="tasks-empty">完成的事项会出现在这里</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 小说页 -->
+    <section class="page" id="page-novel">
+      <div class="novel-toolbar">
+        <button class="btn-primary" id="uploadNovelBtn">📖 导入 TXT</button>
+        <input type="file" id="novelFile" accept=".txt" style="display:none">
+        <div class="novel-controls" id="novelControls">
+          <button class="icon-btn font-btn" id="fontMinus">A-</button>
+          <span class="font-size-label" id="fontSizeLabel">16px</span>
+          <button class="icon-btn font-btn" id="fontPlus">A+</button>
+          <span class="novel-title-badge" id="novelTitleBadge"></span>
+        </div>
+      </div>
+      <div class="novel-reader" id="novelReader">
+        <div class="novel-empty-state">
+          <div style="font-size:48px;margin-bottom:12px;opacity:0.3">📖</div>
+          <div style="color:var(--text-muted);font-size:14px">上传 TXT 文件开始阅读</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 音乐页 -->
+    <section class="page" id="page-music">
+      <div class="placeholder-page">
+        <div class="music-placeholder">
+          <div class="music-bars"><span></span><span></span><span></span><span></span><span></span></div>
+          <div class="placeholder-text" style="margin-top:20px">音乐功能<br><span>后期接入 🎵</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 日记页 -->
+    <section class="page" id="page-diary">
+      <div class="diary-header">
+        <h2>我的日记</h2>
+        <button class="btn-primary" id="newDiaryBtn">+ 新建</button>
+      </div>
+      <div class="diary-list" id="diaryList">
+        <div class="empty-diary">还没有日记，写一篇吧 🌸</div>
+      </div>
+    </section>
+
+    <!-- 设置页 -->
+    <section class="page" id="page-settings">
+
+      <div class="settings-group">
+        <div class="settings-title">AI 接入</div>
+        <div class="settings-item">
+          <div class="settings-label"><span>API Key</span><small>仅本地存储</small></div>
+          <input type="password" class="settings-input" id="apiKeyInput" placeholder="sk-ant-...">
+        </div>
+        <div class="settings-item">
+          <div class="settings-label"><span>模型</span></div>
+          <select class="settings-select" id="modelSelect">
+            <option value="claude-sonnet-4-6">Sonnet 4.6</option>
+            <option value="claude-opus-4-6">Opus 4.6</option>
+            <option value="claude-haiku-4-5-20251001">Haiku 4.5</option>
+          </select>
+        </div>
+        <div class="settings-item" style="flex-direction:column;align-items:flex-start;gap:8px">
+          <div class="settings-label"><span>系统提示词</span><small>定义 AI 人格</small></div>
+          <textarea class="settings-textarea" id="systemPromptInput" placeholder="你是..."></textarea>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-title">聊天外观</div>
+        <div class="settings-item">
+          <div class="settings-label"><span>思考链颜色</span><small>水玻璃底色</small></div>
+          <div class="color-pick-wrap">
+            <input type="color" id="thinkingColorInput" value="#7c5cbf" class="color-input">
+            <span id="thinkingColorLabel">#7c5cbf</span>
+          </div>
+        </div>
+        <div class="settings-item">
+          <div class="settings-label"><span>气泡不透明度</span><small>配合壁纸</small></div>
+          <div class="slider-wrap">
+            <input type="range" id="bubbleOpacity" min="2" max="60" value="10" class="slider">
+            <span id="bubbleOpacityVal">10%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-title">天气 &amp; 位置</div>
+        <div class="settings-item">
+          <div class="settings-label"><span>城市</span><small>用于获取天气</small></div>
+          <input type="text" class="settings-input" id="cityInput" placeholder="Beijing">
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-title">外观</div>
+        <div class="settings-item">
+          <div class="settings-label"><span>主题</span><small>深色 / 浅色</small></div>
+          <div class="toggle-switch" id="themeSwitch"><div class="toggle-knob"></div></div>
+        </div>
+        <div class="settings-item">
+          <div class="settings-label"><span>壁纸</span></div>
+          <button class="btn-secondary" id="wallpaperSettingBtn">更换</button>
+        </div>
+        <div class="settings-item">
+          <div class="settings-label"><span>壁纸遮罩</span></div>
+          <div class="slider-wrap">
+            <input type="range" id="overlaySlider" min="0" max="90" value="60" class="slider">
+            <span id="overlayVal">60%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-group">
+        <div class="settings-title">个人</div>
+        <div class="settings-item">
+          <div class="settings-label"><span>名字</span></div>
+          <input type="text" class="settings-input" id="nameInput" placeholder="小猫" maxlength="10">
+        </div>
+        <div class="settings-item">
+          <div class="settings-label"><span>在一起从</span></div>
+          <input type="date" class="settings-input" id="dateInput">
+        </div>
+        <div class="settings-item">
+          <div class="settings-label"><span>纪念日</span><small>格式 MM-DD，逗号分隔</small></div>
+          <input type="text" class="settings-input" id="anniversaryInput" placeholder="02-14,06-01">
+        </div>
+      </div>
+
+      <button class="btn-save" id="saveSettings">保存设置</button>
+    </section>
+
+  </div>
+</main>
+
+<!-- 壁纸弹窗 -->
+<div class="modal" id="wallpaperModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span>更换壁纸</span>
+      <button class="icon-btn" id="closeWpModal">✕</button>
+    </div>
+    <div class="wallpaper-grid">
+      <div class="wp-option" data-wp="none"><div class="wp-preview wp-none">无</div></div>
+      <div class="wp-option" data-wp="gradient1"><div class="wp-preview" style="background:linear-gradient(135deg,#fbc2eb,#a6c1ee)"></div></div>
+      <div class="wp-option" data-wp="gradient2"><div class="wp-preview" style="background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)"></div></div>
+      <div class="wp-option" data-wp="gradient3"><div class="wp-preview" style="background:linear-gradient(135deg,#d4fc79,#96e6a1)"></div></div>
+      <div class="wp-option" data-wp="gradient4"><div class="wp-preview" style="background:linear-gradient(135deg,#f093fb,#f5576c)"></div></div>
+      <div class="wp-option" data-wp="gradient5"><div class="wp-preview" style="background:linear-gradient(135deg,#0c3483,#a2b6df,#6b8cce)"></div></div>
+      <div class="wp-option" data-wp="upload">
+        <div class="wp-preview wp-upload">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17,8 12,3 7,8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          上传
+        </div>
+        <input type="file" id="wpUpload" accept="image/*" style="display:none">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 日记弹窗 -->
+<div class="modal" id="diaryModal">
+  <div class="modal-box modal-large">
+    <div class="modal-header">
+      <input type="text" class="diary-title-input" id="diaryTitle" placeholder="今天...">
+      <button class="icon-btn" id="closeDiaryModal">✕</button>
+    </div>
+    <div class="diary-meta" id="diaryMeta"></div>
+    <textarea class="diary-editor" id="diaryContent" placeholder="写下今天发生的事..."></textarea>
+    <div class="diary-actions">
+      <button class="btn-delete" id="deleteDiary" style="display:none">删除</button>
+      <button class="btn-primary" id="saveDiary">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 纪念日惊喜弹窗 -->
+<div class="modal" id="surpriseModal">
+  <div class="modal-box surprise-box">
+    <div class="surprise-content" id="surpriseContent"></div>
+    <button class="btn-primary" onclick="closeModal('surpriseModal')" style="margin-top:16px;width:100%">知道啦 💕</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
