@@ -931,4 +931,34 @@ function bindEvents(){
 const _customWp=localStorage.getItem('wallpaper-custom');
 if(_customWp&&(state.wallpaper==='none'||!state.wallpaper)) state.wallpaper=_customWp;
 
+document.querySelectorAll('.nav-item').forEach(item => {
+
+    item.addEventListener('click', (e) => {
+        e.preventDefault();
+
+        const page = item.dataset.page;
+
+        switchPage(page);
+    });
+});
+function switchPage(page){
+
+    document.querySelectorAll('.page').forEach(p => {
+        p.classList.remove('active');
+    });
+
+    const target = document.getElementById(page);
+    if(target){
+        target.classList.add('active');
+    }
+
+    // UI状态更新
+    document.querySelectorAll('.nav-item').forEach(n => {
+        n.classList.remove('active');
+    });
+
+    document.querySelector(`[data-page="${page}"]`)
+        ?.classList.add('active');
+}
+
 init();
