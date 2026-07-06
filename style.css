@@ -369,3 +369,13 @@ body.has-wallpaper .message.assistant .bubble{background:rgba(255,255,255,var(--
 .page.active {
     display: block;
 }
+.chat-bottom {
+    position: fixed;
+    bottom: 10px;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+}
+body {
+    padding-bottom: env(safe-area-inset-bottom);
+}
