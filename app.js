@@ -43,6 +43,7 @@ window.addEventListener('DOMContentLoaded', () => {
 // ====== 状态 ======
 const state = {
   theme: localStorage.getItem('theme') || 'dark',
+  uiPreset: localStorage.getItem('uiPreset') || 'ins-soft',
   wallpaper: localStorage.getItem('wallpaper') || 'none',
   overlayOpacity: parseInt(localStorage.getItem('overlay') || '60'),
   name: localStorage.getItem('name') || '小猫',
