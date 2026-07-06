@@ -374,6 +374,7 @@
 
 <div class="toast" id="toast"></div>
 <script src="app.js"></script>
+
   <!-- AI模型自定义API配置面板 -->
 <div id="apiSettingPanel" style="position:fixed;top:20px;right:20px;background:#1a1a2e;padding:16px;border-radius:12px;color:#fff;z-index:9999;width:320px;display:none;">
   <h3>自定义大模型API</h3>
@@ -397,5 +398,15 @@
   <button id="closePanel" style="margin-top:6px;width:100%;padding:8px;background:#444;border:none;border-radius:6px;">关闭</button>
 </div>
 <button id="openSettingBtn" style="position:fixed;top:20px;right:20px;padding:8px 12px;border-radius:8px;background:#222;color:white;z-index:999;">API设置</button>
+<!-- 页面内容 -->
+<div class="chat-wrap"></div>
+
+<!-- API面板（建议放最后） -->
+<div id="apiSettingPanel">
+  ...
+</div>
+
+<button id="openSettingBtn">
+
 </body>
 </html>
