@@ -367,5 +367,28 @@
 
 <div class="toast" id="toast"></div>
 <script src="app.js"></script>
+  <!-- AI模型自定义API配置面板 -->
+<div id="apiSettingPanel" style="position:fixed;top:20px;right:20px;background:#1a1a2e;padding:16px;border-radius:12px;color:#fff;z-index:9999;width:320px;display:none;">
+  <h3>自定义大模型API</h3>
+  <div style="margin:8px 0;">
+    <label>API根地址</label>
+    <input id="apiBaseUrl" style="width:100%;padding:6px;margin-top:4px;" placeholder="https://api.deepseek.com">
+  </div>
+  <div style="margin:8px 0;">
+    <label>API Key</label>
+    <input id="apiKey" style="width:100%;padding:6px;margin-top:4px;" placeholder="sk-xxx">
+  </div>
+  <div style="margin:8px 0;">
+    <label>模型名称</label>
+    <input id="modelName" style="width:100%;padding:6px;margin-top:4px;" placeholder="deepseek-chat">
+  </div>
+  <div style="margin:8px 0;">
+    <label>接口路径(默认/v1/chat/completions)</label>
+    <input id="apiPath" style="width:100%;padding:6px;margin-top:4px;" value="/v1/chat/completions">
+  </div>
+  <button id="saveApiConfig" style="margin-top:10px;width:100%;padding:8px;background:#e8909f;border:none;border-radius:6px;">保存配置</button>
+  <button id="closePanel" style="margin-top:6px;width:100%;padding:8px;background:#444;border:none;border-radius:6px;">关闭</button>
+</div>
+<button id="openSettingBtn" style="position:fixed;top:20px;right:20px;padding:8px 12px;border-radius:8px;background:#222;color:white;z-index:999;">API设置</button>
 </body>
 </html>
