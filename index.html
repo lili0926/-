@@ -282,8 +282,15 @@
         </div>
         <div class="settings-item">
           <div class="settings-label"><span>模型</span></div>
-          <select class="settings-select" id="modelSelect">
-            <option value="claude-sonnet-4-6">Sonnet 4.6</option>
+         <div style="display:flex;align-items:center;gap:6px">
+  <select class="settings-select" id="modelSelect">
+    <option value="claude-sonnet-4-6">Sonnet 4.6</option>
+    <option value="claude-opus-4-6">Opus 4.6</option>
+    <option value="claude-haiku-4-5-20251001">Haiku 4.5</option>
+  </select>
+  <button class="icon-btn" id="fetchModelsBtn" title="从API获取模型列表">🔄</button>
+         </div>
+          <option value="claude-sonnet-4-6">Sonnet 4.6</option>
             <option value="claude-opus-4-6">Opus 4.6</option>
             <option value="claude-haiku-4-5-20251001">Haiku 4.5</option>
           </select>
