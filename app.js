@@ -49,6 +49,7 @@ const state = {
   startDate: localStorage.getItem('startDate') || '',
   mood: localStorage.getItem('mood-' + today()) || '',
   quickNote: localStorage.getItem('quickNote') || '',
+  novel: {  title: "",  content: "",  pages: [],  index: 0},
   diaries: JSON.parse(localStorage.getItem('diaries') || '[]'),
   tasks: JSON.parse(localStorage.getItem('tasks') || '[]'),
   currentDiaryId: null,
@@ -698,6 +699,20 @@ function deleteTask(id){
 
 // ====== 小说 ======
 let novelFontSize=state.novelFontSize;
+function splitNovel(text, size = 800) {
+  const pages = [];
+  for (let i = 0; i < text.length; i += size) {
+    pages.push(text.slice(i, i + size));
+  }
+  return pages;
+}
+function renderPage(index) {
+  const reader = document.getElementById("novelReader");
+  if (!reader) return;
+
+  state.novel.index = index;
+  reader.textContent = state.novel.pages[index] || "";
+}
 function loadNovel(file) {
   const r = new FileReader();
 
@@ -705,12 +720,12 @@ function loadNovel(file) {
     const text = e.target.result;
 
     // ====== 保存到状态 ======
-    novelState.title = file.name;
-    novelState.content = text;
+    state.novel.title = file.name;
+    state.novel.content = text;
 
     // ====== 分页处理 ======
-    novelState.pages = splitNovel(text, 800); // 可调每页字数
-    novelState.index = 0;
+    state.novel.pages = splitNovel(text, 800); // 可调每页字数
+    state.novel.index = 0;
 
     // ====== 渲染第一页 ======
     renderPage(0);
@@ -725,8 +740,20 @@ function loadNovel(file) {
     showToast("读取失败 ❌");
   };
 
+  
   r.readAsText(file, "UTF-8");
-}
+  }
+document.getElementById("uploadNovelBtn")
+  .addEventListener("click", () => {
+    document.getElementById("novelFile").click();
+  });
+
+document.getElementById("novelFile")
+  .addEventListener("change", (e) => {
+    if (e.target.files[0]) {
+      loadNovel(e.target.files[0]);
+    }
+  });
 
 // ====== 日记 ======
 function renderDiaries(){
@@ -924,6 +951,16 @@ function bindEvents(){
   });
 
   // 小说
+  console.log("小说按钮绑定开始");
+  
+  document.getElementById('uploadNovelBtn').addEventListener('click', () => {
+    console.log("点击触发");
+    document.getElementById('novelFile').click();
+  });
+  
+  document.getElementById('novelFile').addEventListener('change', (e) => {
+    console.log("文件选择触发", e.target.files);
+  });
   document.getElementById("novelFile").addEventListener("change", (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -952,9 +989,7 @@ function bindEvents(){
   
     reader.readAsText(file, "UTF-8");
   });
-  document.getElementById('uploadNovelBtn').addEventListener('click',()=>document.getElementById('novelFile').click());
-  document.getElementById('novelFile').addEventListener('change',e=>{if(e.target.files[0])loadNovel(e.target.files[0]);});
-  document.getElementById('fontMinus').addEventListener('click',()=>{
+ document.getElementById('fontMinus').addEventListener('click',()=>{
     novelFontSize=Math.max(12,novelFontSize-2);
     document.getElementById('novelReader').style.fontSize=novelFontSize+'px';
     document.getElementById('fontSizeLabel').textContent=novelFontSize+'px';
