@@ -1015,7 +1015,71 @@ function bindEvents(){
   document.querySelectorAll('.modal').forEach(modal=>{
     modal.addEventListener('click',e=>{if(e.target===modal)closeModal(modal.id);});
   });
+// 记忆匣
+const memories = JSON.parse(localStorage.getItem('memories') || '[]');
+let memIndex = 0;
+
+function renderMemories() {
+  const stack = document.getElementById('memoryStack');
+  const empty = document.getElementById('memoryEmpty');
+  const indexEl = document.getElementById('memIndex');
+  if (!memories.length) {
+    stack.innerHTML = '';
+    stack.appendChild(empty);
+    if(indexEl) indexEl.textContent = '';
+    return;
+  }
+  stack.innerHTML = '';
+  const show = [memIndex, memIndex+1, memIndex+2].map(i => memories[i % memories.length]);
+  show.reverse().forEach((m, i) => {
+    const card = document.createElement('div');
+    card.className = 'memory-card' + (i === show.length-1 ? ' top' : '');
+    card.innerHTML = `
+      <div class="memory-card-date">${m.date || ''}</div>
+      <div class="memory-card-title">${escHtml(m.title || '')}</div>
+      <div class="memory-card-content">${escHtml(m.content || '')}</div>
+    `;
+    stack.appendChild(card);
+  });
+  if(indexEl) indexEl.textContent = `${memIndex+1} / ${memories.length}`;
 }
+
+document.getElementById('memAdd').addEventListener('click', () => {
+  document.getElementById('memTitleInput').value = '';
+  document.getElementById('memDateInput').value = today();
+  document.getElementById('memContentInput').value = '';
+  openModal('memoryModal');
+});
+
+document.getElementById('closeMemoryModal').addEventListener('click', () => closeModal('memoryModal'));
+
+document.getElementById('saveMemory').addEventListener('click', () => {
+  const title = document.getElementById('memTitleInput').value.trim();
+  const date = document.getElementById('memDateInput').value;
+  const content = document.getElementById('memContentInput').value.trim();
+  if (!title) { showToast('标题不能为空'); return; }
+  memories.push({ id: Date.now().toString(), title, date, content });
+  localStorage.setItem('memories', JSON.stringify(memories));
+  memIndex = memories.length - 1;
+  renderMemories();
+  closeModal('memoryModal');
+  showToast('记忆已存入 🌸');
+  favorability.add(3);
+});
+
+document.getElementById('memPrev').addEventListener('click', () => {
+  if (!memories.length) return;
+  memIndex = (memIndex - 1 + memories.length) % memories.length;
+  renderMemories();
+});
+
+document.getElementById('memNext').addEventListener('click', () => {
+  if (!memories.length) return;
+  memIndex = (memIndex + 1) % memories.length;
+  renderMemories();
+});
+
+renderMemories();
 
 // 恢复自定义壁纸
 const _customWp=localStorage.getItem('wallpaper-custom');
@@ -1024,4 +1088,4 @@ if(_customWp&&(state.wallpaper==='none'||!state.wallpaper)) state.wallpaper=_cus
 window.addEventListener('DOMContentLoaded', () => {
   init();
 });
-
+}
