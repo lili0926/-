@@ -1092,7 +1092,7 @@ document.getElementById('fetchModelsBtn').addEventListener('click', async () => 
   showToast('获取中...');
   
   try {
-    const url = baseUrl.replace(/\/+$/, '') + '/models';
+    const url = baseUrl.replace(/\/+$/, '') + '/v1/models';
     const res = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
