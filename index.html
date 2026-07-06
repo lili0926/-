@@ -257,9 +257,11 @@
         <button class="btn-primary" id="newDiaryBtn">+ 新建</button>
       </div>
       <div class="diary-list" id="diaryList">
-        <div class="empty-diary">还没有日记，写一篇吧 </div>
-      </div>
-    </section>
+       <div class="diary-card">
+<div class="diary-list" id="diaryList">
+  <div class="empty-diary">还没有日记，写一篇吧</div>
+</div>
+       </div>
 
     <!-- 设置页 -->
     <section class="page" id="page-settings">
@@ -412,19 +414,9 @@
     <textarea class="diary-editor" id="diaryContent" placeholder="写下今天发生的事..."></textarea>
     <div class="diary-actions">
       <div class="diary-card">
-  <!-- 🫧 雾化背景层（放图） -->
-  <div class="diary-bg diary-bg-1"></div>
-  <!-- 标题层 -->
-  <div class="diary-title">
-    今天...
-  </div>
-  <!-- 输入层 -->
-  <div class="diary-body">
-    <textarea class="diary-textarea" placeholder="写下今天发生的事..."></textarea>
-
-    <button class="diary-save">保存</button>
-  </div>
-
+ <div class="diary-list" id="diaryList">
+  <div class="empty-diary">还没有日记，写一篇吧</div>
+ </div>
       </div>
 <!-- 纪念日惊喜弹窗 -->
 <div class="modal" id="surpriseModal">
