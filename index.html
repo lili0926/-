@@ -250,18 +250,42 @@
       </div>
     </section>
 
-    <!-- 日记页 -->
-    <section class="page" id="page-diary">
-      <div class="diary-header">
-        <h2>我的日记</h2>
-        <button class="btn-primary" id="newDiaryBtn">+ 新建</button>
+    <!-- 🫧 日记页 -->
+<section class="page" id="page-diary">
+
+  <!-- 顶部 -->
+  <div class="diary-header">
+    <h2>我的日记</h2>
+    <button class="btn-primary" id="newDiaryBtn">+ 新建</button>
+  </div>
+
+  <!-- 📚 日记列表（JS操作的核心容器） -->
+  <div class="diary-list" id="diaryList">
+
+    <!-- 空状态 -->
+    <div class="empty-diary">还没有日记，写一篇吧</div>
+
+    <!-- 🧾 示例日记卡片（如果你要UI预览用） -->
+    <div class="diary-card">
+
+      <!-- 🫧 雾化背景层 -->
+      <div class="diary-bg diary-bg-1"></div>
+
+      <!-- 标题 -->
+      <div class="diary-title">今天...</div>
+
+      <!-- 内容 -->
+      <div class="diary-body">
+        <textarea class="diary-textarea" placeholder="写下今天发生的事..."></textarea>
+
+        <button class="diary-save">保存</button>
       </div>
-      <div class="diary-list" id="diaryList">
-       <div class="diary-card">
-<div class="diary-list" id="diaryList">
-  <div class="empty-diary">还没有日记，写一篇吧</div>
-</div>
-       </div>
+
+    </div>
+
+  </div>
+
+</section>
 
     <!-- 设置页 -->
     <section class="page" id="page-settings">
@@ -405,19 +429,42 @@
 
 <!-- 日记弹窗 -->
 <div class="modal" id="diaryModal">
+
   <div class="modal-box modal-large">
+
+    <!-- 顶部 -->
     <div class="modal-header">
       <input type="text" class="diary-title-input" id="diaryTitle" placeholder="今天...">
       <button class="icon-btn" id="closeDiaryModal">✕</button>
     </div>
+
+    <!-- 元信息 -->
     <div class="diary-meta" id="diaryMeta"></div>
-    <textarea class="diary-editor" id="diaryContent" placeholder="写下今天发生的事..."></textarea>
+
+    <!-- 编辑区（核心输入） -->
+    <textarea
+      class="diary-editor"
+      id="diaryContent"
+      placeholder="写下今天发生的事..."
+    ></textarea>
+
+    <!-- 操作区 -->
     <div class="diary-actions">
-      <div class="diary-card">
- <div class="diary-list" id="diaryList">
-  <div class="empty-diary">还没有日记，写一篇吧</div>
- </div>
+      <button class="diary-save-btn" id="saveDiaryBtn">保存</button>
+    </div>
+
+    <!-- 日记列表（历史记录） -->
+    <div class="diary-list" id="diaryList">
+
+      <div class="empty-diary">
+        还没有日记，写一篇吧
       </div>
+
+    </div>
+
+  </div>
+
+</div>
 <!-- 纪念日惊喜弹窗 -->
 <div class="modal" id="surpriseModal">
   <div class="modal-box surprise-box">
