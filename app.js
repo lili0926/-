@@ -1065,7 +1065,7 @@ function bindEvents(){
 
   // 日记
   document.getElementById('newDiaryBtn').addEventListener('click',()=>openDiary('new'));
-  document.getElementById('saveDiary').addEventListener('click',saveDiary);
+document.getElementById('saveDiaryBtn').addEventListener('click', saveDiary);
   document.getElementById('deleteDiary').addEventListener('click',deleteDiary);
   document.getElementById('closeDiaryModal').addEventListener('click',()=>closeModal('diaryModal'));
 
@@ -1199,6 +1199,8 @@ document.getElementById('fetchModelsBtn').addEventListener('click', async () => 
 
 
 });
+const delBtn = document.getElementById('deleteDiary');
+if (delBtn) delBtn.addEventListener('click', deleteDiary);
 }
 // 恢复自定义壁纸
 const _customWp=localStorage.getItem('wallpaper-custom');
