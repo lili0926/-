@@ -501,7 +501,17 @@ async function sendMessage() {
   try {
     const msgs = state.chatHistory.slice(-20).map(m=>({role:m.role,content:m.content}));
     const useThinking = document.getElementById('thinkingToggle').checked;
-    const fullUrl = aiApiConfig.baseUrl + aiApiConfig.path;
+    import { buildAIRequest } from "./API/Adapter.js";
+
+const req = buildAIRequest(aiApiConfig, msgs);
+
+const res = await fetch("/api/proxy", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify(req)
+});
     let headers = { "Content-Type": "application/json" };
     let body = {};
 
