@@ -1,4 +1,45 @@
-// ====== 状态 ======
+// 页面切换逻辑
+function initPageSwitch() {
+  const navItems = document.querySelectorAll('.nav-item');
+  const pages = document.querySelectorAll('.page');
+  const pageTitle = document.getElementById('pageTitle');
+
+  navItems.forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
+      // 获取目标页面标识
+      const targetPage = item.dataset.page;
+      const targetId = `page-${targetPage}`;
+
+      // 1. 清除所有导航激活态
+      navItems.forEach(nav => nav.classList.remove('active'));
+      item.classList.add('active');
+
+      // 2. 隐藏所有页面
+      pages.forEach(p => p.classList.remove('active'));
+      // 3. 显示目标页面
+      document.getElementById(targetId).classList.add('active');
+
+      // 4. 更新顶部标题
+      const titleMap = {
+        home: "主页",
+        chat: "聊天",
+        tasks: "行程",
+        novel: "小说",
+        music: "音乐",
+        diary: "日记",
+        settings: "设置"
+      };
+      pageTitle.innerText = titleMap[targetPage] || targetPage;
+    })
+  })
+}
+
+// 页面加载完成初始化切换
+window.addEventListener('DOMContentLoaded', () => {
+  initPageSwitch();
+  
+})// ====== 状态 ======
 const state = {
   theme: localStorage.getItem('theme') || 'dark',
   wallpaper: localStorage.getItem('wallpaper') || 'none',
