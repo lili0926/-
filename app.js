@@ -1,20 +1,44 @@
-// ====== 页面切换核心函数 ======
-function showPage(pageId) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  const target = document.getElementById('page-' + pageId);
-  if (target) target.classList.add('active');
-  
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const activeNav = document.querySelector(`.nav-item[data-page="${pageId}"]`);
-  if (activeNav) activeNav.classList.add('active');
-  
-  const titleMap = {
-    home: "主页", chat: "聊天", tasks: "行程",
-    novel: "小说", music: "音乐", diary: "日记", settings: "设置"
-  };
-  const titleEl = document.getElementById('pageTitle');
-  if (titleEl) titleEl.innerText = titleMap[pageId] || pageId;
+// 页面切换逻辑
+function initPageSwitch() {
+  const navItems = document.querySelectorAll('.nav-item');
+  const pages = document.querySelectorAll('.page');
+  const pageTitle = document.getElementById('pageTitle');
+
+  navItems.forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
+      // 获取目标页面标识
+      const targetPage = item.dataset.page;
+      const targetId = `page-${targetPage}`;
+
+      // 1. 清除所有导航激活态
+      navItems.forEach(nav => nav.classList.remove('active'));
+      item.classList.add('active');
+
+      // 2. 隐藏所有页面
+      pages.forEach(p => p.classList.remove('active'));
+      // 3. 显示目标页面
+      document.getElementById(targetId).classList.add('active');
+
+      // 4. 更新顶部标题
+      const titleMap = {
+        home: "主页",
+        chat: "聊天",
+        tasks: "行程",
+        novel: "小说",
+        music: "音乐",
+        diary: "日记",
+        settings: "设置"
+      };
+      pageTitle.innerText = titleMap[targetPage] || targetPage;
+    })
+  })
 }
+
+// 页面加载完成初始化切换
+window.addEventListener('DOMContentLoaded', () => {
+  initPageSwitch();
+})
 
 // ====== 状态 ======
 const state = {
@@ -38,769 +62,16 @@ const state = {
 
 function today() { return new Date().toISOString().slice(0,10); }
 
-// ====== 工具函数 ======
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2200);
-}
-
-function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-
-// ====== 主题 ======
-function applyTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme);
-  state.theme = theme;
-  localStorage.setItem('theme', theme);
-  const icon = document.querySelector('.theme-icon');
-  const lbl = document.querySelector('.theme-toggle span:last-child');
-  const sw = document.getElementById('themeSwitch');
-  if (theme === 'dark') {
-    if(icon) icon.textContent='🌙';
-    if(lbl) lbl.textContent='深色模式';
-    if(sw) sw.classList.remove('active');
-  } else {
-    if(icon) icon.textContent='☀️';
-    if(lbl) lbl.textContent='浅色模式';
-    if(sw) sw.classList.add('active');
-  }
-}
-
-// ====== 壁纸 ======
-const GRADIENTS = {
-  none:'',
-  gradient1:'linear-gradient(135deg,#fbc2eb,#a6c1ee)',
-  gradient2:'linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)',
-  gradient3:'linear-gradient(135deg,#d4fc79,#96e6a1)',
-  gradient4:'linear-gradient(135deg,#f093fb,#f5576c)',
-  gradient5:'linear-gradient(135deg,#0c3483,#a2b6df,#6b8cce)',
-};
-
-function applyWallpaper(wp) {
-  const el = document.getElementById('wallpaper');
-  if (!wp || wp === 'none') {
-    el.style.backgroundImage=''; document.body.classList.remove('has-wallpaper');
-  } else if (GRADIENTS[wp]) {
-    el.style.backgroundImage=GRADIENTS[wp]; document.body.classList.add('has-wallpaper');
-  } else if (wp.startsWith('data:')) {
-    el.style.backgroundImage=`url(${wp})`; document.body.classList.add('has-wallpaper');
-  }
-  state.wallpaper = wp;
-  if (!wp.startsWith('data:')) localStorage.setItem('wallpaper', wp);
-}
-
-function applyOverlay(val) {
-  document.getElementById('wallpaperOverlay').style.opacity = val/100;
-  state.overlayOpacity = val;
-}
-
-function applyThinkingColor(c) {
-  document.documentElement.style.setProperty('--thinking-color', c);
-  state.thinkingColor = c;
-  localStorage.setItem('thinkingColor', c);
-}
-
-function applyBubbleAlpha(a) {
-  document.documentElement.style.setProperty('--bubble-alpha', a);
-  state.bubbleAlpha = a;
-  localStorage.setItem('bubbleAlpha', a);
-}
-
-// ====== 问候 ======
-function updateGreeting() {
-  const h = new Date().getHours();
-  const g = h<5?'夜深了':h<12?'早上好':h<14?'午安':h<18?'下午好':h<22?'晚上好':'夜深了';
-  document.getElementById('greeting').textContent = `${g}，${state.name} 🌸`;
-}
-
-function updateDate() {
-  const d = new Date(), days=['日','一','二','三','四','五','六'];
-  document.getElementById('currentDate').textContent =
-    `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 星期${days[d.getDay()]}`;
-}
-
-function updateTogetherDays() {
-  if (!state.startDate) { document.getElementById('togetherDays').textContent='—'; return; }
-  const diff = Math.floor((new Date()-new Date(state.startDate))/86400000);
-  document.getElementById('togetherDays').textContent = diff;
-  updateChatDaysBg();
-}
-
-function updateChatDaysBg() {
-  if (!state.startDate) return;
-  const diff = Math.floor((new Date()-new Date(state.startDate))/86400000);
-  const el = document.getElementById('chatDaysNum');
-  if (el) el.textContent = diff;
-}
-
-// ====== 天气 ======
-const WEATHER_EMOJI = {
-  sunny:'☀️', clear:'☀️', cloud:'⛅', overcast:'☁️',
-  rain:'🌧️', drizzle:'🌦️', snow:'❄️', sleet:'🌨️',
-  thunder:'⛈️', mist:'🌫️', fog:'🌫️', blizzard:'🌨️',
-};
-
-function parseWeather(code) {
-  const map = {
-    0:'sunny',1:'sunny',2:'cloud',3:'overcast',
-    45:'fog',48:'fog',
-    51:'drizzle',53:'drizzle',55:'drizzle',
-    61:'rain',63:'rain',65:'rain',
-    71:'snow',73:'snow',75:'snow',
-    80:'rain',81:'rain',82:'rain',
-    95:'thunder',96:'thunder',99:'thunder'
-  };
-  const type = map[code] || 'sunny';
-  return { type, emoji: WEATHER_EMOJI[type] || '🌤️' };
-}
-
-function applyWeather(weather) {
-  const icon = document.getElementById('weatherIcon');
-  if (icon) icon.textContent = weather.emoji;
-}
-
-async function fetchWeather(city) {
-  if (!city) return;
-  try {
-    const res = await fetch(`https://wttr.in/${encodeURIComponent(city)}?format=j1`);
-    if (!res.ok) throw new Error();
-    const data = await res.json();
-    const cur = data.current_condition[0];
-    const desc = cur.weatherDesc[0].value.toLowerCase();
-    let emoji = '🌤️';
-    for (const [k,v] of Object.entries(WEATHER_EMOJI)) {
-      if (desc.includes(k)) { emoji=v; break; }
-    }
-    document.getElementById('weatherIcon').textContent = emoji;
-    document.getElementById('weatherInfo').textContent = `${cur.temp_C}°C · ${data.nearest_area[0].areaName[0].value}`;
-  } catch {
-    document.getElementById('weatherInfo').textContent = '天气获取失败';
-  }
-}
-
-// ====== 纪念日 ======
-function checkAnniversary() {
-  const banner = document.getElementById('anniversaryBanner');
-  const now = new Date();
-  const mm = String(now.getMonth()+1).padStart(2,'0');
-  const dd = String(now.getDate()).padStart(2,'0');
-  const todayMD = `${mm}-${dd}`;
-
-  if (state.startDate) {
-    const start = new Date(state.startDate);
-    const startMD = `${String(start.getMonth()+1).padStart(2,'0')}-${String(start.getDate()).padStart(2,'0')}`;
-    if (todayMD === startMD && now.getFullYear() > start.getFullYear()) {
-      const yrs = now.getFullYear() - start.getFullYear();
-      showSurprise(`🎉 今天是我们在一起的第 ${yrs} 周年！\n\n${yrs} 年了，每一天都值得被记住。\n谢谢你一直在 💕`);
-      if(banner){banner.textContent=`🎊 今天是我们 ${yrs} 周年纪念日！`;banner.style.display='block';}
-      return;
-    }
-    const startDay = start.getDate();
-    if (now.getDate() === startDay && now.getMonth() !== start.getMonth()) {
-      const months = (now.getFullYear()-start.getFullYear())*12 + (now.getMonth()-start.getMonth());
-      if (months > 0 && months % 6 === 0) {
-        if(banner){banner.textContent=`🌸 今天是我们在一起的第 ${months} 个月！`;banner.style.display='block';}
-      }
-    }
-  }
-
-  if (state.anniversaries) {
-    const list = state.anniversaries.split(',').map(s=>s.trim());
-    if (list.includes(todayMD)) {
-      showSurprise(`🎊 今天是特别的纪念日！\n\n${mm}月${dd}日，好好庆祝一下吧 🌸`);
-      if(banner){banner.textContent=`🌟 今天是你的纪念日！`;banner.style.display='block';}
-    }
-  }
-}
-
-function showSurprise(text) {
-  const el = document.getElementById('surpriseContent');
-  if(el) el.innerHTML = text.replace(/\n/g,'<br>');
-  setTimeout(() => openModal('surpriseModal'), 800);
-}
-
-// ====== 好感度 ======
-const FAV_LEVELS = [
-  {min:0,name:'初识',emoji:'🌱'},
-  {min:100,name:'熟悉',emoji:'🌸'},
-  {min:300,name:'亲密',emoji:'💕'},
-  {min:600,name:'心动',emoji:'💞'},
-  {min:900,name:'最爱',emoji:'💖'},
-];
-const FAV_MAX = 1000;
-const favorability = {
-  pts: parseInt(localStorage.getItem('favorability') || '0'),
-  add(n) {
-    this.pts = Math.min(FAV_MAX, this.pts + n);
-    localStorage.setItem('favorability', this.pts);
-    this.render();
-  },
-  render() {
-    const bar = document.getElementById('favBar');
-    const lbl = document.getElementById('favLabel');
-    const pts = document.getElementById('favPts');
-    if (!bar) return;
-    bar.style.width = (this.pts/FAV_MAX*100) + '%';
-    const lv = [...FAV_LEVELS].reverse().find(l=>this.pts>=l.min) || FAV_LEVELS[0];
-    if(lbl) lbl.textContent = lv.emoji + ' ' + lv.name;
-    if(pts) pts.textContent = this.pts;
-  }
-};
-
-// ====== Aries语录 ======
-const QUOTES=['等你回来。','乖。','知道了。','在这里。','我记着呢。','别气了。','好，我陪你。','嗯。','来了来了。','喜欢你。','回来了就好。','不用说谢谢。','说吧，我听着。','这边才是家。'];
-function updateAriesQuote() {
-  document.getElementById('ariesQuote').textContent=`" ${QUOTES[new Date().getDate()%QUOTES.length]} "`;
-}
-
-const FLOWERS=['🌸 樱花 — 生命之美，短暂而珍贵','🌹 玫瑰 — 我爱你，无需多言','🌻 向日葵 — 我的眼里只有你','🌷 郁金香 — 爱的表白','🌺 木槿 — 温柔地守护','💐 满天星 — 永恒的爱','🍀 四叶草 — 你是我的幸运'];
-function updateFlower() {
-  document.getElementById('flowerMsg').textContent=FLOWERS[new Date().getDate()%FLOWERS.length];
-}
-
-function restoreMood() {
-  if(state.mood){
-    document.getElementById('moodSelected').textContent=state.mood;
-    document.querySelectorAll('.mood-btn').forEach(b=>{if(b.dataset.mood===state.mood)b.classList.add('selected');});
-  }
-}
-
-function restoreQuickNote() { document.getElementById('quickNoteText').value=state.quickNote; }
-
-// ====== 聊天辅助函数 ======
-function autoResize(textarea) {
-  textarea.style.height = 'auto';
-  textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
-}
-
-function addChatMessage(role, content, thinking = '') {
-  const container = document.getElementById('chatMessages');
-  const div = document.createElement('div');
-  div.className = `message ${role}`;
-  
-  let html = '';
-  if (thinking) {
-    html += `
-      <div class="thinking-panel">
-        <div class="thinking-header" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
-          <span>💭 思考过程</span>
-          <span class="thinking-arrow">▼</span>
-        </div>
-        <div class="thinking-body">${escHtml(thinking)}</div>
-      </div>
-    `;
-  }
-  html += `<div class="bubble">${escHtml(content)}</div>`;
-  div.innerHTML = html;
-  container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
-  return div;
-}
-
-function addLoadingMessage() {
-  const container = document.getElementById('chatMessages');
-  const div = document.createElement('div');
-  div.className = 'message assistant';
-  div.innerHTML = `
-    <div class="bubble">
-      <div class="loading-dots">
-        <span></span><span></span><span></span>
-      </div>
-    </div>
-  `;
-  container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
-  return div;
-}
-
-function clearChat() {
-  if (!confirm('确定要清空所有聊天记录吗？')) return;
-  state.chatHistory = [];
-  const container = document.getElementById('chatMessages');
-  container.innerHTML = `
-    <div class="chat-welcome" id="chatWelcome">
-      <div class="welcome-icon">🌸</div>
-      <div class="welcome-text">你好，今天想聊什么？</div>
-      <div class="welcome-hint" id="apiHint"></div>
-    </div>
-  `;
-  checkApiKey();
-  showToast('已清空聊天记录');
-}
-
-// ====== AI配置 ======
-let aiApiConfig = JSON.parse(localStorage.getItem("customAiApi")) || {
-  baseUrl: "https://api.anthropic.com",
-  key: localStorage.getItem('apiKey') || "",
-  model: localStorage.getItem('model') || "claude-sonnet-4-6",
-  path: "/v1/messages"
-};
-
-function checkApiKey() {
-  const hint = document.getElementById('apiHint');
-  if (hint) {
-    const hasKey = aiApiConfig.key && aiApiConfig.key.length > 0;
-    hint.textContent = hasKey ? '' : '请先在 设置 → AI接入 中填写 API Key';
-  }
-}
-
-// ====== 发送消息 ======
-async function sendMessage() {
-  const apiKey = aiApiConfig.key;
-  if(!apiKey){showToast('请先在设置中填写 API Key');return;}
-  const input = document.getElementById('chatInput');
-  const content = input.value.trim();
-  if(!content) return;
-  const btn = document.getElementById('sendBtn');
-  btn.disabled=true; input.value=''; autoResize(input);
-  const welcome = document.getElementById('chatWelcome');
-  if(welcome) welcome.style.display='none';
-  addChatMessage('user', content);
-  state.chatHistory.push({role:'user',content});
-  favorability.add(1);
-  const loadingEl = addLoadingMessage();
-
-  try {
-    const msgs = state.chatHistory.slice(-20).map(m=>({role:m.role,content:m.content}));
-    const useThinking = document.getElementById('thinkingToggle').checked;
-    let fullUrl = aiApiConfig.baseUrl + (aiApiConfig.path || '/v1/messages');
-    let headers = { "Content-Type": "application/json" };
-    let body = {};
-
-    if(aiApiConfig.baseUrl.includes("anthropic")){
-      headers['x-api-key'] = apiKey;
-      headers['anthropic-version'] = '2023-06-01';
-      headers['anthropic-dangerous-direct-browser-calls'] = 'true';
-      body = {
-        model: aiApiConfig.model,
-        max_tokens: useThinking ? 16000 : 4096,
-        messages: msgs,
-      };
-      const sp = localStorage.getItem('systemPrompt')||'';
-      if(sp) body.system=sp;
-      if(useThinking) body.thinking={type:'enabled',budget_tokens:10000};
-    } else {
-      headers['Authorization'] = `Bearer ${apiKey}`;
-      body = {
-        model: aiApiConfig.model,
-        messages: msgs,
-        temperature: 0.7
-      };
-    }
-
-    const proxyUrl = `/api/proxy?target=${encodeURIComponent(fullUrl)}`;
-    const res = await fetch(proxyUrl, {
-      method: 'POST',
-      headers: headers,
-      body: JSON.stringify(body),
-    });
-    
-    let data;
-    try { data = await res.json(); } catch { data = { error: { message: '响应解析失败' } }; }
-    loadingEl.remove();
-
-    if(data.error){showToast('错误：'+(data.error.message||'检查API Key'));btn.disabled=false;return;}
-
-    let text='', thinking='';
-    if(aiApiConfig.baseUrl.includes("anthropic")){
-      for(const b of(data.content||[])){
-        if(b.type==='text') text=b.text;
-        if(b.type==='thinking') thinking=b.thinking;
-      }
-    } else {
-      text = data.choices?.[0]?.message?.content || '';
-    }
-
-    if(text) {
-      addChatMessage('assistant', text, thinking);
-      state.chatHistory.push({role:'assistant', content:text});
-    }
-  } catch(e) {
-    loadingEl.remove();
-    showToast('发送失败，请检查网络、API地址或密钥');
-    console.error(e);
-  }
-  btn.disabled=false; input.focus();
-}
-
-// ====== UI小人 ======
-const vchar = {
-  dragging: false,
-  offsetX: 0, offsetY: 0,
-  idleTimer: null,
-  IDLE_MS: 5 * 60 * 1000,
-  EXPRESSIONS: ['😊','🥰','😄','🤔','😎','✨','💕','😺'],
-  REPLIES_OFFLINE: ['嗯。','干嘛。','知道了。','乖。','在。','哦。'],
-  nightMode: false,
-
-  init() {
-    const el = document.getElementById('vchar');
-    if (!el) return;
-    this.makeDraggable(el);
-    document.getElementById('vcharBody').addEventListener('click', (e) => {
-      if (!this.dragging) this.onBodyClick();
-    });
-    this.resetIdleTimer();
-    ['click','keydown','mousemove','touchstart'].forEach(ev => {
-      document.addEventListener(ev, () => this.resetIdleTimer(), {passive:true});
-    });
-    this.checkNightMode();
-    setInterval(() => this.checkNightMode(), 60000);
-  },
-
-  makeDraggable(el) {
-    let sx, sy, sl, st;
-    const onStart = (cx, cy) => {
-      this.dragging = false;
-      sx=cx; sy=cy;
-      sl=el.offsetLeft; st=el.offsetTop;
-      el.style.transition='none';
-    };
-    const onMove = (cx, cy) => {
-      if (Math.abs(cx-sx)>3||Math.abs(cy-sy)>3) this.dragging=true;
-      if (!this.dragging) return;
-      el.style.left=(sl+(cx-sx))+'px';
-      el.style.top=(st+(cy-sy))+'px';
-      el.style.right='auto'; el.style.bottom='auto';
-    };
-    const onEnd = () => { setTimeout(()=>{this.dragging=false;},50); el.style.transition=''; };
-
-    el.addEventListener('mousedown', e=>{onStart(e.clientX,e.clientY);e.preventDefault();});
-    document.addEventListener('mousemove', e=>{if(sl!==undefined)onMove(e.clientX,e.clientY);});
-    document.addEventListener('mouseup', onEnd);
-    el.addEventListener('touchstart', e=>{const t=e.touches[0];onStart(t.clientX,t.clientY);},{passive:true});
-    document.addEventListener('touchmove', e=>{const t=e.touches[0];onMove(t.clientX,t.clientY);},{passive:true});
-    document.addEventListener('touchend', onEnd);
-  },
-
-  async onBodyClick() {
-    const expr = this.EXPRESSIONS[Math.floor(Math.random()*this.EXPRESSIONS.length)];
-    this.showExpression(expr);
-    favorability.add(1);
-
-    const apiKey = localStorage.getItem('apiKey');
-    if (apiKey) {
-      try {
-        const res = await fetch('https://api.anthropic.com/v1/messages', {
-          method:'POST',
-          headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-calls':'true'},
-          body:JSON.stringify({
-            model:'claude-haiku-4-5-20251001',
-            max_tokens:30,
-            system:'你是Aries，用简短温柔的一句话回应主人戳你，不超过8字，口语化',
-            messages:[{role:'user',content:'主人戳了你一下'}],
-          }),
-        });
-        const data = await res.json();
-        this.showBubble(data.content?.[0]?.text || '嗯。');
-      } catch { this.showBubble(this.REPLIES_OFFLINE[Math.floor(Math.random()*this.REPLIES_OFFLINE.length)]); }
-    } else {
-      this.showBubble(this.REPLIES_OFFLINE[Math.floor(Math.random()*this.REPLIES_OFFLINE.length)]);
-    }
-  },
-
-  showExpression(expr) {
-    const face = document.getElementById('vcharFace');
-    if(!face) return;
-    face.textContent = expr;
-    face.style.transform='scale(1.25)';
-    setTimeout(()=>{face.style.transform='';face.textContent='🦉';},2000);
-  },
-
-  showBubble(text) {
-    const b = document.getElementById('vcharBubble');
-    if(!b) return;
-    b.textContent = text;
-    b.classList.add('show');
-    clearTimeout(this._bubbleTimer);
-    this._bubbleTimer = setTimeout(()=>b.classList.remove('show'), 3000);
-  },
-
-  resetIdleTimer() {
-    clearTimeout(this.idleTimer);
-    const face = document.getElementById('vcharFace');
-    if(face){face.classList.remove('yawning','sleeping');face.textContent='🦉';}
-    this.idleTimer = setTimeout(()=>this.onIdle(), this.IDLE_MS);
-  },
-
-  onIdle() {
-    const face = document.getElementById('vcharFace');
-    if(!face) return;
-    if (this.nightMode) {
-      face.textContent='😴'; face.classList.add('sleeping');
-    } else {
-      face.textContent='🥱'; face.classList.add('yawning');
-      setTimeout(()=>{
-        if(face.classList.contains('yawning')){face.textContent='🦉';face.classList.remove('yawning');}
-      },4000);
-    }
-  },
-
-  checkNightMode() {
-    const h = new Date().getHours();
-    this.nightMode = (h>=22 || h<6);
-  }
-};
-
-// ====== 行程 ======
-function renderTasks(){
-  const todos=state.tasks.filter(t=>!t.done);
-  const dones=state.tasks.filter(t=>t.done);
-  document.getElementById('todoCount').textContent=todos.length;
-  document.getElementById('doneCount').textContent=dones.length;
-  const todoList=document.getElementById('todoList');
-  const doneList=document.getElementById('doneList');
-  todoList.innerHTML=todos.length?todos.map(t=>taskHTML(t)).join(''):'<div class="tasks-empty">暂无待办 ✨</div>';
-  doneList.innerHTML=dones.length?dones.map(t=>taskHTML(t)).join(''):'<div class="tasks-empty">完成的事项会出现在这里</div>';
-}
-
-function taskHTML(t){
-  const dateTag=t.date?`<span class="task-date-tag">📅 ${t.date}</span>`:'';
-  return `<div class="task-item" id="task-${t.id}">
-    <div class="task-check ${t.done?'checked':''}" onclick="toggleTask('${t.id}')">${t.done?'✓':''}</div>
-    <div style="flex:1">
-      <div class="task-text ${t.done?'done-text':''}">${escHtml(t.text)}</div>
-      ${dateTag}
-    </div>
-    <button class="task-del" onclick="deleteTask('${t.id}')" title="删除">×</button>
-  </div>`;
-}
-
-function addTask(){
-  const input=document.getElementById('taskInput');
-  const dateEl=document.getElementById('taskDate');
-  const text=input.value.trim();
-  if(!text) return;
-  state.tasks.push({id:Date.now().toString(),text,date:dateEl.value||'',done:false});
-  localStorage.setItem('tasks',JSON.stringify(state.tasks));
-  input.value=''; dateEl.value='';
-  renderTasks();
-  favorability.add(1);
-}
-
-function toggleTask(id){
-  const t=state.tasks.find(t=>t.id===id);
-  if(!t) return;
-  t.done=!t.done;
-  if(t.done) favorability.add(2);
-  localStorage.setItem('tasks',JSON.stringify(state.tasks));
-  renderTasks();
-}
-
-function deleteTask(id){
-  state.tasks=state.tasks.filter(t=>t.id!==id);
-  localStorage.setItem('tasks',JSON.stringify(state.tasks));
-  renderTasks();
-}
-
-// ====== 小说 ======
-let novelFontSize=state.novelFontSize;
-function loadNovel(file){
-  const r=new FileReader();
-  r.onload=e=>{
-    const reader=document.getElementById('novelReader');
-    reader.textContent=e.target.result;
-    reader.style.fontSize=novelFontSize+'px';
-    document.getElementById('novelTitleBadge').textContent=file.name.replace('.txt','');
-    document.getElementById('novelControls').style.display='flex';
-    const saved=parseInt(localStorage.getItem('novelScroll')||'0');
-    setTimeout(()=>{reader.scrollTop=saved;},50);
-    reader.addEventListener('scroll',()=>localStorage.setItem('novelScroll',reader.scrollTop));
-    showToast('导入成功 📖');
-  };
-  r.onerror=()=>showToast('读取失败');
-  r.readAsText(file,'UTF-8');
-}
-
-// ====== 日记 ======
-function renderDiaries(){
-  const list=document.getElementById('diaryList');
-  if(!state.diaries.length){list.innerHTML='<div class="empty-diary">还没有日记，写一篇吧 🌸</div>';return;}
-  list.innerHTML=[...state.diaries].reverse().map(d=>`
-    <div class="diary-item" onclick="openDiary('${d.id}')">
-      <div class="diary-item-title">${escHtml(d.title||'无标题')}</div>
-      <div class="diary-item-preview">${escHtml(d.content||'').slice(0,60)}</div>
-      <div class="diary-item-date">${d.date}</div>
-    </div>`).join('');
-}
-
-function openDiary(id){
-  const d=id==='new'?null:state.diaries.find(d=>d.id===id);
-  state.currentDiaryId=id==='new'?null:id;
-  document.getElementById('diaryTitle').value=d?d.title:'';
-  document.getElementById('diaryContent').value=d?d.content:'';
-  document.getElementById('diaryMeta').textContent=d?`创建于 ${d.date}`:today();
-  document.getElementById('deleteDiary').style.display=d?'block':'none';
-  openModal('diaryModal');
-}
-
-function saveDiary(){
-  const title=document.getElementById('diaryTitle').value.trim()||'无标题';
-  const content=document.getElementById('diaryContent').value.trim();
-  if(state.currentDiaryId){
-    const idx=state.diaries.findIndex(d=>d.id===state.currentDiaryId);
-    if(idx!==-1){state.diaries[idx].title=title;state.diaries[idx].content=content;}
-  } else {
-    state.diaries.push({id:Date.now().toString(),title,content,date:today()});
-    favorability.add(2);
-  }
-  localStorage.setItem('diaries',JSON.stringify(state.diaries));
-  renderDiaries(); closeModal('diaryModal'); showToast('已保存 🌸');
-}
-
-function deleteDiary(){
-  if(!state.currentDiaryId||!confirm('确定删除？')) return;
-  state.diaries=state.diaries.filter(d=>d.id!==state.currentDiaryId);
-  localStorage.setItem('diaries',JSON.stringify(state.diaries));
-  renderDiaries(); closeModal('diaryModal'); showToast('已删除');
-}
-
-// ====== 设置 ======
-function setupSettings(){
-  document.getElementById('apiKeyInput').value=localStorage.getItem('apiKey')||'';
-  document.getElementById('modelSelect').value=localStorage.getItem('model')||'claude-sonnet-4-6';
-  document.getElementById('systemPromptInput').value=localStorage.getItem('systemPrompt')||'';
-  document.getElementById('thinkingColorInput').value=state.thinkingColor;
-  document.getElementById('thinkingColorLabel').textContent=state.thinkingColor;
-  const ba=Math.round(state.bubbleAlpha*100);
-  document.getElementById('bubbleOpacity').value=ba;
-  document.getElementById('bubbleOpacityVal').textContent=ba+'%';
-  document.getElementById('cityInput').value=state.city;
-  document.getElementById('nameInput').value=state.name;
-  document.getElementById('dateInput').value=state.startDate;
-  document.getElementById('anniversaryInput').value=state.anniversaries;
-  document.getElementById('overlaySlider').value=state.overlayOpacity;
-  document.getElementById('overlayVal').textContent=state.overlayOpacity+'%';
-  if(state.theme==='light') document.getElementById('themeSwitch').classList.add('active');
-  document.getElementById('apiBaseUrl').value = localStorage.getItem('apiBaseUrl') || '';
-  document.getElementById('apiFormat').value = localStorage.getItem('apiFormat') || 'anthropic';
-}
-
-function saveSettings(){
-  localStorage.setItem('apiKey', document.getElementById('apiKeyInput').value.trim());
-  localStorage.setItem('model', document.getElementById('modelSelect').value);
-  localStorage.setItem('systemPrompt', document.getElementById('systemPromptInput').value.trim());
-  state.name=document.getElementById('nameInput').value.trim()||'小猫';
-  state.startDate=document.getElementById('dateInput').value;
-  state.city=document.getElementById('cityInput').value.trim();
-  state.anniversaries=document.getElementById('anniversaryInput').value.trim();
-  localStorage.setItem('name',state.name);
-  localStorage.setItem('startDate',state.startDate);
-  localStorage.setItem('city',state.city);
-  localStorage.setItem('anniversaries',state.anniversaries);
-  updateGreeting(); updateTogetherDays(); checkApiKey();
-  if(state.city) fetchWeather(state.city);
-  showToast('设置已保存 ✓');
-  localStorage.setItem('apiBaseUrl', document.getElementById('apiBaseUrl').value.trim());
-  localStorage.setItem('apiFormat', document.getElementById('apiFormat').value);
-}
-
-// ====== 事件绑定 ======
-function bindEvents(){
-  // 导航切换
-  document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', (e) => {
-      e.preventDefault();
-      const page = item.dataset.page;
-      if (page) {
-        showPage(page);
-        if (window.innerWidth <= 768) {
-          document.getElementById('sidebar').classList.remove('open');
-        }
-      }
-    });
-  });
-
-  // 移动端菜单
-  document.getElementById('mobileMenu').addEventListener('click',()=>{
-    document.getElementById('sidebar').classList.toggle('open');
-  });
-
-  // 主题
-  document.getElementById('themeToggle').addEventListener('click',()=>applyTheme(state.theme==='dark'?'light':'dark'));
-  document.getElementById('themeSwitch').addEventListener('click',function(){
-    this.classList.toggle('active');
-    applyTheme(this.classList.contains('active')?'light':'dark');
-  });
-
-  // 壁纸
-  document.getElementById('wallpaperBtn').addEventListener('click',()=>openModal('wallpaperModal'));
-  document.getElementById('wallpaperSettingBtn').addEventListener('click',()=>openModal('wallpaperModal'));
-  document.getElementById('closeWpModal').addEventListener('click',()=>closeModal('wallpaperModal'));
-  document.querySelectorAll('.wp-option').forEach(opt=>{
-    opt.addEventListener('click',()=>{
-      if(opt.dataset.wp==='upload'){document.getElementById('wpUpload').click();return;}
-      document.querySelectorAll('.wp-option').forEach(o=>o.classList.remove('selected'));
-      opt.classList.add('selected');
-      applyWallpaper(opt.dataset.wp);
-      setTimeout(()=>closeModal('wallpaperModal'),300);
-    });
-  });
-  document.getElementById('wpUpload').addEventListener('change',e=>{
-    const file=e.target.files[0]; if(!file) return;
-    const r=new FileReader();
-    r.onload=ev=>{applyWallpaper(ev.target.result);localStorage.setItem('wallpaper-custom',ev.target.result);closeModal('wallpaperModal');showToast('壁纸已更换 🌸');};
-    r.readAsDataURL(file);
-  });
-
-  // 遮罩
-  document.getElementById('overlaySlider').addEventListener('input',function(){
-    applyOverlay(parseInt(this.value));
-    document.getElementById('overlayVal').textContent=this.value+'%';
-    localStorage.setItem('overlay',this.value);
-  });
-
-  // 思考链颜色
-  document.getElementById('thinkingColorInput').addEventListener('input',function(){
-    applyThinkingColor(this.value);
-    document.getElementById('thinkingColorLabel').textContent=this.value;
-  });
-
-  // 气泡透明度
-  document.getElementById('bubbleOpacity').addEventListener('input',function(){
-    applyBubbleAlpha(parseInt(this.value)/100);
-    document.getElementById('bubbleOpacityVal').textContent=this.value+'%';
-  });
-
-  // 心情
-  document.querySelectorAll('.mood-btn').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('selected'));
-      btn.classList.add('selected');
-      state.mood=btn.dataset.mood;
-      document.getElementById('moodSelected').textContent=btn.dataset.mood;
-      localStorage.setItem('mood-'+today(),btn.dataset.mood);
-      favorability.add(1);
-    });
-  });
-
-  // 随手记
-  document.getElementById('quickNoteText').addEventListener('input',function(){
-    localStorage.setItem('quickNote',this.value);
-  });
-
-  // 聊天
-  document.getElementById('sendBtn').addEventListener('click',sendMessage);
-  document.getElementById('chatInput').addEventListener('keydown',e=>{
-    if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}
-  });
-  document.getElementById('chatInput').addEventListener('input',function(){autoResize(this);});
-  document.getElementById('clearChat').addEventListener('click',clearChat);
-
-  // 行程
-  document.getElementById('addTaskBtn').addEventListener('click',addTask);
-  document.getElementById('taskInput').addEventListener('keydown',e=>{
-    if(e.key==='Enter') addTask();
-  });
-
-  // 小说
-  document.getElementById('uploadNovelBtn').addEventListener('click',()=>document.getElementById('novelFile').click());
-   updateTogetherDays();
+// ====== 初始化 ======
+function init() {
+  applyTheme(state.theme);
+  applyWallpaper(state.wallpaper);
+  applyOverlay(state.overlayOpacity);
+  applyThinkingColor(state.thinkingColor);
+  applyBubbleAlpha(state.bubbleAlpha);
+  updateGreeting();
+  updateDate();
+  updateTogetherDays();
   updateAriesQuote();
   updateFlower();
   restoreMood();
@@ -984,29 +255,17 @@ async function fetchWeather(city) {
   }
 }
 
-function showPage(pageId) {
-  // 隐藏所有页面
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  
-  // 显示目标页面
-  const target = document.getElementById('page-' + pageId);
-  if (target) {
-    target.classList.add('active');
-  }
-  
-  // 更新导航高亮
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  const activeNav = document.querySelector(`.nav-item[data-page="${pageId}"]`);
-  if (activeNav) {
-    activeNav.classList.add('active');
-  }
-  
-  // 更新标题
-  const titleMap = {
-    home: "主页", chat: "聊天", tasks: "行程",
-    novel: "小说", music: "音乐", diary: "日记", settings: "设置"
-  };
-  document.getElementById('pageTitle').innerText = titleMap[pageId] || pageId;
+// 这里开始加页面切换函数
+function showPage(pageId){
+
+    document.querySelectorAll('.page').forEach(p => {
+        p.classList.remove('active');
+    });
+
+    const target = document.getElementById('page-'+ pageId);
+    if(target){
+        target.classList.add('active');
+    }
 }
 
 // ====== 好感度 ======
@@ -1224,45 +483,6 @@ function checkApiKey() {
   if(hint) hint.textContent = aiApiConfig.key ? '' : '请先在 设置 → AI接入 中填写 API Key';
 }
 
-function addChatMessage(role, content, thinking = '') {
-  const container = document.getElementById('chatMessages');
-  const div = document.createElement('div');
-  div.className = `message ${role}`;
-  
-  let html = '';
-  if (thinking) {
-    html += `
-      <div class="thinking-panel">
-        <div class="thinking-header" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
-          <span>💭 思考过程</span>
-          <span class="thinking-arrow">▼</span>
-        </div>
-        <div class="thinking-body">${escHtml(thinking)}</div>
-      </div>
-    `;
-  }
-  html += `<div class="bubble">${escHtml(content)}</div>`;
-  div.innerHTML = html;
-  container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
-  return div;
-}
-
-function addLoadingMessage() {
-  const container = document.getElementById('chatMessages');
-  const div = document.createElement('div');
-  div.className = 'message assistant';
-  div.innerHTML = `
-    <div class="bubble">
-      <div class="loading-dots">
-        <span></span><span></span><span></span>
-      </div>
-    </div>
-  `;
-  container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
-  return div;
-}
 // 改造后的发送消息函数：保留全部原有交互逻辑，替换请求为通用代理
 async function sendMessage() {
   const apiKey = aiApiConfig.key;
@@ -1283,10 +503,14 @@ async function sendMessage() {
     const msgs = state.chatHistory.slice(-20).map(m=>({role:m.role,content:m.content}));
     const useThinking = document.getElementById('thinkingToggle').checked;
 
-const res = await fetch(`/api/proxy?target=${encodeURIComponent(fullUrl)}`, {
-  method: 'POST',
-  headers: headers,
-  body: JSON.stringify(body),
+const req = buildAIRequest(aiApiConfig, msgs);
+
+const res = await fetch("/api/proxy", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify(req)
 });
     let headers = { "Content-Type": "application/json" };
     let body = {};
@@ -1588,25 +812,23 @@ function escHtml(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-
-      // ====== 事件绑定 ======
+// ====== 事件绑定 ======
 function bindEvents(){
-  // 导航切换
-  document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', (e) => {
+  // 导航
+  document.querySelectorAll('.nav-item').forEach(item=>{
+    item.addEventListener('click',e=>{
       e.preventDefault();
-      const page = item.dataset.page;
-      if (page) {
-        showPage(page);
-        // 移动端关闭侧边栏
-        if (window.innerWidth <= 768) {
-          document.getElementById('sidebar').classList.remove('open');
-        }
-      }
+      const page=item.dataset.page;
+      document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+      item.classList.add('active');
+      document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+      document.getElementById('page-'+page).classList.add('active');
+      document.getElementById('pageTitle').textContent=item.querySelector('span:last-child').textContent;
+      if(window.innerWidth<=768) document.getElementById('sidebar').classList.remove('open');
     });
   });
 
-  // 移动端菜单
+  // 移动端
   document.getElementById('mobileMenu').addEventListener('click',()=>{
     document.getElementById('sidebar').classList.toggle('open');
   });
