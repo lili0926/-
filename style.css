@@ -55,14 +55,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .page{display:none}.page.active{display:block}
 
 /* 页面切换基础 */
-.page {
-  display: none;
-  width: 100%;
-  height: 100%;
-}
-.page.active {
-  display: block;
-}
+
 .nav-item.active {
   background: rgba(255,255,255,0.1);
 }
@@ -362,20 +355,12 @@ body.has-wallpaper .message.assistant .bubble{background:rgba(255,255,255,var(--
   .novel-reader{padding:20px}
   .vchar{bottom:100px}
 }
-.page {
-  display: none !important;
-  width: 100%;
-  min-height: calc(100vh - 顶部栏高度);
-}
+
 .page.active {
   display: block !important;
 }
 .nav-item.active {
   background: rgba(255,255,255,0.15);
-}
-
-.page {
-    display: none;
 }
 
 .page.active {
@@ -390,4 +375,29 @@ body.has-wallpaper .message.assistant .bubble{background:rgba(255,255,255,var(--
 }
 body {
     padding-bottom: env(safe-area-inset-bottom);
+}
+
+.page#page-chat {
+  padding: 0;
+  height: calc(100vh - var(--topbar-h));
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.chat-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
