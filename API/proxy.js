@@ -1,20 +1,26 @@
-// 在fetch请求前增加判断
-let requestBody;
-if(aiApiConfig.baseUrl.includes("anthropic")){
-  // Claude专用请求体
-  requestBody = {
-    model: aiApiConfig.model,
-    max_tokens: 1024,
-    messages: messages
+export default async function handler(req, res) {
+  try {
+    const { url, headers, body } = req.body;
+
+    if (!url) {
+      return res.status(400).json({
+        error: "missing url"
+      });
+    }
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify(body)
+    });
+
+    const data = await response.json();
+
+    res.status(200).json(data);
+
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
   }
-  headers["x-api-key"] = aiApiConfig.key;
-  delete headers.Authorization;
-}else{
-  // 通用OpenAI格式（DeepSeek/GLM/Grok）
-  requestBody = {
-    model: aiApiConfig.model,
-    messages: messages,
-    temperature: 0.7
-  }
-  headers.Authorization = `Bearer ${aiApiConfig.key}`;
 }
