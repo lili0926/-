@@ -698,21 +698,34 @@ function deleteTask(id){
 
 // ====== 小说 ======
 let novelFontSize=state.novelFontSize;
-function loadNovel(file){
-  const r=new FileReader();
-  r.onload=e=>{
-    const reader=document.getElementById('novelReader');
-    reader.textContent=e.target.result;
-    reader.style.fontSize=novelFontSize+'px';
-    document.getElementById('novelTitleBadge').textContent=file.name.replace('.txt','');
-    document.getElementById('novelControls').style.display='flex';
-    const saved=parseInt(localStorage.getItem('novelScroll')||'0');
-    setTimeout(()=>{reader.scrollTop=saved;},50);
-    reader.addEventListener('scroll',()=>localStorage.setItem('novelScroll',reader.scrollTop));
-    showToast('导入成功 📖');
+function loadNovel(file) {
+  const r = new FileReader();
+
+  r.onload = (e) => {
+    const text = e.target.result;
+
+    // ====== 保存到状态 ======
+    novelState.title = file.name;
+    novelState.content = text;
+
+    // ====== 分页处理 ======
+    novelState.pages = splitNovel(text, 800); // 可调每页字数
+    novelState.index = 0;
+
+    // ====== 渲染第一页 ======
+    renderPage(0);
+
+    // ====== 保存到本地 ======
+    saveNovelToLocal();
+
+    showToast("导入成功 📖");
   };
-  r.onerror=()=>showToast('读取失败');
-  r.readAsText(file,'UTF-8');
+
+  r.onerror = () => {
+    showToast("读取失败 ❌");
+  };
+
+  r.readAsText(file, "UTF-8");
 }
 
 // ====== 日记 ======
@@ -911,6 +924,34 @@ function bindEvents(){
   });
 
   // 小说
+  document.getElementById("novelFile").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+  
+    const reader = new FileReader();
+  
+    reader.onload = (evt) => {
+      const text = evt.target.result;
+  
+      console.log("TXT读取成功", text.slice(0, 50));
+  
+      state.novel.title = file.name;
+      state.novel.content = text;
+      state.novel.pages = splitNovel(text, 800);
+      state.novel.index = 0;
+  
+      renderNovelPage(0);
+      saveNovelToLocal();
+  
+      showToast("导入成功 📖");
+    };
+  
+    reader.onerror = () => {
+      showToast("TXT读取失败 ❌");
+    };
+  
+    reader.readAsText(file, "UTF-8");
+  });
   document.getElementById('uploadNovelBtn').addEventListener('click',()=>document.getElementById('novelFile').click());
   document.getElementById('novelFile').addEventListener('change',e=>{if(e.target.files[0])loadNovel(e.target.files[0]);});
   document.getElementById('fontMinus').addEventListener('click',()=>{
