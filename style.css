@@ -314,14 +314,14 @@ body.has-wallpaper .message.assistant .bubble{background:rgba(255,255,255,var(--
 /* ====== 设置 ====== */
 .settings-group{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px;backdrop-filter:blur(8px)}
 .settings-title{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px}
-.settings-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+.settings-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px}
 .settings-item:last-child{border-bottom:none}
 .settings-label{display:flex;flex-direction:column;gap:2px}
 .settings-label span{font-size:13.5px}
 .settings-label small{font-size:11px;color:var(--text-muted)}
 .settings-input{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:6px 10px;font-size:13px;width:180px;outline:none;font-family:inherit;transition:border-color .15s}
-.settings-input:focus{border-color:var(--accent)}
-.settings-select{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:6px 10px;font-size:13px;outline:none;cursor:pointer}
+.settings-input { width: 100%; max-width: 180px; }
+.settings-select { width: 100%; max-width: 180px; }
 .settings-textarea{width:100%;min-height:80px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);padding:10px;font-size:13px;resize:vertical;font-family:inherit;outline:none;line-height:1.6}
 .settings-textarea:focus{border-color:var(--accent)}
 .settings-textarea::placeholder{color:var(--text-muted)}
