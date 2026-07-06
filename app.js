@@ -37,6 +37,21 @@ function initPageSwitch() {
 
 // 页面加载完成初始化切换
 window.addEventListener('DOMContentLoaded', () => {
+  const sel = document.getElementById("uiPresetSelect");
+const btn = document.getElementById("applyPresetBtn");
+
+if(sel && btn){
+  btn.onclick = () => {
+    applyUIPreset(sel.value);
+  };
+}
+
+// 自动加载保存的主题
+const saved = localStorage.getItem("uiPreset");
+if(saved){
+  applyUIPreset(saved);
+  if(sel) sel.value = saved;
+}
   initPageSwitch();
 })
 
