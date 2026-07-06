@@ -834,7 +834,8 @@ function openDiary(id){
   document.getElementById('diaryTitle').value=d?d.title:'';
   document.getElementById('diaryContent').value=d?d.content:'';
   document.getElementById('diaryMeta').textContent=d?`创建于 ${d.date}`:today();
-  document.getElementById('deleteDiary').style.display=d?'block':'none';
+ const delBtn = document.getElementById('deleteDiary');
+if (delBtn) delBtn.style.display = d ? 'block' : 'none';
   openModal('diaryModal');
 }
 
