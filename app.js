@@ -822,23 +822,25 @@ function escHtml(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// ====== 事件绑定 ======
+
+      // ====== 事件绑定 ======
 function bindEvents(){
-  // 导航
-  document.querySelectorAll('.nav-item').forEach(item=>{
-    item.addEventListener('click',e=>{
+  // 导航切换
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', (e) => {
       e.preventDefault();
-      const page=item.dataset.page;
-      document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-      item.classList.add('active');
-      document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-      document.getElementById('page-'+page).classList.add('active');
-      document.getElementById('pageTitle').textContent=item.querySelector('span:last-child').textContent;
-      if(window.innerWidth<=768) document.getElementById('sidebar').classList.remove('open');
+      const page = item.dataset.page;
+      if (page) {
+        showPage(page);
+        // 移动端关闭侧边栏
+        if (window.innerWidth <= 768) {
+          document.getElementById('sidebar').classList.remove('open');
+        }
+      }
     });
   });
 
-  // 移动端
+  // 移动端菜单
   document.getElementById('mobileMenu').addEventListener('click',()=>{
     document.getElementById('sidebar').classList.toggle('open');
   });
