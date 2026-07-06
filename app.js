@@ -383,14 +383,54 @@ const vchar = {
 };
 
 // ====== 聊天 ======
+// 全局自定义AI配置（替代旧localStorage单存key/model，兼容所有模型）
+let aiApiConfig = JSON.parse(localStorage.getItem("customAiApi")) || {
+  baseUrl: "https://api.anthropic.com",
+  key: localStorage.getItem('apiKey') || "",
+  model: localStorage.getItem('model') || "claude-sonnet-4-6",
+  path: "/v1/messages"
+};
+
+// 页面加载完成，绑定API设置面板按钮
+window.addEventListener('DOMContentLoaded', () => {
+  const openBtn = document.getElementById("openSettingBtn");
+  const panel = document.getElementById("apiSettingPanel");
+  const closeBtn = document.getElementById("closePanel");
+  const saveBtn = document.getElementById("saveApiConfig");
+
+  if (openBtn) openBtn.onclick = () => {
+    panel.style.display = "block";
+    document.getElementById("apiBaseUrl").value = aiApiConfig.baseUrl;
+    document.getElementById("apiKey").value = aiApiConfig.key;
+    document.getElementById("modelName").value = aiApiConfig.model;
+    document.getElementById("apiPath").value = aiApiConfig.path;
+  }
+  if (closeBtn) closeBtn.onclick = () => panel.style.display = "none";
+  if (saveBtn) saveBtn.onclick = () => {
+    aiApiConfig = {
+      baseUrl: document.getElementById("apiBaseUrl").value.trim(),
+      key: document.getElementById("apiKey").value.trim(),
+      model: document.getElementById("modelName").value.trim(),
+      path: document.getElementById("apiPath").value.trim() || "/v1/chat/completions"
+    }
+    // 同步兼容旧存储字段，老数据不失效
+    localStorage.setItem("apiKey", aiApiConfig.key);
+    localStorage.setItem("model", aiApiConfig.model);
+    localStorage.setItem("customAiApi", JSON.stringify(aiApiConfig));
+    alert("AI API配置保存成功");
+    panel.style.display = "none";
+  }
+});
+
+// 兼容原有提示函数
 function checkApiKey() {
-  const key = localStorage.getItem('apiKey');
   const hint = document.getElementById('apiHint');
-  if(hint) hint.textContent = key ? '' : '请先在 设置 → AI接入 中填写 API Key';
+  if(hint) hint.textContent = aiApiConfig.key ? '' : '请先在 设置 → AI接入 中填写 API Key';
 }
 
+// 改造后的发送消息函数：保留全部原有交互逻辑，替换请求为通用代理
 async function sendMessage() {
-  const apiKey = localStorage.getItem('apiKey');
+  const apiKey = aiApiConfig.key;
   if(!apiKey){showToast('请先在设置中填写 API Key');return;}
   const input = document.getElementById('chatInput');
   const content = input.value.trim();
@@ -403,83 +443,142 @@ async function sendMessage() {
   state.chatHistory.push({role:'user',content});
   favorability.add(1);
   const loadingEl = addLoadingMessage();
+
   try {
     const msgs = state.chatHistory.slice(-20).map(m=>({role:m.role,content:m.content}));
     const useThinking = document.getElementById('thinkingToggle').checked;
-    const body = {
-      model: localStorage.getItem('model')||'claude-sonnet-4-6',
-      max_tokens: useThinking?16000:4096,
-      messages: msgs,
-    };
-    const sp = localStorage.getItem('systemPrompt')||'';
-    if(sp) body.system=sp;
-    if(useThinking) body.thinking={type:'enabled',budget_tokens:10000};
-    const res = await fetch('https://api.anthropic.com/v1/messages',{
+    const fullUrl = aiApiConfig.baseUrl + aiApiConfig.path;
+    let headers = { "Content-Type": "application/json" };
+    let body = {};
+
+    // 分支1：Claude 格式（原版完整保留thinking、system、anthropic版本头）
+    if(aiApiConfig.baseUrl.includes("anthropic")){
+      headers['x-api-key'] = apiKey;
+      headers['anthropic-version'] = '2023-06-01';
+      headers['anthropic-dangerous-direct-browser-calls'] = 'true';
+      body = {
+        model: aiApiConfig.model,
+        max_tokens: useThinking?16000:4096,
+        messages: msgs,
+      };
+      const sp = localStorage.getItem('systemPrompt')||'';
+      if(sp) body.system=sp;
+      if(useThinking) body.thinking={type:'enabled',budget_tokens:10000};
+    }
+    // 分支2：OpenAI标准格式 DeepSeek/GLM/Grok等
+    else {
+      headers['Authorization'] = `Bearer ${apiKey}`;
+      body = {
+        model: aiApiConfig.model,
+        messages: msgs,
+        temperature: 0.7
+      }
+    }
+
+    // 使用Vercel代理跨域请求
+    const res = await fetch(`/api/proxy?target=${encodeURIComponent(fullUrl)}`,{
       method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-calls':'true'},
+      headers: headers,
       body:JSON.stringify(body),
     });
     const data = await res.json();
     loadingEl.remove();
+
     if(data.error){showToast('错误：'+(data.error.message||'检查API Key'));btn.disabled=false;return;}
+
+    // 区分两种模型返回结构解析内容
     let text='',thinking='';
-    for(const b of(data.content||[])){if(b.type==='text')text=b.text;if(b.type==='thinking')thinking=b.thinking;}
+    if(aiApiConfig.baseUrl.includes("anthropic")){
+      for(const b of(data.content||[])){
+        if(b.type==='text') text=b.text;
+        if(b.type==='thinking') thinking=b.thinking;
+      }
+    }else{
+      text = data.choices[0].message.content;
+    }
+
     addChatMessage('assistant',text,thinking);
     state.chatHistory.push({role:'assistant',content:text});
   } catch(e) {
     loadingEl.remove();
-    showToast('发送失败，请检查网络或API Key');
+    showToast('发送失败，请检查网络、API地址或密钥');
+    console.error(e);
   }
   btn.disabled=false; input.focus();
 }
 
-function addChatMessage(role,content,thinking=''){
-  const msgs=document.getElementById('chatMessages');
-  const div=document.createElement('div');
-  div.className=`message ${role}`;
-  let html='';
-  if(thinking){
-    const short=escHtml(thinking.slice(0,70))+(thinking.length>70?'…':'');
-    html+=`<div class="thinking-panel"><div class="thinking-header" onclick="toggleThinking(this)"><span>💭 思考链 · <em style="font-weight:normal;opacity:.7">${short}</em></span><span class="thinking-arrow">▾</span></div><div class="thinking-body">${escHtml(thinking)}</div></div>`;
+// ========== 站子API扩展代码 ==========
+// 站子API本地缓存
+let stationApiConfig = JSON.parse(localStorage.getItem("stationApiCfg")) || {
+  baseUrl: "",
+  authType: "header-token",
+  token: "",
+  customKey: ""
+};
+
+window.addEventListener('DOMContentLoaded', () => {
+  const stationOpenBtn = document.getElementById("openStationBtn");
+  const stationPanel = document.getElementById("stationApiPanel");
+  const stationClose = document.getElementById("closeStationPanel");
+  const stationSave = document.getElementById("saveStationConfig");
+  const testApiBtn = document.getElementById("testStationApi");
+
+  if (stationOpenBtn) stationOpenBtn.onclick = () => {
+    stationPanel.style.display = "block";
+    document.getElementById("stationBase").value = stationApiConfig.baseUrl;
+    document.getElementById("authType").value = stationApiConfig.authType;
+    document.getElementById("stationToken").value = stationApiConfig.token;
+    document.getElementById("customHeaderKey").value = stationApiConfig.customKey;
   }
-  html+=`<div class="bubble">${markdownLite(escHtml(content))}</div>`;
-  div.innerHTML=html;
-  msgs.appendChild(div);
-  msgs.scrollTop=msgs.scrollHeight;
-}
+  if (stationClose) stationClose.onclick = () => stationPanel.style.display = "none";
+  if (stationSave) stationSave.onclick = () => {
+    stationApiConfig = {
+      baseUrl: document.getElementById("stationBase").value.trim(),
+      authType: document.getElementById("authType").value,
+      token: document.getElementById("stationToken").value.trim(),
+      customKey: document.getElementById("customHeaderKey").value.trim()
+    }
+    localStorage.setItem("stationApiCfg", JSON.stringify(stationApiConfig));
+    alert("站子API配置已保存");
+    stationPanel.style.display = "none";
+  }
+  if (testApiBtn) testApiBtn.onclick = async () => {
+    const res = await callStationApi("/", "GET");
+    alert("测试结果:\n" + JSON.stringify(res, null, 2));
+  }
+})
 
-function addLoadingMessage(){
-  const msgs=document.getElementById('chatMessages');
-  const div=document.createElement('div');
-  div.className='message assistant';
-  div.innerHTML='<div class="bubble"><div class="loading-dots"><span></span><span></span><span></span></div></div>';
-  msgs.appendChild(div);
-  msgs.scrollTop=msgs.scrollHeight;
-  return div;
-}
+// 站API通用请求函数
+async function callStationApi(path, method = "GET", body = null, urlParams = {}) {
+  const cfg = stationApiConfig;
+  if (!cfg.baseUrl) return "未填写站API地址，打开左下角站API设置";
+  let fullUrl = new URL(cfg.baseUrl + path);
+  Object.entries(urlParams).forEach(([k, v]) => fullUrl.searchParams.append(k, v));
+  if (cfg.authType === "url-param" && cfg.token) fullUrl.searchParams.append("token", cfg.token);
 
-function toggleThinking(header){
-  header.classList.toggle('open');
-  header.nextElementSibling.classList.toggle('open');
-}
+  const headers = { "Content-Type": "application/json" };
+  if (cfg.token) {
+    switch (cfg.authType) {
+      case "header-token": headers["Authorization"] = `Bearer ${cfg.token}`; break;
+      case "header-custom": headers[cfg.customKey] = cfg.token; break;
+      case "cookie": headers["Cookie"] = cfg.token; break;
+    }
+  }
 
-function markdownLite(t){
-  return t.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g,'<em>$1</em>')
-    .replace(/`(.*?)`/g,'<code style="background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:4px;font-family:monospace">$1</code>')
-    .replace(/\n/g,'<br>');
-}
+  const proxyUrl = `/api/proxy?target=${encodeURIComponent(fullUrl.toString())}`;
+  const fetchOpt = { method, headers };
+  if (body && method === "POST") fetchOpt.body = JSON.stringify(body);
 
-function clearChat(){
-  state.chatHistory=[];
-  document.getElementById('chatMessages').innerHTML=
-    `<div class="chat-welcome" id="chatWelcome"><div class="welcome-icon">🌸</div><div class="welcome-text">你好，今天想聊什么？</div><div class="welcome-hint" id="apiHint"></div></div>`;
-  checkApiKey();
-}
-
-function autoResize(el){
-  el.style.height='auto';
-  el.style.height=Math.min(el.scrollHeight,120)+'px';
+  try {
+    const res = await fetch(proxyUrl, fetchOpt);
+    const raw = await res.text();
+    let data;
+    try { data = JSON.parse(raw); } catch { data = raw; }
+    if (!res.ok) return `错误${res.status}：${JSON.stringify(data)}`;
+    return data;
+  } catch (err) {
+    return `请求异常：${err.message}`;
+  }
 }
 
 // ====== 行程 ======
