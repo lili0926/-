@@ -1080,7 +1080,7 @@ document.getElementById('memNext').addEventListener('click', () => {
 });
 
 renderMemories();
-
+}
 // 恢复自定义壁纸
 const _customWp=localStorage.getItem('wallpaper-custom');
 if(_customWp&&(state.wallpaper==='none'||!state.wallpaper)) state.wallpaper=_customWp;
@@ -1088,4 +1088,4 @@ if(_customWp&&(state.wallpaper==='none'||!state.wallpaper)) state.wallpaper=_cus
 window.addEventListener('DOMContentLoaded', () => {
   init();
 });
-}
+
