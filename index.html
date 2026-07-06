@@ -101,6 +101,38 @@
             <div class="count-label">天了</div>
           </div>
         </div>
+        <!-- 记忆匣 -->
+<div class="memory-box-wrap">
+  <div class="memory-box-header">
+    <svg class="heartbeat-svg" viewBox="0 0 200 50" preserveAspectRatio="none">
+      <polyline points="0,25 30,25 45,5 55,45 65,25 85,25 100,10 115,40 125,25 170,25 200,25" fill="none" stroke="#e8a0bf" stroke-width="2"/>
+    </svg>
+  </div>
+  <div class="memory-stack" id="memoryStack">
+    <div class="memory-empty" id="memoryEmpty">还没有记忆，点击 + 添加第一条 🌸</div>
+  </div>
+  <div class="memory-controls">
+    <button class="memory-nav" id="memPrev">‹</button>
+    <span class="memory-index" id="memIndex"></span>
+    <button class="memory-nav" id="memNext">›</button>
+    <button class="memory-add" id="memAdd">+</button>
+  </div>
+</div>
+<!-- 记忆匣弹窗 -->
+<div class="modal" id="memoryModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span>✨ 新的记忆</span>
+      <button class="icon-btn" id="closeMemoryModal">✕</button>
+    </div>
+    <input type="text" class="settings-input" id="memTitleInput" placeholder="标题" style="width:100%;margin-bottom:10px">
+    <input type="date" class="settings-input" id="memDateInput" style="width:100%;margin-bottom:10px">
+    <textarea class="settings-textarea" id="memContentInput" placeholder="写下这段记忆..."></textarea>
+    <div style="display:flex;justify-content:flex-end;margin-top:12px">
+      <button class="btn-primary" id="saveMemory">保存</button>
+    </div>
+  </div>
+</div>
         <div class="card">
           <div class="card-header"><span>🌸 今日花语</span></div>
           <div class="flower-msg" id="flowerMsg"></div>
