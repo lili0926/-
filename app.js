@@ -99,11 +99,11 @@ function applyTheme(theme) {
   const lbl = document.querySelector('.theme-toggle span:last-child');
   const sw = document.getElementById('themeSwitch');
   if (theme === 'dark') {
-    if(icon) icon.textContent='🌙';
+    if(icon) icon.textContent='☽';
     if(lbl) lbl.textContent='深色模式';
     if(sw) sw.classList.remove('active');
   } else {
-    if(icon) icon.textContent='☀️';
+    if(icon) icon.textContent='☼';
     if(lbl) lbl.textContent='浅色模式';
     if(sw) sw.classList.add('active');
   }
@@ -113,7 +113,7 @@ function applyTheme(theme) {
 const GRADIENTS = {
   none:'',
   gradient1:'linear-gradient(135deg,#fbc2eb,#a6c1ee)',
-  gradient2:'linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)',
+  gradient2:'linear-gradient(135deg,#1a12e,#16213e,#0f3460)',
   gradient3:'linear-gradient(135deg,#d4fc79,#96e6a1)',
   gradient4:'linear-gradient(135deg,#f093fb,#f5576c)',
   gradient5:'linear-gradient(135deg,#0c3483,#a2b6df,#6b8cce)',
@@ -149,7 +149,7 @@ function applyBubbleAlpha(a) {
 function updateGreeting() {
   const h = new Date().getHours();
   const g = h<5?'夜深了':h<12?'早上好':h<14?'午安':h<18?'下午好':h<22?'晚上好':'夜深了';
-  document.getElementById('greeting').textContent = `${g}，${state.name} 🌸`;
+  document.getElementById('greeting').textContent = `${g}，${state.name} `;
 }
 function updateDate() {
   const d = new Date(), days=['日','一','二','三','四','五','六'];
@@ -192,7 +192,7 @@ function checkAnniversary() {
     if (now.getDate() === startDay && now.getMonth() !== start.getMonth()) {
       const months = (now.getFullYear()-start.getFullYear())*12 + (now.getMonth()-start.getMonth());
       if (months > 0 && months % 6 === 0) {
-        if(banner){banner.textContent=`🌸 今天是我们在一起的第 ${months} 个月！`;banner.style.display='block';}
+        if(banner){banner.textContent=`今天是我们在一起的第 ${months} 个月！`;banner.style.display='block';}
       }
     }
   }
@@ -201,7 +201,7 @@ function checkAnniversary() {
   if (state.anniversaries) {
     const list = state.anniversaries.split(',').map(s=>s.trim());
     if (list.includes(todayMD)) {
-      showSurprise(`🎊 今天是特别的纪念日！\n\n${mm}月${dd}日，好好庆祝一下吧 🌸`);
+      showSurprise(`🎊 今天是特别的纪念日！\n\n${mm}月${dd}日，好好庆祝一下吧 `);
       if(banner){banner.textContent=`🌟 今天是你的纪念日！`;banner.style.display='block';}
     }
   }
@@ -271,11 +271,11 @@ function showPage(pageId){
 
 // ====== 好感度 ======
 const FAV_LEVELS = [
-  {min:0,name:'初识',emoji:'🌱'},
-  {min:100,name:'熟悉',emoji:'🌸'},
-  {min:300,name:'亲密',emoji:'💕'},
-  {min:600,name:'心动',emoji:'💞'},
-  {min:900,name:'最爱',emoji:'💖'},
+  {min:0,name:'初识',emoji:'♡'},
+  {min:100,name:'熟悉',emoji:'♡'},
+  {min:300,name:'亲密',emoji:'♡'},
+  {min:600,name:'心动',emoji:'♡'},
+  {min:900,name:'最爱',emoji:'♡'},
 ];
 const FAV_MAX = 1000;
 const favorability = {
@@ -322,7 +322,7 @@ const vchar = {
   offsetX: 0, offsetY: 0,
   idleTimer: null,
   IDLE_MS: 5 * 60 * 1000, // 5分钟不操作触发
-  EXPRESSIONS: ['😊','🥰','😄','🤔','😎','✨','💕','😺'],
+  EXPRESSIONS: ['^^','3','ㅎ','TT','☼','☆','♡','♧'],
   REPLIES_OFFLINE: ['嗯。','干嘛。','知道了。','乖。','在。','哦。'],
 
   init() {
@@ -659,7 +659,7 @@ function renderTasks(){
 }
 
 function taskHTML(t){
-  const dateTag=t.date?`<span class="task-date-tag">📅 ${t.date}</span>`:'';
+  const dateTag=t.date?`<span class="task-date-tag">📆 ${t.date}</span>`:'';
   return `<div class="task-item" id="task-${t.id}">
     <div class="task-check ${t.done?'checked':''}" onclick="toggleTask('${t.id}')">${t.done?'✓':''}</div>
     <div style="flex:1">
@@ -758,7 +758,7 @@ document.getElementById("novelFile")
 // ====== 日记 ======
 function renderDiaries(){
   const list=document.getElementById('diaryList');
-  if(!state.diaries.length){list.innerHTML='<div class="empty-diary">还没有日记，写一篇吧 🌸</div>';return;}
+  if(!state.diaries.length){list.innerHTML='<div class="empty-diary">还没有日记，写一篇吧 </div>';return;}
   list.innerHTML=[...state.diaries].reverse().map(d=>`
     <div class="diary-item" onclick="openDiary('${d.id}')">
       <div class="diary-item-title">${escHtml(d.title||'无标题')}</div>
@@ -788,7 +788,7 @@ function saveDiary(){
     favorability.add(2);
   }
   localStorage.setItem('diaries',JSON.stringify(state.diaries));
-  renderDiaries(); closeModal('diaryModal'); showToast('已保存 🌸');
+  renderDiaries(); closeModal('diaryModal'); showToast('已保存 ');
 }
 
 function deleteDiary(){
@@ -1063,7 +1063,7 @@ document.getElementById('saveMemory').addEventListener('click', () => {
   memIndex = memories.length - 1;
   renderMemories();
   closeModal('memoryModal');
-  showToast('记忆已存入 🌸');
+  showToast('记忆已存入 ');
   favorability.add(3);
 });
 
