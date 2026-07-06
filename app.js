@@ -966,7 +966,7 @@ function switchPage(page){
         p.classList.remove('active');
     });
 
-    const target = document.getElementById(page);
+    const target = document.getElementById('page-' + page);
     if(target){
         target.classList.add('active');
     }
