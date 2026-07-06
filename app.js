@@ -254,6 +254,19 @@ async function fetchWeather(city) {
   }
 }
 
+// 这里开始加页面切换函数
+function showPage(pageId){
+
+    document.querySelectorAll('.page').forEach(p => {
+        p.classList.remove('active');
+    });
+
+    const target = document.getElementById(pageId);
+    if(target){
+        target.classList.add('active');
+    }
+}
+
 // ====== 好感度 ======
 const FAV_LEVELS = [
   {min:0,name:'初识',emoji:'🌱'},
