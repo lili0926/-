@@ -60,7 +60,35 @@ const state = {
   city: localStorage.getItem('city') || '',
   anniversaries: localStorage.getItem('anniversaries') || '',
 };
+const UI_PRESETS = {
+  "ins-soft": {
+    name: "Ins奶油风",
+    root: {
+      "--bg": "#f6f3f7",
+      "--bg2": "#ffffff",
+      "--surface": "rgba(255,255,255,0.75)",
+      "--accent": "#d88aa7",
+      "--accent2": "#f2b6c6",
+      "--text": "#2b2b2f"
+    },
+    bubbleAlpha: 0.35,
+    thinkingColor: "#c77dff"
+  },
 
+  "night-glass": {
+    name: "夜间玻璃",
+    root: {
+      "--bg": "#0f1117",
+      "--bg2": "#151826",
+      "--surface": "rgba(255,255,255,0.06)",
+      "--accent": "#8aa0ff",
+      "--accent2": "#c7a6ff",
+      "--text": "#e8e8f0"
+    },
+    bubbleAlpha: 0.12,
+    thinkingColor: "#7c5cbf"
+  }
+};
 function today() { return new Date().toISOString().slice(0,10); }
 
 // ====== 初始化 ======
@@ -143,6 +171,23 @@ function applyBubbleAlpha(a) {
   document.documentElement.style.setProperty('--bubble-alpha', a);
   state.bubbleAlpha = a;
   localStorage.setItem('bubbleAlpha', a);
+}
+function applyUIPreset(key){
+  const preset = UI_PRESETS[key];
+  if(!preset) return;
+
+  // 写入CSS变量
+  Object.entries(preset.root).forEach(([k,v])=>{
+    document.documentElement.style.setProperty(k,v);
+  });
+
+  // 其他参数
+  applyBubbleAlpha(preset.bubbleAlpha);
+  applyThinkingColor(preset.thinkingColor);
+
+  // 保存
+  localStorage.setItem("uiPreset", key);
+  state.uiPreset = key;
 }
 
 // ====== 问候 ======
