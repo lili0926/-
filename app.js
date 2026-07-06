@@ -483,6 +483,45 @@ function checkApiKey() {
   if(hint) hint.textContent = aiApiConfig.key ? '' : '请先在 设置 → AI接入 中填写 API Key';
 }
 
+function addChatMessage(role, content, thinking = '') {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = `message ${role}`;
+  
+  let html = '';
+  if (thinking) {
+    html += `
+      <div class="thinking-panel">
+        <div class="thinking-header" onclick="this.classList.toggle('open');this.nextElementSibling.classList.toggle('open')">
+          <span>💭 思考过程</span>
+          <span class="thinking-arrow">▼</span>
+        </div>
+        <div class="thinking-body">${escHtml(thinking)}</div>
+      </div>
+    `;
+  }
+  html += `<div class="bubble">${escHtml(content)}</div>`;
+  div.innerHTML = html;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
+function addLoadingMessage() {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = 'message assistant';
+  div.innerHTML = `
+    <div class="bubble">
+      <div class="loading-dots">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+  `;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
 // 改造后的发送消息函数：保留全部原有交互逻辑，替换请求为通用代理
 async function sendMessage() {
   const apiKey = aiApiConfig.key;
@@ -503,14 +542,10 @@ async function sendMessage() {
     const msgs = state.chatHistory.slice(-20).map(m=>({role:m.role,content:m.content}));
     const useThinking = document.getElementById('thinkingToggle').checked;
 
-const req = buildAIRequest(aiApiConfig, msgs);
-
-const res = await fetch("/api/proxy", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify(req)
+const res = await fetch(`/api/proxy?target=${encodeURIComponent(fullUrl)}`, {
+  method: 'POST',
+  headers: headers,
+  body: JSON.stringify(body),
 });
     let headers = { "Content-Type": "application/json" };
     let body = {};
