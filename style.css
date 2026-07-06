@@ -350,3 +350,14 @@ body.has-wallpaper .message.assistant .bubble{background:rgba(255,255,255,var(--
   .novel-reader{padding:20px}
   .vchar{bottom:100px}
 }
+.page {
+  display: none !important;
+  width: 100%;
+  min-height: calc(100vh - 顶部栏高度);
+}
+.page.active {
+  display: block !important;
+}
+.nav-item.active {
+  background: rgba(255,255,255,0.15);
+}
