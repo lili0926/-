@@ -1175,6 +1175,29 @@ document.getElementById('fetchModelsBtn').addEventListener('click', async () => 
   } catch(e) {
     showToast('获取失败，检查API地址和Key');
   }
+  });
+  document.addEventListener("DOMContentLoaded", () => {
+
+  const btn = document.getElementById("newDiaryBtn");
+  const list = document.getElementById("diaryList");
+
+  if (!btn || !list) return;
+
+  btn.onclick = () => {
+
+    const item = document.createElement("div");
+    item.className = "diary-item";
+
+    item.innerHTML = `
+      <div style="padding:12px;background:rgba(255,255,255,0.6);border-radius:12px;">
+        📝 新日记
+      </div>
+    `;
+
+    list.appendChild(item);
+  };
+
+
 });
 }
 // 恢复自定义壁纸
