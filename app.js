@@ -140,9 +140,11 @@ function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   state.theme = theme;
   localStorage.setItem('theme', theme);
+
   const icon = document.querySelector('.theme-icon');
   const lbl = document.querySelector('.theme-toggle span:last-child');
   const sw = document.getElementById('themeSwitch');
+
   if (theme === 'dark') {
     if(icon) icon.textContent='☽';
     if(lbl) lbl.textContent='深色模式';
@@ -152,11 +154,12 @@ function applyTheme(theme) {
     if(lbl) lbl.textContent='浅色模式';
     if(sw) sw.classList.add('active');
   }
+}
+
 function applyFont(font) {
   document.body.classList.remove('font-cormorant', 'font-dancing');
   if (font === 'cormorant') document.body.classList.add('font-cormorant');
   if (font === 'dancing') document.body.classList.add('font-dancing');
-}
 }
 
 // ====== 壁纸 ======
