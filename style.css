@@ -309,7 +309,7 @@ body.has-wallpaper .message.assistant .bubble{background:rgba(255,255,255,var(--
 .task-del:hover{background:rgba(220,80,80,.15);color:#e05555}
 
 /* ====== 小说 ====== */
-.#page-chat.active,
+.page-chat.active,
 #page-novel.active{
  display:flex;
 }
@@ -594,7 +594,7 @@ body {
 
 .memory-card-date {
   font-size: 11px;
-  color: var（--accent）；
+  color: var（--accent）;
   font-weight: 500;
 }
 
@@ -607,14 +607,16 @@ body {
 
 .memory-card-content {
   font-size: 12px;
-  color: var（--text-dim）；
+  color: var（--text-dim）;
   line-height: 1.7;
   flex: 1;
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 5;
+  line-clamp:5;
   -webkit-box-orient: vertical;
 }
+
 
 [data-theme="dark"] .memory-card-content {
   color: var(--text-dim);
@@ -709,4 +711,20 @@ body.font-dancing {
 
     border-radius:12px;
 
+}
+/* 字体深浅 */
+
+html[data-font="light"] {
+    --text:#aaa;
+    --text-dim:#bbb;
+}
+
+html[data-font="normal"] {
+    --text:#555;
+    --text-dim:#777;
+}
+
+html[data-font="deep"] {
+    --text:#111;
+    --text-dim:#222;
 }

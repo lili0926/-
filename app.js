@@ -564,6 +564,13 @@ function checkApiKey() {
 }
 
 // 改造后的发送消息函数：保留全部原有交互逻辑，替换请求为通用代理
+function autoResize(){
+    const textarea = document.getElementById('chatInput');
+    if(!textarea) return;
+
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 'px';
+}
 async function sendMessage() {
   const apiKey = aiApiConfig.key;
   if(!apiKey){showToast('请先在设置中填写 API Key');return;}
@@ -1092,7 +1099,6 @@ function bindEvents(){
   // 日记
   document.getElementById('newDiaryBtn').addEventListener('click',()=>openDiary('new'));
 document.getElementById('saveDiaryBtn').addEventListener('click', saveDiary);
-  document.getElementById('deleteDiary').addEventListener('click', deleteDiary);
     document.getElementById('closeDiaryModal').addEventListener('click',()=>closeModal('diaryModal'));
 
   // 设置
@@ -1214,3 +1220,53 @@ window.addEventListener('DOMContentLoaded', () => {
   init();
 });
 window.setFontColor = setFontColor;
+function addChatMessage(role, text){
+    const box = document.getElementById("chatMessages");
+    if(!box) return;
+
+    const div = document.createElement("div");
+
+    if(role === "user"){
+        div.className = "chat-message user";
+    }else{
+        div.className = "chat-message ai";
+    }
+
+    div.innerText = text;
+
+    box.appendChild(div);
+
+    box.scrollTop = box.scrollHeight;
+}
+function addLoadingMessage(){
+    const box = document.getElementById("chatMessages");
+    if(!box) return null;
+
+    const div = document.createElement("div");
+    div.id = "loadingMessage";
+    div.className = "chat-message ai loading";
+    div.innerText = "正在思考中...";
+
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+
+    return div;
+}
+function buildAIRequest(message){
+    return {
+        model: "gpt-3.5-turbo",
+        messages: [
+            {
+                role: "user",
+                content: message
+            }
+        ],
+        temperature: 0.7
+    };
+}
+function removeLoadingMessage(){
+    const loading = document.getElementById("loadingMessage");
+    if(loading){
+        loading.remove();
+    }
+}
