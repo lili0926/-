@@ -667,7 +667,7 @@ const req = buildAIRequest(aiApiConfig, msgs);
     }
 
     addChatMessage('assistant',text, thinking);
-    state.chatHistory.push({role:'assistant',content:text});
+    state.chatHistory.push({role:'assistant', content:text, thinking:thinking});
     localStorage.setItem(
   "chatHistory",
   JSON.stringify(state.chatHistory)
