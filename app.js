@@ -590,7 +590,7 @@ async function sendMessage() {
   const welcome = document.getElementById('chatWelcome');
   if(welcome) welcome.style.display='none';
   addChatMessage('user', content);
-  state.chatHistory.push({role:'user',content, thinking});
+  state.chatHistory.push({role:'user',content});
   favorability.add(1);
   const loadingEl = addLoadingMessage();
 
