@@ -16,7 +16,6 @@
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;background:var(--bg);color:var(--text);overflow:hidden}
-
 .wallpaper{position:fixed;inset:0;z-index:0;background-size:cover;background-position:center;transition:all .5s}
 .wallpaper-overlay{position:fixed;inset:0;z-index:1;background:var(--bg);opacity:.6;transition:opacity .3s;pointer-events:none}
 
