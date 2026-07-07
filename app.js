@@ -148,7 +148,7 @@ if(savedChat){
     state.chatHistory = JSON.parse(savedChat);
 
     state.chatHistory.forEach(msg=>{
-        addChatMessage(msg.role,msg.content );});}
+        addChatMessage(msg.role,msg.content, msg.thinking|| "");});}
 }
 
 
