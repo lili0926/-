@@ -3,6 +3,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Jasmine's Home ♡</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Dancing+Script:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <link rel="manifest" href="/manifest.json">
 </head>
@@ -346,6 +347,17 @@
 
       <div class="settings-group">
         <div class="settings-title">外观</div>
+        <div class="settings-item">
+  <div class="settings-label">
+    <span>英文字体</span>
+    <small>全局英文显示</small>
+  </div>
+  <select class="settings-select" id="fontSelect">
+    <option value="default">默认</option>
+    <option value="cormorant">Cormorant Garamond</option>
+    <option value="dancing">Dancing Script</option>
+  </select>
+        </div>
         <div class="settings-item">
           <div class="settings-label"><span>主题</span><small>深色 / 浅色</small></div>
           <div class="toggle-switch" id="themeSwitch"><div class="toggle-knob"></div></div>
