@@ -1222,4 +1222,4 @@ if(_customWp&&(state.wallpaper==='none'||!state.wallpaper)) state.wallpaper=_cus
 window.addEventListener('DOMContentLoaded', () => {
   init();
 });
-
+window.setFontColor = setFontColor;
