@@ -661,6 +661,10 @@ const req = buildAIRequest(aiApiConfig, msgs);
 
     addChatMessage('assistant',text,thinking);
     state.chatHistory.push({role:'assistant',content:text});
+    localStorage.setItem(
+  "chatHistory",
+  JSON.stringify(state.chatHistory)
+);
   } catch(e) {
     loadingEl.remove();
     showToast('发送失败，请检查网络、API地址或密钥');
