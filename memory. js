@@ -1,0 +1,183 @@
+/* =========================AI Memory System轻量长期记忆========================= */
+
+const MEMORY_KEY = "aiMemory";
+
+
+// 获取全部记忆
+function getMemory(){
+
+    const data = localStorage.getItem(MEMORY_KEY);
+
+    if(!data){
+        return [];
+    }
+
+    try{
+
+        return JSON.parse(data);
+
+    }catch(e){
+
+        console.error("memory读取失败",e);
+        return [];
+
+    }
+
+}
+
+
+
+// 保存全部记忆
+function saveMemoryList(list){
+
+    localStorage.setItem(
+        MEMORY_KEY,
+        JSON.stringify(list)
+    );
+
+}
+
+
+
+// 添加记忆
+function addMemory(content,type="fact"){
+
+    const memories=getMemory();
+
+
+    memories.push({
+
+        id:Date.now(),
+
+        type:type,
+
+        content:content,
+
+        time:new Date().toLocaleString()
+
+    });
+
+
+    saveMemoryList(memories);
+
+
+    return true;
+
+}
+
+
+
+// 删除记忆
+function deleteMemory(id){
+
+    let memories=getMemory();
+
+
+    memories =
+    memories.filter(
+        item=>item.id!==id
+    );
+
+
+    saveMemoryList(memories);
+
+}
+
+
+
+// 清空记忆
+function clearMemory(){
+
+    localStorage.removeItem(
+        MEMORY_KEY
+    );
+
+}
+
+
+
+// 给AI使用的格式
+function getMemoryPrompt(){
+
+
+    const memories=getMemory();
+
+
+    if(memories.length===0){
+
+        return "";
+
+    }
+
+
+
+    let text=
+`
+以下是关于用户的长期记忆。
+请根据这些信息调整回答方式：
+
+`;
+
+
+
+    memories.forEach(m=>{
+
+        text += 
+        `- ${m.content}\n`;
+
+    });
+
+
+
+    return text;
+
+}
+
+
+
+// 自动判断一句话是否值得记忆
+function checkMemory(text){
+
+
+    const keywords=[
+
+        "喜欢",
+        "讨厌",
+        "不要忘记",
+        "记住",
+        "我是",
+        "我的",
+        "以后",
+        "习惯",
+        "偏好"
+
+    ];
+
+
+
+    return keywords.some(
+        k=>text.includes(k)
+    );
+
+
+}
+
+
+
+// 导出
+
+window.Memory={
+
+    getMemory,
+
+    addMemory,
+
+    deleteMemory,
+
+    clearMemory,
+
+    getMemoryPrompt,
+
+    checkMemory
+
+};
