@@ -157,7 +157,38 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
   flex-direction: column;
   gap: 14px;
 }
-
+/* ===== 聊天气泡 ===== */
+.chat-message{
+    display:flex;
+    width:100%;
+}
+.chat-message.user{
+    justify-content:flex-end;
+}
+.chat-message.ai{
+    justify-content:flex-start;
+}
+.bubble{
+    max-width:75%;
+    padding:12px 16px;
+    border-radius:20px;
+    line-height:1.6;
+    color:var(--text);
+    background:rgba(255,255,255,.12);
+    backdrop-filter:blur(15px);
+    -webkit-backdrop-filter:blur(15px);
+    border:1px solid rgba(255,255,255,.12);
+}
+/* 用户气泡 */
+.chat-message.user .bubble{
+    background:rgba(150,210,255,.35);
+    border-bottom-right-radius:6px;
+}
+/* AI气泡 */
+.chat-message.ai .bubble{
+    background:rgba(255,255,255,.15);
+    border-bottom-left-radius:6px;
+}
 /* 天数背景水印 */
 .chat-days-bg{
   position:absolute;
@@ -347,91 +378,87 @@ body.has-wallpaper .message.assistant .bubble{background:rgba(255,255,255,var(--
 .diary-item-preview{font-size:12px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .diary-item-date{font-size:11px;color:var(--text-muted);margin-top:6px}
 .empty-diary{text-align:center;color:var(--text-muted);padding:60px 0;font-size:14px}
-.diary-bg{
-  position:absolute;
-  inset:0;
-  z-index:0;
+.diary-bg{position:absolute;inset:0;z-index:0;opacity:0.35;filter: blur(1px) brightness(1.1);transform: scale(1.05);pointer-events:none;}
+.diary-card{position: relative; border-radius: 18px; overflow: hidden;padding: 16px;background: rgba(255,255,255,0.55);backdrop-filter: blur(18px);box-shadow: 0 12px 40px rgba(0,0,0,0.08);}
+.diary-bg-1{ background: url("77686.jpg") center/cover no-repeat;}
+.diary-bg-2{ background: url("77689.jpg") center/cover no-repeat;}
+.diary-title{position: relative;z-index: 2;font-size: 14px;color: rgba(255,255,255,0.7);margin-bottom: 10px;display: inline-block;padding: 4px 10px;border-radius: 999px;background: rgba(255,255,255,0.08);backdrop-filter: blur(6px);}
+.diary-body{position: relative;z-index: 2;display: flex;flex-direction: column;gap: 10px;}
+.diary-textarea{width: 100%;min-height: 140px;border: none;outline: none;resize: none;padding: 12px;border-radius: 14px;background: rgba(255,255,255,0.75);backdrop-filter: blur(10px);font-size: 14px;color: #2b2b2f;box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);}
+.diary-save{align-self: flex-end;padding: 8px 14px;border: none;border-radius: 12px;background: linear-gradient(135deg,#d88aa7,#f2b6c6);color: white;font-size: 13px;cursor: pointer;box-shadow: 0 6px 20px rgba(216,138,167,0.25);}
+/* ===== 日记本弹窗 ===== */
 
-  opacity:0.35;
-  filter: blur(1px) brightness(1.1);
-  transform: scale(1.05);
-
-  pointer-events:none;
+.diaryModal .modal-box{width:560px;
+    min-height:520px;
+    padding:28px;
+    border-radius:28px;
+    background:rgba(30,40,80,.55);
+    backdrop-filter:blur(18px);
+    border:1px solid rgba(255,255,255,.18);
+    box-shadow:0 20px 60px rgba(0,0,0,.35);
 }
-.diary-card{
-  position: relative;
-  border-radius: 18px;
-  overflow: hidden;
-  padding: 16px;
+.diary-title-input{
+    width:100%;
+    background:transparent;
+    border:none;
+    outline:none;
 
-  background: rgba(255,255,255,0.55);
-  backdrop-filter: blur(18px);
+    font-size:26px;
+    font-weight:700;
 
-  box-shadow: 0 12px 40px rgba(0,0,0,0.08);
+    color:white;
+
+    padding:10px 0;
 }
-.diary-bg-1{
-  background: url("77686.jpg") center/cover no-repeat;
+.diary-title-input::placeholder{
+    color:rgba(255,255,255,.65);
 }
-.diary-bg-2{
-  background: url("77689.jpg") center/cover no-repeat;
+.diary-meta{
+    font-size:13px;
+    color:rgba(255,255,255,.55);
+
+    margin:8px 0 20px;
 }
-.diary-title{
-  position: relative;
-  z-index: 2;
+.diary-editor{
+    background:
+    rgba(255,255,255,.12);
 
-  font-size: 14px;
-  color: rgba(255,255,255,0.7);
+    box-shadow:
+    inset 0 0 30px rgba(255,255,255,.05);
 
-  margin-bottom: 10px;
-
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 999px;
-
-  background: rgba(255,255,255,0.08);
-  backdrop-filter: blur(6px);
+    border-color:
+    rgba(255,255,255,.25);
 }
-.diary-body{
-  position: relative;
-  z-index: 2;
+.diary-save-btn{
 
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+    padding:12px 30px;
+
+    border-radius:20px;
+
+    border:none;
+
+    cursor:pointer;
+
+    color:white;
+
+    font-size:14px;
+
+    background:
+    linear-gradient(
+    135deg,
+    #8fd3ff,
+    #bda7ff
+    );
+
+    box-shadow:
+    0 8px 20px rgba(120,170,255,.35);
+
+    transition:.25s;
 }
-.diary-textarea{
-  width: 100%;
-  min-height: 140px;
 
-  border: none;
-  outline: none;
-  resize: none;
 
-  padding: 12px;
-  border-radius: 14px;
-
-  background: rgba(255,255,255,0.75);
-  backdrop-filter: blur(10px);
-
-  font-size: 14px;
-  color: #2b2b2f;
-
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
-}
-.diary-save{
-  align-self: flex-end;
-
-  padding: 8px 14px;
-  border: none;
-  border-radius: 12px;
-
-  background: linear-gradient(135deg,#d88aa7,#f2b6c6);
-  color: white;
-
-  font-size: 13px;
-  cursor: pointer;
-
-  box-shadow: 0 6px 20px rgba(216,138,167,0.25);
+.diary-save-btn:hover{
+    transform:translateY(-3px);
 }
 /* ====== 设置 ====== */
 .settings-group{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:16px;backdrop-filter:blur(8px)}
@@ -727,4 +754,62 @@ html[data-font="normal"] {
 html[data-font="deep"] {
     --text:#111;
     --text-dim:#222;
+}
+/* ===== 新版聊天输入框玻璃UI ===== */
+
+.input-panel{
+    margin:12px;
+    padding:12px;
+
+    background:rgba(255,255,255,.08);
+    backdrop-filter:blur(25px);
+    -webkit-backdrop-filter:blur(25px);
+
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:28px;
+
+    box-shadow:
+    0 10px 40px rgba(0,0,0,.25);
+}
+
+.chat-input-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+
+    padding:10px;
+
+    background:rgba(255,255,255,.08);
+
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:26px;
+    backdrop-filter:blur(20px);
+}
+.chat-input{
+    flex:1;
+    min-height:42px;
+    background:rgba(255,255,255,.08);
+    border:none;
+    outline:none;
+    border-radius:20px;
+    padding:12px 16px;
+    color:white;
+}
+.send-btn{
+    width:46px;
+    height:46px;
+    border-radius:50%;
+    border:none;
+    background:rgba(150,200,255,.45);
+    backdrop-filter:blur(15px);
+}
+.thinking-chain{
+    margin-top:8px;
+    padding:10px 14px;
+    border-radius:16px;
+    font-size:13px;
+    opacity:.75;
+    background:rgba(180,220,255,.12);
+    border:1px solid rgba(255,255,255,.15);
+    white-space:pre-wrap;
 }

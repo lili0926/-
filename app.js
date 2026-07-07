@@ -119,6 +119,7 @@ function today() { return new Date().toISOString().slice(0,10); }
 function init() {
   applyTheme(state.theme);
   applyWallpaper(state.wallpaper);
+  document.body.classList.add('has-wallpaper');
   applyOverlay(state.overlayOpacity);
   applyThinkingColor(state.thinkingColor);
   applyBubbleAlpha(state.bubbleAlpha);
@@ -630,19 +631,32 @@ const req = buildAIRequest(aiApiConfig, msgs);
       body:JSON.stringify(body),
     });
     const data = await res.json();
+    console.log("AI返回数据:", data);
     loadingEl.remove();
 
     if(data.error){showToast('错误：'+(data.error.message||'检查API Key'));btn.disabled=false;return;}
-
-    // 区分两种模型返回结构解析内容
     let text='',thinking='';
+    console.log("thinking内容:", thinking)
     if(aiApiConfig.baseUrl.includes("anthropic")){
       for(const b of(data.content||[])){
         if(b.type==='text') text=b.text;
         if(b.type==='thinking') thinking=b.thinking;
+        if(data.choices?.[0]?.message?.reasoning_content){
+         thinking=data.choices[0].message.reasoning_content;
+        }
       }
     }else{
-      text = data.choices[0].message.content;
+    
+    const msg=data.choices[0].message;
+    
+    text=msg.content || "";
+    
+    thinking=
+    msg.reasoning_content ||
+    msg.thinking ||
+    msg.analysis ||
+    "";
+    
     }
 
     addChatMessage('assistant',text,thinking);
@@ -1217,36 +1231,40 @@ window.addEventListener('DOMContentLoaded', () => {
   init();
 });
 window.setFontColor = setFontColor;
-function addChatMessage(role, text){
+function addChatMessage(role, text,thinking){
     const box = document.getElementById("chatMessages");
     if(!box) return;
-
     const div = document.createElement("div");
-
     if(role === "user"){
         div.className = "chat-message user";
     }else{
         div.className = "chat-message ai";
     }
-
-    div.innerText = text;
-
+const bubble=document.createElement("div");
+bubble.className="bubble";
+bubble.innerText=text;
+if(thinking){
+    const think=document.createElement("div");
+    think.className="thinking-chain";
+    think.innerText="💭 思考链\n"+thinking;
+    div.appendChild(think);
+}
+div.appendChild(bubble);
     box.appendChild(div);
-
     box.scrollTop = box.scrollHeight;
 }
 function addLoadingMessage(){
-    const box = document.getElementById("chatMessages");
+    const box=document.getElementById("chatMessages");
     if(!box) return null;
-
-    const div = document.createElement("div");
-    div.id = "loadingMessage";
-    div.className = "chat-message ai loading";
-    div.innerText = "正在思考中...";
-
+    const div=document.createElement("div");
+    div.id="loadingMessage";
+    div.className="chat-message ai loading";
+    const bubble=document.createElement("div");
+    bubble.className="bubble";
+    bubble.innerText="正在思考...";
+    div.appendChild(bubble);
     box.appendChild(div);
-    box.scrollTop = box.scrollHeight;
-
+    box.scrollTop=box.scrollHeight;
     return div;
 }
 function buildAIRequest(message){
