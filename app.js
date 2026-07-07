@@ -3,7 +3,6 @@ function initPageSwitch() {
   const navItems = document.querySelectorAll('.nav-item');
   const pages = document.querySelectorAll('.page');
   const pageTitle = document.getElementById('pageTitle');
-
   navItems.forEach(item => {
     item.addEventListener('click', (e) => {
       e.preventDefault();
