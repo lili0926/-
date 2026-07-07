@@ -684,6 +684,7 @@ body.font-dancing {
 }
 
 
+
 [data-font="normal"]{
  --font-brightness:1;
 }
@@ -691,4 +692,21 @@ body.font-dancing {
 
 [data-font="deep"]{
  --font-brightness:1.35;
+}
+/* ===== 字体深浅按钮 ===== */
+
+.font-color-buttons{
+    display:flex;
+    gap:8px;
+}
+
+
+.font-color-buttons button{
+
+    min-width:36px;
+
+    padding:6px 12px;
+
+    border-radius:12px;
+
 }
