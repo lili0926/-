@@ -592,13 +592,6 @@ async function sendMessage() {
 
 const req = buildAIRequest(aiApiConfig, msgs);
 
-const res = await fetch("/api/proxy", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify(req)
-});
     let headers = { "Content-Type": "application/json" };
     let body = {};
 
@@ -623,11 +616,15 @@ const res = await fetch("/api/proxy", {
         model: aiApiConfig.model,
         messages: msgs,
         temperature: 0.7
+        
       }
+      const sp = localStorage.getItem('systemPrompt') || '';
+      if(sp) body.messages = [{role:'system', content:sp}, ...msgs];
     }
 
     // 使用Vercel代理跨域请求
-     res = await fetch(`/api/proxy?target=${encodeURIComponent(fullUrl)}`,{
+    const fullUrl = (localStorage.getItem('apiBaseUrl') || '').replace(/\/+$/, '') + '/v1/chat/completions';
+     let res = await fetch(fullUrl,{
       method:'POST',
       headers: headers,
       body:JSON.stringify(body),
