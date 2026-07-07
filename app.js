@@ -1048,15 +1048,6 @@ function bindEvents(){
 
   // 小说
   console.log("小说按钮绑定开始");
-  
-  document.getElementById('uploadNovelBtn').addEventListener('click', () => {
-    console.log("点击触发");
-    document.getElementById('novelFile').click();
-  });
-  
-  document.getElementById('novelFile').addEventListener('change', (e) => {
-    console.log("文件选择触发", e.target.files);
-  });
   document.getElementById("novelFile").addEventListener("change", (e) => {
     const file = e.target.files[0];
     if (!file) return;
