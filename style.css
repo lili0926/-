@@ -679,3 +679,16 @@ body.font-cormorant {
 body.font-dancing {
   font-family: 'Dancing Script', cursive;
 }
+[data-font="light"]{
+ --font-brightness:.65;
+}
+
+
+[data-font="normal"]{
+ --font-brightness:1;
+}
+
+
+[data-font="deep"]{
+ --font-brightness:1.35;
+}
