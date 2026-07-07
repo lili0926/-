@@ -1254,6 +1254,7 @@ function addChatMessage(role, text,thinking){
 const bubble=document.createElement("div");
 bubble.className="bubble";
 bubble.innerText=text;
+  div.appendChild(bubble);
 if(thinking){
     const think=document.createElement("div");
     think.className="thinking-chain";
@@ -1273,7 +1274,6 @@ function addLoadingMessage(){
     const bubble=document.createElement("div");
     bubble.className="bubble";
     bubble.innerText="正在思考...";
-    div.appendChild(bubble);
     box.appendChild(div);
     box.scrollTop=box.scrollHeight;
     return div;
