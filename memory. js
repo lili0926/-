@@ -1,65 +1,177 @@
-/* =========================AI Memory System轻量长期记忆========================= */
+/* ==========================
+ AI Memory System
+ ========================== */
 
-const MEMORY_KEY = "aiMemory";
+
+const MEMORY_KEY="aiMemory";
 
 
-// 获取全部记忆
+//读取记忆
 function getMemory(){
 
-    const data = localStorage.getItem(MEMORY_KEY);
+    const data=localStorage.getItem(MEMORY_KEY);
 
     if(!data){
-        return [];
+        return {
+            user:[],
+            facts:[],
+            chats:[]
+        };
     }
 
-    try{
 
+    try{
         return JSON.parse(data);
 
     }catch(e){
 
         console.error("memory读取失败",e);
-        return [];
 
+        return {
+            user:[],
+            facts:[],
+            chats:[]
+        };
     }
 
 }
 
 
 
-// 保存全部记忆
-function saveMemoryList(list){
+//保存记忆
+function saveMemory(memory){
 
     localStorage.setItem(
         MEMORY_KEY,
-        JSON.stringify(list)
+        JSON.stringify(memory)
     );
 
 }
 
 
 
-// 添加记忆
-function addMemory(content,type="fact"){
-
-    const memories=getMemory();
+//添加记忆
+function addMemory(text,type="facts"){
 
 
-    memories.push({
+    let memory=getMemory();
 
-        id:Date.now(),
 
-        type:type,
+    if(!memory[type]){
+        memory[type]=[];
+    }
 
-        content:content,
+
+    memory[type].push({
+
+        text:text,
 
         time:new Date().toLocaleString()
 
     });
 
 
-    saveMemoryList(memories);
+    saveMemory(memory);
 
+
+}
+
+
+
+//获取给AI看的记忆
+function getMemoryPrompt(){
+
+
+    let memory=getMemory();
+
+
+    let result="";
+
+
+
+    if(memory.facts.length){
+
+        result+="用户信息:\n";
+
+
+        memory.facts.forEach(m=>{
+
+            result+="- "+m.text+"\n";
+
+        });
+
+    }
+
+
+
+    if(memory.user.length){
+
+        result+="用户偏好:\n";
+
+
+        memory.user.forEach(m=>{
+
+            result+="- "+m.text+"\n";
+
+        });
+
+    }
+
+
+
+    return result;
+
+}    saveMemory(memory);
+
+
+}
+
+
+
+//获取给AI看的记忆
+function getMemoryPrompt(){
+
+
+    let memory=getMemory();
+
+
+    let result="";
+
+
+
+    if(memory.facts.length){
+
+        result+="用户信息:\n";
+
+
+        memory.facts.forEach(m=>{
+
+            result+="- "+m.text+"\n";
+
+        });
+
+    }
+
+
+
+    if(memory.user.length){
+
+        result+="用户偏好:\n";
+
+
+        memory.user.forEach(m=>{
+
+            result+="- "+m.text+"\n";
+
+        });
+
+    }
+
+
+
+    return result;
+
+}
 
     return true;
 
