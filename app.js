@@ -1254,7 +1254,7 @@ function addChatMessage(role, text,thinking){
 const bubble=document.createElement("div");
 bubble.className="bubble";
 bubble.innerText=text;
-  div.appendChild(bubble);
+  
 if(thinking){
     const think=document.createElement("div");
     think.className="thinking-chain";
