@@ -828,3 +828,7 @@ html[data-font="deep"] {
     color:#fff;
     opacity:.85;
 }
+.thinking-chain{
+    order:-1;
+    margin-bottom:8px;
+}
