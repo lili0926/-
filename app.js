@@ -127,16 +127,13 @@ const UI_PRESETS = {
 
         "--accent2":"#c8dcff",
         "--text":"#f5f7ff"
-      "--glass-blur":"20px",
-        "--glass-border":
         "rgba(255,255,255,.25)"
 
     },
 
 
     bubbleAlpha:0.18,
-
-    thinkingColor:"#9ecbff"
+      thinkingColor:"#666",
 
 }
 };
@@ -150,7 +147,6 @@ function init() {
   applyOverlay(state.overlayOpacity);
   applyThinkingColor(state.thinkingColor);
   applyBubbleAlpha(state.bubbleAlpha);
-  applyGlass(preset.glass);
   updateGreeting();
   updateDate();
   updateTogetherDays();
@@ -242,35 +238,7 @@ function applyBubbleAlpha(a) {
   state.bubbleAlpha = a;
   localStorage.setItem('bubbleAlpha', a);
 }
-function applyGlass(enable){
 
-    if(enable){
-
-        document.documentElement.style.setProperty(
-            "--bubble-bg",
-            "rgba(255,255,255,.12)"
-        );
-
-        document.documentElement.style.setProperty(
-            "--bubble-blur",
-            "15px"
-        );
-
-    }else{
-
-        document.documentElement.style.setProperty(
-            "--bubble-bg",
-            "rgba(255,255,255,1)"
-        );
-
-        document.documentElement.style.setProperty(
-            "--bubble-blur",
-            "0px"
-        );
-
-    }
-
-}
 function applyUIPreset(key){
   const preset = UI_PRESETS[key];
   if(!preset) return;
