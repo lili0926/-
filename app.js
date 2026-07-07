@@ -112,6 +112,7 @@ const UI_PRESETS = {
     bubbleAlpha: 0.12,
     thinkingColor: "#7c5cbf"
   }
+    
   "frosted-glass": {
 
     name:"雾面玻璃",
@@ -119,17 +120,16 @@ const UI_PRESETS = {
     root:{
 
         "--bg":"#111522",
-
         "--bg2":"#1b2235",
-
         "--surface":
         "rgba(255,255,255,0.12)",
-
         "--accent":"#9ecbff",
 
         "--accent2":"#c8dcff",
-
         "--text":"#f5f7ff"
+      "--glass-blur":"20px",
+        "--glass-border":
+        "rgba(255,255,255,.25)"
 
     },
 
