@@ -52,6 +52,14 @@ if(saved){
   applyUIPreset(saved);
   if(sel) sel.value = saved;
 }
+  const savedFontColor =
+localStorage.getItem("fontColor") || "normal";
+
+document.documentElement
+.setAttribute(
+"data-font",
+savedFontColor
+);
   initPageSwitch();
 })
 
@@ -134,6 +142,7 @@ function init() {
   updateChatDaysBg();
   applyFont(localStorage.getItem('font') || 'default');
 }
+
 
 // ====== 主题 ======
 function applyTheme(theme) {
@@ -889,6 +898,18 @@ function setupSettings(){
 document.getElementById('apiBaseUrl').value = localStorage.getItem('apiBaseUrl') || '';
 document.getElementById('apiFormat').value = localStorage.getItem('apiFormat') || 'anthropic';
 document.getElementById('fontSelect').value = localStorage.getItem('font') || 'default';
+}
+function setFontColor(type){
+
+ document.documentElement
+ .setAttribute('data-font',type);
+
+
+ localStorage.setItem(
+ "fontColor",
+ type
+ );
+
 }
 
 function saveSettings(){
