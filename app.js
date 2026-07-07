@@ -132,6 +132,7 @@ function init() {
   else document.getElementById('weatherInfo').textContent = '在设置中填写城市';
   vchar.init();
   updateChatDaysBg();
+  applyFont(localStorage.getItem('font') || 'default');
 }
 
 // ====== 主题 ======
@@ -151,6 +152,11 @@ function applyTheme(theme) {
     if(lbl) lbl.textContent='浅色模式';
     if(sw) sw.classList.add('active');
   }
+function applyFont(font) {
+  document.body.classList.remove('font-cormorant', 'font-dancing');
+  if (font === 'cormorant') document.body.classList.add('font-cormorant');
+  if (font === 'dancing') document.body.classList.add('font-dancing');
+}
 }
 
 // ====== 壁纸 ======
@@ -879,6 +885,7 @@ function setupSettings(){
   if(state.theme==='light') document.getElementById('themeSwitch').classList.add('active');
 document.getElementById('apiBaseUrl').value = localStorage.getItem('apiBaseUrl') || '';
 document.getElementById('apiFormat').value = localStorage.getItem('apiFormat') || 'anthropic';
+document.getElementById('fontSelect').value = localStorage.getItem('font') || 'default';
 }
 
 function saveSettings(){
@@ -898,6 +905,9 @@ function saveSettings(){
   showToast('设置已保存 ✓');
 localStorage.setItem('apiBaseUrl', document.getElementById('apiBaseUrl').value.trim());
 localStorage.setItem('apiFormat', document.getElementById('apiFormat').value);
+const font = document.getElementById('fontSelect').value;
+localStorage.setItem('font', font);
+applyFont(font);
 }
 
 // ====== 弹窗 ======
