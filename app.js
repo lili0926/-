@@ -1092,8 +1092,7 @@ function bindEvents(){
   // 日记
   document.getElementById('newDiaryBtn').addEventListener('click',()=>openDiary('new'));
 document.getElementById('saveDiaryBtn').addEventListener('click', saveDiary);
-  const delBtn = document.getElementById('deleteDiary');
-if (delBtn) delBtn.addEventListener('click', deleteDiary);
+  document.getElementById('deleteDiary').addEventListener('click',()=>{
   document.getElementById('closeDiaryModal').addEventListener('click',()=>closeModal('diaryModal'));
 
   // 设置
