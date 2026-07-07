@@ -242,6 +242,35 @@ function applyBubbleAlpha(a) {
   state.bubbleAlpha = a;
   localStorage.setItem('bubbleAlpha', a);
 }
+function applyGlass(enable){
+
+    if(enable){
+
+        document.documentElement.style.setProperty(
+            "--bubble-bg",
+            "rgba(255,255,255,.12)"
+        );
+
+        document.documentElement.style.setProperty(
+            "--bubble-blur",
+            "15px"
+        );
+
+    }else{
+
+        document.documentElement.style.setProperty(
+            "--bubble-bg",
+            "rgba(255,255,255,1)"
+        );
+
+        document.documentElement.style.setProperty(
+            "--bubble-blur",
+            "0px"
+        );
+
+    }
+
+}
 function applyUIPreset(key){
   const preset = UI_PRESETS[key];
   if(!preset) return;
