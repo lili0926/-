@@ -150,6 +150,7 @@ function init() {
   applyOverlay(state.overlayOpacity);
   applyThinkingColor(state.thinkingColor);
   applyBubbleAlpha(state.bubbleAlpha);
+  applyGlass(preset.glass);
   updateGreeting();
   updateDate();
   updateTogetherDays();
