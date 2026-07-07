@@ -142,6 +142,13 @@ function init() {
   vchar.init();
   updateChatDaysBg();
   applyFont(localStorage.getItem('font') || 'default');
+const savedChat = localStorage.getItem("chatHistory");
+
+if(savedChat){
+    state.chatHistory = JSON.parse(savedChat);
+
+    state.chatHistory.forEach(msg=>{
+        addChatMessage(msg.role,msg.content );});}
 }
 
 
