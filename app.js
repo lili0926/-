@@ -112,6 +112,33 @@ const UI_PRESETS = {
     bubbleAlpha: 0.12,
     thinkingColor: "#7c5cbf"
   }
+  "frosted-glass": {
+
+    name:"雾面玻璃",
+
+    root:{
+
+        "--bg":"#111522",
+
+        "--bg2":"#1b2235",
+
+        "--surface":
+        "rgba(255,255,255,0.12)",
+
+        "--accent":"#9ecbff",
+
+        "--accent2":"#c8dcff",
+
+        "--text":"#f5f7ff"
+
+    },
+
+
+    bubbleAlpha:0.18,
+
+    thinkingColor:"#9ecbff"
+
+}
 };
 function today() { return new Date().toISOString().slice(0,10); }
 
