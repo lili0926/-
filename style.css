@@ -273,8 +273,9 @@ body.has-wallpaper .message.assistant .bubble{background:rgba(255,255,255,var(--
 .task-del:hover{background:rgba(220,80,80,.15);color:#e05555}
 
 /* ====== 小说 ====== */
-.page.active {
-  display: flex;
+.#page-chat.active,
+#page-novel.active{
+ display:flex;
 }
 .novel-toolbar{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-shrink:0;background:color-mix(in srgb,var(--bg2) 80%,transparent);backdrop-filter:blur(8px)}
 .novel-controls{display:flex;align-items:center;gap:8px}
