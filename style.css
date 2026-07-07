@@ -811,12 +811,20 @@ html[data-font="deep"] {
     backdrop-filter:blur(15px);
 }
 .thinking-chain{
-    margin-top:8px;
-    padding:10px 14px;
-    border-radius:16px;
+    order:-1;
+    margin-bottom:10px;
+    padding:12px 16px;
+    border-radius:18px;
+
+    background:
+    rgba(255,255,255,.18);
+
+    backdrop-filter:blur(18px);
+
+    border:
+    1px solid rgba(255,255,255,.25);
+
     font-size:13px;
-    opacity:.75;
-    background:rgba(180,220,255,.12);
-    border:1px solid rgba(255,255,255,.15);
-    white-space:pre-wrap;
+    color:#fff;
+    opacity:.85;
 }
