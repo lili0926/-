@@ -760,18 +760,27 @@ aiApiConfig.path;
     alert(JSON.stringify(data).slice(0,500));
     console.log("AI返回数据:", data);
     loadingEl.remove();
-
     if(data.error){showToast('错误：'+(data.error.message||'检查API Key'));btn.disabled=false;return;}
     let text='',thinking='';
     console.log("thinking内容:", thinking)
     if(aiApiConfig.baseUrl.includes("anthropic")){
-      for(const b of(data.content||[])){
-        if(b.type==='text') text=b.text;
-        if(b.type==='thinking') thinking=b.thinking;
-        if(data.choices?.[0]?.message?.reasoning_content){
-         thinking=data.choices[0].message.reasoning_content;
+    for(const b of(data.content || [])){
+
+        if(b.type === "text"){
+            text += b.text || "";
         }
-      }
+
+        if(b.type === "thinking"){
+            thinking += b.thinking || "";
+        }
+
+    }
+
+    if(data.choices?.[0]?.message?.reasoning_content){
+        thinking = data.choices[0].message.reasoning_content;
+    }
+
+    }
     }else{
     
     const msg=data.choices[0].message;
