@@ -765,7 +765,7 @@ aiApiConfig.path;
     console.log("thinking内容:", thinking)
     if(aiApiConfig.baseUrl.includes("anthropic")){
     for(const b of(data.content||[])){
-        if(b.type==='text') text+=b.text||“”;
+        if(b.type==='text') text=b.text;
         if(b.type==='thinking') thinking=b.thinking;
 
         if(data.choices?.[0]?.message?.reasoning_content){
@@ -773,7 +773,7 @@ aiApiConfig.path;
         }
     }
     }
-    else{
+  }else{
     
     const msg=data.choices[0].message;
     
