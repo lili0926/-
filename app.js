@@ -92,7 +92,11 @@ const UI_PRESETS = {
       "--surface": "rgba(255,255,255,0.75)",
       "--accent": "#d88aa7",
       "--accent2": "#f2b6c6",
-      "--text": "#2b2b2f"
+      "--text": "#2b2b2f",
+      "--user-bubble": "rgba(255,255,255,.75)",
+      "--ai-bubble": "rgba(255,255,255,.75)",
+      "--thinking-color": "rgba(255,255,255,.45)",
+      "--memory-bg":"#fff3e6"
     },
     bubbleAlpha: 0.35,
     thinkingColor: "#c77dff"
@@ -107,9 +111,10 @@ const UI_PRESETS = {
       "--accent":"#8fd3ff",
       "--accent2":"#b9e6ff",
       "--text":"#333333",
-
       "--ai-bubble":"#ffffff",
-      "--user-bubble":"#9ddcff"
+      "--user-bubble":"#9ddcff" ,
+      "--thinking-color": "rgba(255,255,255,.35)",
+      "--memory-bg":"#f2f7f2"
     },
 
     bubbleAlpha:0.8,
@@ -127,7 +132,9 @@ const UI_PRESETS = {
       "--text":"#eeeeee",
 
       "--ai-bubble":"#151515",
-      "--user-bubble":"#ff4455"
+      "--user-bubble":"#ff4455",
+       "--thinking-color": "rgba(0,0,0,.25)",
+       "--memory-bg":"#25242b"
     },
 
     bubbleAlpha:0.8,
@@ -149,7 +156,11 @@ const UI_PRESETS = {
 
       "--text":"#333333",
 
-      "--glass-blur":"20px"
+      "--glass-blur":"20px",
+      "--user-bubble":"rgba(120,200,255,.3)",
+      "--ai-bubble":"rgba(120,200,255,.3)",
+      "--thinking-color":"rgba(255,160,210,.25)",
+      "--memory-bg":"#e8edf0"
     },
 
     bubbleAlpha:0.25,
@@ -164,11 +175,54 @@ const UI_PRESETS = {
       "--surface": "rgba(255,255,255,0.06)",
       "--accent": "#8aa0ff",
       "--accent2": "#c7a6ff",
-      "--text": "#e8e8f0"
+      "--text": "#e8e8f0",
+      "--user-bubble": "rgba(100,190,255,.35)",
+      "--ai-bubble": "rgba(100,190,255,.35)",
+      "--thinking-color": "rgba(255,150,200,.25)",
+      "--memory-bg":"#6d7a92"
     },
+
     bubbleAlpha: 0.12,
     thinkingColor: "#7c5cbf"
-  }
+  },
+  "rose-night":{
+      name:"蔷薇夜",
+  
+      root:{
+          "--bg":"#120b12",
+          "--bg2":"#24131f",
+          "--surface":"rgba(80,35,55,0.55)",
+          "--accent":"#d98b9b",
+          "--accent2":"#d7aa72",
+          "--text":"#f5e6e8",
+          "--user-bubble":"rgba(255,210,220,0.35)",
+          "--ai-bubble":"rgba(70,25,45,0.75)",
+          "--thinking-color":"rgba(217,139,155,0.35)",
+          "--memory-bg":"#351624"
+      },
+  
+      bubbleAlpha:0.45,
+      thinkingColor:"#d98b9b"
+  },
+  "matcha-tea":{
+      name:"茶雾",
+  
+      root:{
+          "--bg":"#e8e2d3",
+          "--bg2":"#d9d3bf",
+          "--surface":"rgba(255,255,255,0.65)",
+          "--accent":"#8fa66b",
+          "--accent2":"#c6a86b",
+          "--text":"#34402c",
+          "--user-bubble":"rgba(255,255,245,0.8)",
+          "--ai-bubble":"rgba(143,166,107,0.25)",
+          "--thinking-color":"rgba(143,166,107,0.35)",
+          "--memory-bg":"#dfe8d2"
+      },
+  
+      bubbleAlpha:0.55,
+      thinkingColor:"#8fa66b"
+  },
 };
 function today() { return new Date().toISOString().slice(0,10); }
 
@@ -646,15 +700,14 @@ async function sendMessage() {
   btn.disabled=true; input.value=''; autoResize(input);
   const welcome = document.getElementById('chatWelcome');
   if(welcome) welcome.style.display='none';
-  addChatMessage('user', content);
+  const thinking = document.getElementById('thinkingToggle')?.checked || false;
+  addChatMessage('user', content, thinking);
   state.chatHistory.push({role:'user',content, thinking});
   favorability.add(1);
   const loadingEl = addLoadingMessage();
-
   try {
     const msgs = state.chatHistory.slice(-20).map(m=>({role:m.role,content:m.content}));
     const useThinking = document.getElementById('thinkingToggle').checked;
-
 const req = buildAIRequest(aiApiConfig, msgs);
 
     let headers = { "Content-Type": "application/json" };
@@ -1315,7 +1368,7 @@ if(thinking){
     const think=document.createElement("div");
     think.className="thinking-chain";
     think.innerText="💭 思考链\n"+thinking;
-    div.appendChild(think);
+  div.appendChild(think);
 }
 div.appendChild(bubble);
     box.appendChild(div);
@@ -1333,23 +1386,6 @@ function addLoadingMessage(){
     div.appendChild(bubble);
     box.appendChild(div);
     box.scrollTop=box.scrollHeight;
-    return div;
-}
-function buildAIRequest(message){
-    return {
-        model: "gpt-3.5-turbo",
-        messages: [
-            {
-                role: "user",
-                content: message
-            }
-        ],
-        temperature: 0.7
-    };
-}
-function removeLoadingMessage(){
-    const loading = document.getElementById("loadingMessage");
-    if(loading){
-        loading.remove();
-    }
-}
+    return div;}
+function buildAIRequest(message){return {model: "gpt-3.5-turbo",messages: [ {role: "user", content: message }],temperature: 0.7};}
+function removeLoadingMessage(){const loading = document.getElementById("loadingMessage");if(loading){loading.remove();}}

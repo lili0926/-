@@ -125,10 +125,7 @@
       </button>
     </div>
   </header>
-
   <div class="content" id="mainContent">
-
-    
     <!-- 主页 -->
     <section class="page active" id="page-home">
       <!-- 纪念日提示 -->
@@ -168,7 +165,6 @@
           <span class="mood-selected" id="moodSelected"></span>
         </div>
       </div>
-
       <div class="home-grid">
         <div class="card">
           <div class="card-header"><span> 随手记</span></div>
@@ -223,7 +219,6 @@
         </div>
       </div>
     </section>
-
     <!-- 聊天页 -->
     <section class="page" id="page-chat">
       <!-- 天数水印背景（不覆盖内容） -->
@@ -231,7 +226,6 @@
         <div class="chat-days-num" id="chatDaysNum">—</div>
         <div class="chat-days-txt">天</div>
       </div>
-
       <!-- UI小人骨架（后期替换形象） -->
       <div class="vchar" id="vchar">
         <div class="vchar-bubble" id="vcharBubble"></div>
@@ -390,16 +384,15 @@
         <div class="settings-title">聊天外观</div>
         <div class="settings-group">
   <div class="settings-title">UI美化方案</div>
-
   <select id="uiPresetSelect" class="settings-select">
     <option value="ins-soft">Ins奶油风</option>
 <option value="night-glass">夜间玻璃</option>
-
 <option value="jasmine">Jasmine</option>
 <option value="daddy">daddy</option>
 <option value="frosted">雾面玻璃</option>
+<option value="rose-night">蔷薇夜</option>
+<option value="matcha-tea">茶雾</option>
   </select>
-
   <button class="btn-primary" id="applyPresetBtn" style="margin-top:10px;">
     应用方案
   </button>
@@ -419,7 +412,6 @@
           </div>
         </div>
       </div>
-
       <div class="settings-group">
         <div class="settings-title">天气 &amp; 位置</div>
         <div class="settings-item">
@@ -427,7 +419,6 @@
           <input type="text" class="settings-input" id="cityInput" placeholder="Beijing">
         </div>
       </div>
-
       <div class="settings-group">
         <div class="settings-title">外观</div>
         <div class="settings-item">
@@ -457,7 +448,6 @@
           </div>
         </div>
       </div>
-
       <div class="settings-group">
         <div class="settings-title">个人</div>
         <div class="settings-item">
@@ -473,36 +463,24 @@
           <input type="text" class="settings-input" id="anniversaryInput" placeholder="02-14,06-01">
         </div>
       </div>
-
-
 <div class="setting-item">
-
     <span>字体深浅</span>
-
     <div class="font-color-buttons">
-
         <button class="btn-secondary" onclick="setFontColor('light')">
             浅
         </button>
-
         <button class="btn-secondary" onclick="setFontColor('normal')">
             中
         </button>
-
         <button class="btn-secondary" onclick="setFontColor('deep')">
             深
         </button>
-
     </div>
-
 </div>
       <button class="btn-save" id="saveSettings">保存设置</button>
-    </section>
-
+   </section>
   </div>
- 
 </main>
-
 <!-- 壁纸弹窗 -->
 <div class="modal" id="wallpaperModal">
   <div class="modal-box">
@@ -556,18 +534,12 @@
     <button class="btn-primary" onclick="closeModal('surpriseModal')" style="margin-top:16px;width:100%">知道啦 💕</button>
   </div>
 </div>
-
 <div class="toast" id="toast"></div>
 <script src="app.js"></script>
 <script>
-
 if("serviceWorker" in navigator){
-
 navigator.serviceWorker.register("sw.js");
-
 }
-
 </script>
-  
 </body>
 </html>
