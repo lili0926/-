@@ -750,14 +750,12 @@ const req = buildAIRequest(aiApiConfig, msgs);
 aiApiConfig.baseUrl.replace(/\/+$/,'')
 +
 aiApiConfig.path;
-    alert(fullUrl);
     let res = await fetch(fullUrl,{
       method:'POST',
       headers: headers,
       body:JSON.stringify(body),
     });
     const data = await res.json();
-    alert(JSON.stringify(data).slice(0,500));
     console.log("AI返回数据:", data);
     loadingEl.remove();
     if(data.error){showToast('错误：'+(data.error.message||'检查API Key'));btn.disabled=false;return;}
