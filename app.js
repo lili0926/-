@@ -784,7 +784,9 @@ aiApiConfig.path;
     "";
     
     }
-
+if(!text){
+    text="AI没有返回内容";
+}
     addChatMessage('assistant',text, thinking);
     state.chatHistory.push({role:'assistant', content:text, thinking:thinking});
     localStorage.setItem(
