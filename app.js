@@ -763,8 +763,8 @@ aiApiConfig.path;
     if(data.error){showToast('错误：'+(data.error.message||'检查API Key'));btn.disabled=false;return;}
     let text='',thinking='';
     console.log("thinking内容:", thinking)
-    if(aiApiConfig.baseUrl.includes("anthropic")){
-    for(const b of(data.content||[])){
+    if(data.content && Array.isArray(data.content))
+      { for(const b of(data.content||[])){
         if(b.type==='text') text=b.text;
         if(b.type==='thinking') thinking=b.thinking;
 
@@ -809,20 +809,14 @@ if(!text){
 
 // ========== 站子API扩展代码 ==========
 // 站子API本地缓存
-let stationApiConfig = JSON.parse(localStorage.getItem("stationApiCfg")) || {
-  baseUrl: "",
-  authType: "header-token",
-  token: "",
-  customKey: ""
-};
-
+let stationApiConfig = JSON.parse(localStorage.getItem("stationApiCfg")) ||
+ {baseUrl: "",authType: "header-token",token: "",customKey: ""};
 window.addEventListener('DOMContentLoaded', () => {
   const stationOpenBtn = document.getElementById("openStationBtn");
   const stationPanel = document.getElementById("stationApiPanel");
   const stationClose = document.getElementById("closeStationPanel");
   const stationSave = document.getElementById("saveStationConfig");
   const testApiBtn = document.getElementById("testStationApi");
-
   if (stationOpenBtn) stationOpenBtn.onclick = () => {
     stationPanel.style.display = "block";
     document.getElementById("stationBase").value = stationApiConfig.baseUrl;
@@ -836,18 +830,13 @@ window.addEventListener('DOMContentLoaded', () => {
       baseUrl: document.getElementById("stationBase").value.trim(),
       authType: document.getElementById("authType").value,
       token: document.getElementById("stationToken").value.trim(),
-      customKey: document.getElementById("customHeaderKey").value.trim()
-    }
+      customKey: document.getElementById("customHeaderKey").value.trim()}
     localStorage.setItem("stationApiCfg", JSON.stringify(stationApiConfig));
     alert("站子API配置已保存");
-    stationPanel.style.display = "none";
-  }
+    stationPanel.style.display = "none";}
   if (testApiBtn) testApiBtn.onclick = async () => {
     const res = await callStationApi("/", "GET");
-    alert("测试结果:\n" + JSON.stringify(res, null, 2));
-  }
-})
-
+    alert("测试结果:\n" + JSON.stringify(res, null, 2)); }})
 // 站API通用请求函数
 async function callStationApi(path, method = "GET", body = null, urlParams = {}) {
   const cfg = stationApiConfig;
@@ -855,20 +844,15 @@ async function callStationApi(path, method = "GET", body = null, urlParams = {})
   let fullUrl = new URL(cfg.baseUrl + path);
   Object.entries(urlParams).forEach(([k, v]) => fullUrl.searchParams.append(k, v));
   if (cfg.authType === "url-param" && cfg.token) fullUrl.searchParams.append("token", cfg.token);
-
   const headers = { "Content-Type": "application/json" };
   if (cfg.token) {
     switch (cfg.authType) {
       case "header-token": headers["Authorization"] = `Bearer ${cfg.token}`; break;
       case "header-custom": headers[cfg.customKey] = cfg.token; break;
-      case "cookie": headers["Cookie"] = cfg.token; break;
-    }
-  }
-
+      case "cookie": headers["Cookie"] = cfg.token; break; }}
   const proxyUrl = `/api/proxy?target=${encodeURIComponent(fullUrl.toString())}`;
   const fetchOpt = { method, headers };
   if (body && method === "POST") fetchOpt.body = JSON.stringify(body);
-
   try {
     const res = await fetch(proxyUrl, fetchOpt);
     const raw = await res.text();
@@ -877,10 +861,7 @@ async function callStationApi(path, method = "GET", body = null, urlParams = {})
     if (!res.ok) return `错误${res.status}：${JSON.stringify(data)}`;
     return data;
   } catch (err) {
-    return `请求异常：${err.message}`;
-  }
-}
-
+    return `请求异常：${err.message}`; }}
 // ====== 行程 ======
 function renderTasks(){
   const todos=state.tasks.filter(t=>!t.done);
@@ -892,7 +873,6 @@ function renderTasks(){
   todoList.innerHTML=todos.length?todos.map(t=>taskHTML(t)).join(''):'<div class="tasks-empty">暂无待办 ✨</div>';
   doneList.innerHTML=dones.length?dones.map(t=>taskHTML(t)).join(''):'<div class="tasks-empty">完成的事项会出现在这里</div>';
 }
-
 function taskHTML(t){
   const dateTag=t.date?`<span class="task-date-tag">📆 ${t.date}</span>`:'';
   return `<div class="task-item" id="task-${t.id}">
@@ -904,7 +884,6 @@ function taskHTML(t){
     <button class="task-del" onclick="deleteTask('${t.id}')" title="删除">×</button>
   </div>`;
 }
-
 function addTask(){
   const input=document.getElementById('taskInput');
   const dateEl=document.getElementById('taskDate');
@@ -916,7 +895,6 @@ function addTask(){
   renderTasks();
   favorability.add(1);
 }
-
 function toggleTask(id){
   const t=state.tasks.find(t=>t.id===id);
   if(!t) return;
