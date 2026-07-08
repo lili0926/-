@@ -751,6 +751,7 @@ const req = buildAIRequest(aiApiConfig, msgs);
 aiApiConfig.baseUrl.replace(/\/+$/,'')
 +
 aiApiConfig.path;
+    alert(fullUrl);
     let res = await fetch(fullUrl,{
       method:'POST',
       headers: headers,
