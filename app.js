@@ -813,7 +813,7 @@ let aiApiConfig = {
     baseUrl:
         savedCustomAiApi.baseUrl ||
         localStorage.getItem("apiBaseUrl") ||
-        "https://api.anthropic.com",
+        "https://api.anthropic.com", 
 
     // 优先读取独立apiKey，避免旧缓存覆盖
     key:
@@ -830,7 +830,21 @@ let aiApiConfig = {
         savedCustomAiApi.path ||
         "/v1/messages"
 };
+// 同步保存旧格式，兼容聊天读取
+localStorage.setItem(
+    "apiKey",
+    aiApiConfig.key.trim()
+);
 
+localStorage.setItem(
+    "apiBaseUrl",
+    aiApiConfig.baseUrl
+);
+
+localStorage.setItem(
+    "model",
+    aiApiConfig.model
+);
 window.addEventListener('DOMContentLoaded', () => {
   const stationOpenBtn = document.getElementById("openStationBtn");
   const stationPanel = document.getElementById("stationApiPanel");
@@ -857,6 +871,13 @@ window.addEventListener('DOMContentLoaded', () => {
     alert("站子API配置已保存");
     stationPanel.style.display = "none";
   }
+  aiApiConfig.key = document.getElementById("apiKey").value.trim();
+
+aiApiConfig.baseUrl =
+document.getElementById("apiBaseUrl").value.trim();
+
+aiApiConfig.model =
+document.getElementById("modelName").value.trim();
   if (testApiBtn) testApiBtn.onclick = async () => {
     const res = await callStationApi("/", "GET");
     alert("测试结果:\n" + JSON.stringify(res, null, 2));
