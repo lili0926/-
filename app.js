@@ -695,7 +695,9 @@ async function sendMessage() {
   alert(
 "key长度："+(apiKey ? apiKey.length : "没有")+
 "\n地址："+localStorage.getItem("apiBaseUrl")+
-"\n配置："+localStorage.getItem("customAiApi")
+"\n配置："+localStorage.getItem("customAiApi")+
+    alert(localStorage.getItem("model"))+
+    alert(localStorage.getItem("apiFormat"))
 );
   if(!apiKey){showToast('请先在设置中填写 API Key');return;}
   const input = document.getElementById('chatInput');
