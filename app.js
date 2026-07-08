@@ -568,12 +568,12 @@ const vchar = {
     this.showExpression(expr);
     favorability.add(1);
 
-    const apikey = localStorage.getItem('apikey');
-    if (apikey) {
+    const apiKey = localStorage.getItem('apiKey');
+    if (apiKey) {
       try {
         const res = await fetch('https://api.anthropic.com/v1/messages', {
           method:'POST',
-          headers:{'Content-Type':'application/json','x-api-key':apikey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-calls':'true'},
+          headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-calls':'true'},
           body:JSON.stringify({
             model:'claude-haiku-4-5-20251001',
             max_tokens:30,
@@ -692,13 +692,6 @@ function autoResize(){
 }
 async function sendMessage() {
   const apiKey = aiApiConfig.key;
-  alert(
-"key长度："+(apiKey ? apiKey.length : "没有")+
-"\n地址："+localStorage.getItem("apiBaseUrl")+
-"\n配置："+localStorage.getItem("customAiApi")+
-    alert(localStorage.getItem("model"))+
-    alert(localStorage.getItem("apiFormat"))
-);
   if(!apiKey){showToast('请先在设置中填写 API Key');return;}
   const input = document.getElementById('chatInput');
   const content = input.value.trim();
@@ -798,53 +791,14 @@ const req = buildAIRequest(aiApiConfig, msgs);
 }
 
 // ========== 站子API扩展代码 ==========
-// 全局AI配置（修复 customAiApi 覆盖 apiKey 问题）
-let savedCustomAiApi = {};
-
-try {
-    savedCustomAiApi = JSON.parse(
-        localStorage.getItem("customAiApi") || "{}"
-    );
-} catch (e) {
-    savedCustomAiApi = {};
-}
-
-let aiApiConfig = {
-    baseUrl:
-        savedCustomAiApi.baseUrl ||
-        localStorage.getItem("apiBaseUrl") ||
-        "https://api.anthropic.com", 
-
-    // 优先读取独立apiKey，避免旧缓存覆盖
-    key:
-        localStorage.getItem("apiKey") ||
-        savedCustomAiApi.key ||
-        "",
-
-    model:
-        localStorage.getItem("model") ||
-        savedCustomAiApi.model ||
-        "claude-sonnet-4-6",
-
-    path:
-        savedCustomAiApi.path ||
-        "/v1/messages"
+// 站子API本地缓存
+let stationApiConfig = JSON.parse(localStorage.getItem("stationApiCfg")) || {
+  baseUrl: "",
+  authType: "header-token",
+  token: "",
+  customKey: ""
 };
-// 同步保存旧格式，兼容聊天读取
-localStorage.setItem(
-    "apiKey",
-    aiApiConfig.key.trim()
-);
 
-localStorage.setItem(
-    "apiBaseUrl",
-    aiApiConfig.baseUrl
-);
-
-localStorage.setItem(
-    "model",
-    aiApiConfig.model
-);
 window.addEventListener('DOMContentLoaded', () => {
   const stationOpenBtn = document.getElementById("openStationBtn");
   const stationPanel = document.getElementById("stationApiPanel");
@@ -871,13 +825,6 @@ window.addEventListener('DOMContentLoaded', () => {
     alert("站子API配置已保存");
     stationPanel.style.display = "none";
   }
-  aiApiConfig.key = document.getElementById("apiKey").value.trim();
-
-aiApiConfig.baseUrl =
-document.getElementById("apiBaseUrl").value.trim();
-
-aiApiConfig.model =
-document.getElementById("modelName").value.trim();
   if (testApiBtn) testApiBtn.onclick = async () => {
     const res = await callStationApi("/", "GET");
     alert("测试结果:\n" + JSON.stringify(res, null, 2));
