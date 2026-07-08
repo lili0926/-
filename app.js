@@ -111,7 +111,11 @@ const UI_PRESETS = {
       "--ai-bubble":"#ffffff",
       "--user-bubble":"#9ddcff"
     },
-"daddy":{
+
+    bubbleAlpha:0.8,
+    thinkingColor:"#8fd3ff"
+},
+  "daddy":{
     name:"daddy",
 
     root:{
@@ -129,9 +133,7 @@ const UI_PRESETS = {
     bubbleAlpha:0.8,
     thinkingColor:"#ff3344"
 },
-    bubbleAlpha:0.8,
-    thinkingColor:"#8fd3ff"
-},
+  
   "frosted":{
     name:"雾面玻璃",
 
@@ -152,7 +154,8 @@ const UI_PRESETS = {
 
     bubbleAlpha:0.25,
     thinkingColor:"#9fc8ff"
-  }
+  }, 
+  
   "night-glass": {
     name: "夜间玻璃",
     root: {
