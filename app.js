@@ -568,12 +568,12 @@ const vchar = {
     this.showExpression(expr);
     favorability.add(1);
 
-    const apiKey = localStorage.getItem('apiKey');
-    if (apiKey) {
+    const apikey = localStorage.getItem('apikey');
+    if (apikey) {
       try {
         const res = await fetch('https://api.anthropic.com/v1/messages', {
           method:'POST',
-          headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-calls':'true'},
+          headers:{'Content-Type':'application/json','x-api-key':apikey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-calls':'true'},
           body:JSON.stringify({
             model:'claude-haiku-4-5-20251001',
             max_tokens:30,
