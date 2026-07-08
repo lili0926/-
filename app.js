@@ -725,12 +725,12 @@ const req = buildAIRequest(aiApiConfig, msgs);
       headers['anthropic-dangerous-direct-browser-calls'] = 'true';
       body = {
         model: aiApiConfig.model,
-        max_tokens: useThinking?16000:4096,
+        max_tokens: useThinking?4000:2048,
         messages: msgs,
       };
       const sp = localStorage.getItem('systemPrompt')||'';
       if(sp) body.system=sp;
-      if(useThinking) body.thinking={type:'enabled',budget_tokens:10000};
+      if(useThinking) body.thinking={type:'enabled',budget_tokens:2000};
     }
     // 分支2：OpenAI标准格式 DeepSeek/GLM/Grok等
     else {
