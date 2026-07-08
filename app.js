@@ -753,14 +753,7 @@ const req = buildAIRequest(aiApiConfig, msgs);
       headers: headers,
       body:JSON.stringify(body),
     });
-    console.log("开始请求");
-
-const response = await fetch(...);
-
-console.log("请求完成", response.status);
-
-const data = await response.json();
-
+    const response = await fetch(...)
 alert(JSON.stringify(data).slice(0,300));
     console.log("AI返回数据:", data);
     loadingEl.remove();
