@@ -799,11 +799,15 @@ const req = buildAIRequest(aiApiConfig, msgs);
 
 // ========== 站子API扩展代码 ==========
 // 站子API本地缓存
-let stationApiConfig = JSON.parse(localStorage.getItem("stationApiCfg")) || {
-  baseUrl: "",
-  authType: "header-token",
-  token: "",
-  customKey: ""
+let saved = JSON.parse(
+    localStorage.getItem("customAiApi") || "{}"
+);
+
+let aiApiConfig = {
+    baseUrl: saved.baseUrl || "https://api.anthropic.com",
+    key: localStorage.getItem("apiKey") || saved.key || "",
+    model: localStorage.getItem("model") || saved.model || "claude-sonnet",
+    path: saved.path || "/v1/messages"
 };
 
 window.addEventListener('DOMContentLoaded', () => {
