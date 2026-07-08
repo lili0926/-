@@ -794,9 +794,13 @@ if(!text){
   JSON.stringify(state.chatHistory)
 );
   } catch(e) {
-    loadingEl.remove();
-    showToast('发送失败，请检查网络、API地址或密钥');
-    console.error(e);
+  loadingEl.remove();
+
+  alert(e.message);
+
+  console.error("发送错误:",e);
+
+  showToast('发送失败');
   }
   btn.disabled=false; input.focus();
 }
