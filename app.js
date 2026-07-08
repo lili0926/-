@@ -97,7 +97,62 @@ const UI_PRESETS = {
     bubbleAlpha: 0.35,
     thinkingColor: "#c77dff"
   },
+"jasmine":{
+    name:"Jasmine",
 
+    root:{
+      "--bg":"#ffffff",
+      "--bg2":"#f8fbff",
+      "--surface":"rgba(255,255,255,0.9)",
+      "--accent":"#8fd3ff",
+      "--accent2":"#b9e6ff",
+      "--text":"#333333",
+
+      "--ai-bubble":"#ffffff",
+      "--user-bubble":"#9ddcff"
+    },
+"daddy":{
+    name:"daddy",
+
+    root:{
+      "--bg":"#080808",
+      "--bg2":"#111111",
+      "--surface":"rgba(20,20,20,0.9)",
+      "--accent":"#ff3344",
+      "--accent2":"#ff6677",
+      "--text":"#eeeeee",
+
+      "--ai-bubble":"#151515",
+      "--user-bubble":"#ff4455"
+    },
+
+    bubbleAlpha:0.8,
+    thinkingColor:"#ff3344"
+},
+    bubbleAlpha:0.8,
+    thinkingColor:"#8fd3ff"
+},
+  "frosted":{
+    name:"雾面玻璃",
+
+    root:{
+      "--bg":"#dfe8f2",
+      "--bg2":"#ffffff",
+
+      "--surface":
+      "rgba(255,255,255,0.25)",
+
+      "--accent":"#b8d8ff",
+      "--accent2":"#d8ecff",
+
+      "--text":"#333333",
+
+      "--glass-blur":"20px"
+    },
+
+    bubbleAlpha:0.25,
+    thinkingColor:"#9fc8ff"
+  }
   "night-glass": {
     name: "夜间玻璃",
     root: {
