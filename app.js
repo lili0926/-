@@ -773,7 +773,7 @@ aiApiConfig.path;
         }
     }
     }
-    }else{
+    else{
     
     const msg=data.choices[0].message;
     
