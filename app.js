@@ -747,8 +747,11 @@ const req = buildAIRequest(aiApiConfig, msgs);
     }
 
     // 使用Vercel代理跨域请求
-    const fullUrl = (localStorage.getItem('apiBaseUrl') || '').replace(/\/+$/, '') + '/v1/chat/completions';
-     let res = await fetch(fullUrl,{
+   const fullUrl =
+aiApiConfig.baseUrl.replace(/\/+$/,'')
++
+aiApiConfig.path;
+    let res = await fetch(fullUrl,{
       method:'POST',
       headers: headers,
       body:JSON.stringify(body),
