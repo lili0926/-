@@ -770,7 +770,7 @@ aiApiConfig.path;
 
         if(data.choices?.[0]?.message?.reasoning_content){
             thinking=data.choices[0].message.reasoning_content;
-        }
+        
     }
     }
   }else{
