@@ -798,16 +798,37 @@ const req = buildAIRequest(aiApiConfig, msgs);
 }
 
 // ========== 站子API扩展代码 ==========
-// 站子API本地缓存
-let saved = JSON.parse(
-    localStorage.getItem("customAiApi") || "{}"
-);
+// 全局AI配置（修复 customAiApi 覆盖 apiKey 问题）
+let savedCustomAiApi = {};
+
+try {
+    savedCustomAiApi = JSON.parse(
+        localStorage.getItem("customAiApi") || "{}"
+    );
+} catch (e) {
+    savedCustomAiApi = {};
+}
 
 let aiApiConfig = {
-    baseUrl: saved.baseUrl || "https://api.anthropic.com",
-    key: localStorage.getItem("apiKey") || saved.key || "",
-    model: localStorage.getItem("model") || saved.model || "claude-sonnet",
-    path: saved.path || "/v1/messages"
+    baseUrl:
+        savedCustomAiApi.baseUrl ||
+        localStorage.getItem("apiBaseUrl") ||
+        "https://api.anthropic.com",
+
+    // 优先读取独立apiKey，避免旧缓存覆盖
+    key:
+        localStorage.getItem("apiKey") ||
+        savedCustomAiApi.key ||
+        "",
+
+    model:
+        localStorage.getItem("model") ||
+        savedCustomAiApi.model ||
+        "claude-sonnet-4-6",
+
+    path:
+        savedCustomAiApi.path ||
+        "/v1/messages"
 };
 
 window.addEventListener('DOMContentLoaded', () => {
