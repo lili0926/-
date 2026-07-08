@@ -639,12 +639,11 @@ const vchar = {
 // ====== 聊天 ======
 // 全局自定义AI配置（替代旧localStorage单存key/model，兼容所有模型）
 let aiApiConfig = JSON.parse(localStorage.getItem("customAiApi")) || {
-  baseUrl: localStorage.getItem('apiBaseUrl') || "", 
+  baseUrl: localStorage.getItem('apiBaseUrl') || "",
   key: localStorage.getItem('apiKey') || "",
-  model: localStorage.getItem('model') || "claude-sonnet-4-6",
-  path: "/v1/messages"
+  model: localStorage.getItem('model') || "",
+  path: localStorage.getItem('apiPath') || "/v1/messages"
 };
-
 // 页面加载完成，绑定API设置面板按钮
 window.addEventListener('DOMContentLoaded', () => {
   const openBtn = document.getElementById("openSettingBtn");
