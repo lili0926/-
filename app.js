@@ -757,6 +757,7 @@ aiApiConfig.path;
       body:JSON.stringify(body),
     });
     const data = await res.json();
+    alert(JSON.stringify(data).slice(0,500));
     console.log("AI返回数据:", data);
     loadingEl.remove();
 
