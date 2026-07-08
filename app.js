@@ -692,6 +692,11 @@ function autoResize(){
 }
 async function sendMessage() {
   const apiKey = aiApiConfig.key;
+  alert(
+"key长度："+(apiKey ? apiKey.length : "没有")+
+"\n地址："+localStorage.getItem("apiBaseUrl")+
+"\n配置："+localStorage.getItem("customAiApi")
+);
   if(!apiKey){showToast('请先在设置中填写 API Key');return;}
   const input = document.getElementById('chatInput');
   const content = input.value.trim();
