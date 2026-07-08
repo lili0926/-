@@ -542,4 +542,14 @@ navigator.serviceWorker.register("sw.js");
 }
 </script>
 </body>
+  <button onclick="checkAPI()">检查API</button>
+
+<script>
+function checkAPI(){
+ console.log("customAiApi:",localStorage.getItem("customAiApi"));
+ console.log("apiBaseUrl:",localStorage.getItem("apiBaseUrl"));
+ console.log("apiKey:",localStorage.getItem("apiKey"));
+ alert("已输出到控制台");
+}
+</script>
 </html>
