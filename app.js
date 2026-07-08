@@ -582,6 +582,7 @@ const vchar = {
           }),
         });
         const data = await res.json();
+        alert(JSON.stringify(data).slice(0,500));
         this.showBubble(data.content?.[0]?.text || '嗯。');
       } catch { this.showBubble(this.REPLIES_OFFLINE[Math.floor(Math.random()*this.REPLIES_OFFLINE.length)]); }
     } else {
