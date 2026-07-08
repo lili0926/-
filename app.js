@@ -639,7 +639,7 @@ const vchar = {
 // ====== 聊天 ======
 // 全局自定义AI配置（替代旧localStorage单存key/model，兼容所有模型）
 let aiApiConfig = JSON.parse(localStorage.getItem("customAiApi")) || {
-  baseUrl: "https://api.anthropic.com",
+  baseUrl: localStorage.getItem('apiBaseUrl') || "", 
   key: localStorage.getItem('apiKey') || "",
   model: localStorage.getItem('model') || "claude-sonnet-4-6",
   path: "/v1/messages"
