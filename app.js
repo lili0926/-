@@ -485,62 +485,102 @@ if(!text){ text="AI没有返回内容";} addChatMessage('assistant',text, thinki
     localStorage.setItem( "chatHistory", JSON.stringify(state.chatHistory));
   } catch(e) { loadingEl.remove();alert(e.message); console.error("发送错误:",e);showToast('发送失败'); }
   btn.disabled=false; input.focus();}
-  async function generateThoughts(){
-  const apiKey = aiApiConfig.key;
-  if(!apiKey)return;
- const chatHistoryForThought = state.chatHistory.slice(-20)
- .map(m=>({
- role:m.role,
- content:m.content
- }));
- async function generateThoughts(){
- const apiKey = aiApiConfig.key;
- if(!apiKey)return;}
- // 最近聊天
- const history = state.chatHistory.slice(-20)
- .map(m=>({
-     role:m.role,
-     content:m.content
- }));
- // 获取上次聊天时间
+async function checkOfflineThought(){
+ 
+ const last =
+ state.chatHistory.at(-1);
+ 
+ 
+ if(!last)return;
+ 
+ 
  const lastTime =
- localStorage.getItem("lastChatTime")
- || new Date().toLocaleTimeString();
- // 当前打开时间
- async function generateThoughts(){
+ last.time;
  
  
- const apiKey = aiApiConfig.key;
- 
- if(!apiKey)return;
- const chatHistoryForThought = state.chatHistory.slice(-20)
- .map(m=>({
- role:m.role,
- content:m.content
- }));
+ if(!lastTime)return;
  
  
+ const old =
+ localStorage.getItem(
+ "lastThoughtTime"
+ );
  
- // 最后聊天时间
  
- let lastMessage =
- state.chatHistory[state.chatHistory.length-1];
+ if(old===lastTime){
+ return;
+ }
  
  
- let lastTime =
- lastMessage?.time ||
- "未知";
- 
+ const lastDate =
+ new Date(lastTime);
  
  
  const now =
  new Date();
  
  
+ const gap =
+ (now-lastDate)
+ /1000
+ /60;
+ 
+ 
+ // 超过30分钟
+ 
+ if(gap>150){
+ 
+  generateThoughts();
+ 
+ 
+ localStorage.setItem(
+ "lastThoughtTime",
+ lastTime
+ );
+ 
+ }
+ 
+ }
+ 
+  async function generateThoughts(){
+ 
+ const apiKey = aiApiConfig.key;
+ if(!apiKey)return;
+ 
+ 
+ // 最近聊天记录
+ const chatHistoryForThought =
+ state.chatHistory
+ .slice(-20)
+ .map(m=>({
+     role:m.role,
+     content:m.content
+ }));
+ 
+ 
+ // 最后一条聊天
+ const lastMessage =
+ state.chatHistory.at(-1);
+ 
+ 
+ if(!lastMessage)return;
+ 
+ 
+ const lastTime =
+ lastMessage.time ||
+ localStorage.getItem("lastChatTime");
+ 
+ 
+ if(!lastTime)return;
+ 
+ 
+ // 当前时间
+ 
+ const now = new Date();
+ 
  
  const today =
  `${now.getFullYear()}.${now.getMonth()+1}.${now.getDate()}`;
- 
  
  
  const currentTime =
@@ -549,90 +589,62 @@ if(!text){ text="AI没有返回内容";} addChatMessage('assistant',text, thinki
  {
  hour:"2-digit",
  minute:"2-digit"
+ });
+ 
+ 
+ 
+ // 防止重复生成
+ 
+ const thoughtKey =
+ `${today}-${lastTime}-${currentTime}`;
+ 
+ 
+ if(
+ localStorage.getItem("thoughtKey")
+ ===thoughtKey
+ ){
+ return;
  }
- );
  
  
  
  const prompt = `
  
- 
  你是一个AI角色。
  
- 现在用户重新打开聊天页面。
+ 用户在 ${lastTime} 离开聊天。
+ 
+ 现在用户在 ${today} ${currentTime} 回来。
+ 
+ 期间用户没有发送任何消息。
  
  
- 用户最后一次聊天时间：
- ${lastTime}
- 
- 
- 用户当前打开页面时间：
- ${today} ${currentTime}
- 
- 
- 
- 请模拟：
- 
- 从用户最后聊天结束，
- 到现在这段没有聊天时间里，
- 
- AI角色自己的私人思绪。
- 
- 
- 例如：
- 
- 用户16:00说：
- 我要出去玩
- 
- 
- 19:00回来打开网页。
- 
- 
- 生成：
- 
- 16:20
- 想到她出去玩，不知道有没有开心。
- 
- 17:30
- 有一点想知道她现在在哪里。
- 
- 18:40
- 希望她快回来。
- 
+ 请根据用户离开前的聊天内容，
+ 生成这段时间里AI自己的私人思绪。
  
  
  要求：
  
- 1. 生成5-10条
+ 1. 不允许描述用户做了什么。
  
- 2. 时间必须在
+ 2. 不知道用户去了哪里。
+ 
+ 3. 只能描述AI自己的等待、回忆、猜测。
+ 
+ 4. 保持AI角色性格。
+ 
+ 5. 按时间推进生成。
+ 
+ 6. 时间必须在：
  ${lastTime}
- 和
+ 到
  ${currentTime}
- 之间
+ 之间。
  
  
- 3. 不允许生成未来时间
- 
- 
- 4. 不回复用户
- 
- 
- 5. 像私人日记和心声
- 
- 
- 6. 保持角色性格
- 
- 
- 
- 严格返回JSON：
+ 返回JSON：
  
  [
- {
- "date":"${today}",
- "time":"16:20",
- "content":"..."
- },
  {
  "date":"${today}",
  "time":"17:30",
@@ -641,13 +653,11 @@ if(!text){ text="AI没有返回内容";} addChatMessage('assistant',text, thinki
  ]
  
  
- 
  聊天记录：
  
-${JSON.stringify(chatHistoryForThought)}
+ ${JSON.stringify(chatHistoryForThought)}
  
  `;
- 
  
  
  
@@ -660,7 +670,13 @@ ${JSON.stringify(chatHistoryForThought)}
  {
  role:"system",
  content:
- "你负责生成AI角色私人思绪，只输出JSON"
+ `
+ 你负责生成AI角色私人思绪。
+ 
+ 只输出JSON数组。
+ 不要输出Markdown。
+ 不要解释。
+ `
  },
  
  {
@@ -670,7 +686,7 @@ ${JSON.stringify(chatHistoryForThought)}
  
  ],
  
- temperature:0.9
+ temperature:0.7
  
  };
  
@@ -685,13 +701,15 @@ ${JSON.stringify(chatHistoryForThought)}
  "Bearer "+apiKey
  
  };
+
  
  
  
  const fullUrl =
  aiApiConfig.baseUrl
  .replace(/\/+$/,'')
- +aiApiConfig.path;
+ +
+ aiApiConfig.path;
  
  
  
@@ -716,14 +734,8 @@ ${JSON.stringify(chatHistoryForThought)}
  
  
  
- console.log(
- "思绪返回",
- data
- );
- 
- 
- 
  let thoughtText="";
+ 
  
  
  // Claude格式
@@ -738,14 +750,13 @@ ${JSON.stringify(chatHistoryForThought)}
  ){
  
  if(b.type==="text"){
- 
- thoughtText += b.text;
- 
+ thoughtText+=b.text;
  }
  
  }
  
  }
+ 
  
  
  // OpenAI格式
@@ -771,7 +782,6 @@ ${JSON.stringify(chatHistoryForThought)}
  let thoughts=[];
  
  
- 
  try{
  
  
@@ -782,6 +792,7 @@ ${JSON.stringify(chatHistoryForThought)}
  .trim();
  
  
+ 
  thoughts =
  JSON.parse(clean);
  
@@ -789,9 +800,9 @@ ${JSON.stringify(chatHistoryForThought)}
  
  }catch(e){
  
- console.log(
+ console.error(
  "JSON解析失败",
- e
+ thoughtText
  );
  
  return;
@@ -815,20 +826,23 @@ ${JSON.stringify(chatHistoryForThought)}
  thoughts.forEach(t=>{
  
  
-const d=new Date();
-
-
-oldThoughts.push({
-
-date:new Date().toLocaleDateString(),
-
-time:t.time,
-
-content:t.content,
-
-createdAt:Date.now()
-
-});
+ oldThoughts.push({
+ 
+ type:"offline",
+ 
+ date:t.date,
+ 
+ from:lastTime,
+ 
+ to:currentTime,
+ 
+ time:t.time,
+ 
+ content:t.content,
+ 
+ createdAt:Date.now()
+ 
+ });
  
  
  });
@@ -836,11 +850,15 @@ createdAt:Date.now()
  
  
  localStorage.setItem(
- 
  "aiThoughts",
- 
  JSON.stringify(oldThoughts)
+ );
  
+ 
+ 
+ localStorage.setItem(
+ "thoughtKey",
+ thoughtKey
  );
  
  
@@ -858,153 +876,89 @@ createdAt:Date.now()
  "生成思绪失败",
  e
  );
-}
  
  }
- }
+ 
+ 
+}
 window.addEventListener(
 "DOMContentLoaded",
-()=>{
-
-
+()=>{checkOfflineThought();
 const thoughtBtn =
 document.getElementById(
 "thoughtBtn"
 );
-
-
 const box =
 document.getElementById(
 "thoughtPanel"
 );
-
-
-
 if(!thoughtBtn || !box){
-
 console.log(
 "思绪按钮或弹窗不存在"
 );
-
 return;
-
 }
-
-
-
 let thoughtPanel = document.querySelector("#thoughtPanel");
-
 document.getElementById("thoughtBtn").onclick = ()=>{
     console.log("思绪按钮点击成功");
-
    document.querySelector("#thoughtPanel").style.display="block";
-
     renderThoughts();
 };
-
-
-
 const close =
 document.getElementById(
 "closeThought"
 );
-
-
 if(close){
-
 close.onclick=()=>{
-
 box.style.display="none";
-
 }
-
 }
-
-
 });
 function renderThoughts(){
-
     const box = document.getElementById("thoughtContent");
-
     if(!box) return;
-
-
     let list = JSON.parse(
         localStorage.getItem("aiThoughts") || "[]"
     );
-
-
     if(list.length===0){
-
         box.innerHTML="暂无思绪";
-
         return;
     }
-
-
-
     // 按日期分组
-
     let groups={};
-
-
     list.forEach(item=>{
-
-
-        let d=new Date(item.time);
-
-
-        let date =
-        d.getFullYear()
-        +"."+ 
-        (d.getMonth()+1)
-        +"."+ 
-        d.getDate();
-
-
-
-        if(!groups[date]){
-            groups[date]=[];
-        }
-
-
-        groups[date].push({
-
-            time:
-            d.getHours()
-            +":"
-            +(d.getMinutes()<10?"0":"")
-            +d.getMinutes(),
-
-            content:item.content
-
-        });
-
-
+       list.forEach(item=>{
+       
+       
+       let date=item.date;
+       
+       
+       if(!groups[date]){
+       groups[date]=[];
+       }
+       
+       
+       groups[date].push({
+       
+       time:item.time,
+       
+       content:item.content
+       
+       });
+       
+       
+       });
+   
     });
-
-
-
     let html="";
-
-
     Object.keys(groups).forEach(date=>{
-
-
         html+=`
-
         <div class="thought-date">
             ${date}
         </div>
-
         `;
-
-
         groups[date].forEach(x=>{
-
-
             html+=`
-
             <div class="thought-item">
 
                 <div class="thought-time">
@@ -1014,21 +968,11 @@ function renderThoughts(){
     ${x.content.replace(/\n/g,'<br>')}
 </div>
             </div>
-
             `;
-
-
         });
-
-
     });
-
-
-
     box.innerHTML=html;
-
 }
-
 // ========== 站子API扩展代码 ==========
 // 站子API本地缓存
 let stationApiConfig = JSON.parse(localStorage.getItem("stationApiCfg")) ||
