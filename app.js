@@ -216,7 +216,7 @@ const UI_PRESETS = {
   
       bubbleAlpha:0.55
   },
-  “aries:{
+  “aries”:{
     name:“Aries”, 
  root:{
   "--bg":"#0d1117",
