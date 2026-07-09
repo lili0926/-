@@ -216,24 +216,24 @@ const UI_PRESETS = {
   
       bubbleAlpha:0.55
   },
-  “aries”:{
-    name:“Aries”, 
- root:{
-  "--bg":"#0d1117",
-  "--surface":"rgba(255,255,255,0.04)",
-  "--accent":"#c8a96e",
-  "--accent2":"#8b1a1a",
-  "--text":"#d4cfc8",
+  "aries":{
+    name:"Aries",
+    root:{
+        "--bg":"#0d1117",
+        "--bg2":"#161b22",
+        "--surface":"rgba(255,255,255,0.04)",
+        "--accent":"#c8a96e",
+        "--accent2":"#8b1a1a",
+        "--text":"#d4cfc8",
 
-  "--user-bubble":"139,26,26",
-  "--ai-bubble":"13,17,23",
+        "--user-bubble":"rgba(139,26,26,0.18)",
+        "--ai-bubble":"rgba(13,17,23,0.85)",
+        "--thinking-color":"#c8a96e",
+        "--memory-bg":"#111820"
+    },
 
-  "--thinking-color":"#c8a96e",
-  "--memory-bg":"#111820"
- },
-
- bubbleAlpha:0.85
-}, 
+    bubbleAlpha:0.85
+},
 };
 function today() { return new Date().toISOString().slice(0,10); }
 
