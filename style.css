@@ -398,122 +398,96 @@ html[data-font="deep"] {--text:#111;--text-dim:#222;}
     padding:10px 14px;
     border-radius:16px;
     font-size:13px;
-    opacity:.65;
+   
     background:var(--thingking-bg);
     border:1px solid var(--thinking-border);
     color:var(--thinking-text);
     white-space:pre-wrap;
-    line-height:1.5;
-}
+    line-height:1.5;}
 .thought-panel{
-
-position:fixed;
-
-top:70px;
-right:24px;
-
-width:380px;
-
-background:#f7f4ee;
-
-border-radius:20px;
-
-box-shadow:
-0 12px 40px rgba(0,0,0,.12);
-
-color:#2d2d2d;
-
-overflow:hidden;
-
+    position:fixed;
+    right:20px;
+    top:70px;
+    width:420px 90vw;
+    box-sizing:border-box;
+    max-height:75vh;
+    background:rgba(255,255,255,.85);
+    color:#333;
+    border-radius:28px;
+    box-shadow:0 15px 40pxrgba(0,0,0,.12);
+    overflow:hidden;
+    z-index:9999;
 }
-
-
-
 .thought-header{
-
-padding:18px 22px;
-
-font-size:18px;
-
-font-weight:600;
-
-height:60px;
-box-sizing:border-box;
-border-bottom:
-1px solid #e6e1d8;
-
-display:flex;
-
-justify-content:space-between;
-
-}
-
-
-
+    height:64px;
+    padding:0 22px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    font-size:18px;
+    font-weight:600;
+    border-bottom:1px solid #eee;}
 .thought-list{
-
-padding:20px;
-
-}
-
-
-
+padding:20px;}
 .thought-date{
-
-font-size:20px;
-
-font-weight:600;
-
-margin-bottom:20px;
-
+    font-size:14px;
+    color:#999;
+    margin:20px 20px 12px;
+    font-weight:500;
 }
-
-
-
 .thought-time{
-
-font-size:14px;
-
-color:#9a9186;
-
-margin-top:16px;
-
+    display:block;
+    margin-top:18px;
+    margin-bottom:6px;
+    font-size:13px;
+    color:#999;
+    font-weight:600;
 }
-
-
-
 .thought-text{
-
-font-size:15px;
-
-line-height:1.8;
-
-margin-top:6px;
-
+    font-size:15px;
+    line-height:1.9;
+    color:#2f2f2f;
+    letter-spacing:.3px;
+    white-space:pre-line;
+    word-break:break-word;
+    overflow-wrap:anywhere;
 }
 .thoughtContent{
-    padding:20px;
-    height:calc(100% - 60px);
+    padding:24px 26px;
+    max-height:calc(100% - 60px);
     overflow-y:auto;
-}
-
-
+overflow-x:hidden;}
 .thoughtContent .thought-item{
-    padding:14px;
-    margin-bottom:16px;
-    border-radius:16px;
-    background:rgba(255,255,255,.65);
-}
-
-
+    max-width: 100%;
+    box-sizing:border-box;
+        background:rgba(255,255,255,.75);
+        border-radius:18px;
+        padding:22px 24px;
+        margin:14px 20px;
+        line-height:2;
+        letter-spacing:1px;
+        box-shadow:0 4px 15px rgba(0,0,0,.05);
+    }
 .thoughtContent .thought-date{
     font-size:20px;
     font-weight:600;
-    margin-bottom:20px;
-}
-
-
+    margin-bottom:20px;}
+    .thought-content::-webkit-scrollbar{
+        width:5px;
+    }
+    
+    .thought-content::-webkit-scrollbar-thumb{
+        background:#ddd;
+        border-radius:10px;
+    }
 .thoughtContent .thought-text{
-    color:#333;
-    white-space:pre-wrap;
-}
+    font-size:15px;
+    line-height:1.8;
+    color:#555;
+    white-space:.3px;}
+
+    @media(max-width:600px){
+    .thought-panel{
+     width:min(420px90vw);
+    }
+    }

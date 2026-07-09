@@ -21,83 +21,6 @@ function initPageSwitch() {
       pageTitle.innerText = titleMap[targetPage] || targetPage;}) })}
 // 页面加载完成初始化切换
 window.addEventListener('DOMContentLoaded', () => {
-  const thoughtBtn = document.getElementById("thoughtBtn");
-  if(thoughtBtn){
-  thoughtBtn.onclick=()=>{
-  const box=document.getElementById("thoughtPanel");
-  let list=
-  JSON.parse(
-  localStorage.getItem("aiThoughts")||"[]"
-  );
-  // 倒序显示，最新在上面
-  list=list.reverse();
-  thoughtBtn.onclick=()=>{
-  
-  const panel=document.getElementById("thoughtPanel");
-  
-  const content=document.getElementById("thoughtContent");
-  
-  
-  let list=
-  JSON.parse(
-  localStorage.getItem("aiThoughts")||"[]"
-  );
-  
-  
-  // 按日期分组
-  
-  let html="";
-  
-  
-  let currentDate="";
-  
-  
-  list.forEach(x=>{
-  
-  
-  let date=x.date || "2026.7.9";
-  
-  
-  if(date!==currentDate){
-  
-  currentDate=date;
-  
-  
-  html+=`
-  <h3 class="thought-date">
-  ${date}
-  </h3>
-  `;
-  
-  }
-  
-  
-  
-  html+=`
-  
-  <div class="thought-item">
-  <div class="thought-time">
-  ${x.time}
-  </div>
-  <div class="thought-text">
-  ${x.content}
-  </div>
-  </div>
-  `;
-  });
-  content.innerHTML=html;
-  panel.style.display="block";
-  }
-  document.getElementById("closeThought").onclick=()=>{
-  document.getElementById("thoughtPanel")
-  .style.display="none";
-  };
-  box.style.display="block";
-  
-  
-  };
-  
-  }
   const sel = document.getElementById("uiPresetSelect");
 const btn = document.getElementById("applyPresetBtn");
 if(sel && btn){btn.onclick = () => {applyUIPreset(sel.value);};}
@@ -1087,11 +1010,9 @@ function renderThoughts(){
                 <div class="thought-time">
                     ${x.time}——
                 </div>
-
-                <div class="thought-text">
-                    ${x.content}
-                </div>
-
+<div class="thought-text">
+    ${x.content.replace(/\n/g,'<br>')}
+</div>
             </div>
 
             `;
