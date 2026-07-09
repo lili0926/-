@@ -216,7 +216,8 @@ const UI_PRESETS = {
   
       bubbleAlpha:0.55
   },
-  Aries:{
+  “aries:{
+    name:“Aries”, 
  root:{
   "--bg":"#0d1117",
   "--surface":"rgba(255,255,255,0.04)",
@@ -232,7 +233,7 @@ const UI_PRESETS = {
  },
 
  bubbleAlpha:0.85
-}
+}, 
 };
 function today() { return new Date().toISOString().slice(0,10); }
 
