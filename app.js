@@ -98,8 +98,7 @@ const UI_PRESETS = {
       "--thinking-color": "rgba(255,255,255,.45)",
       "--memory-bg":"#fff3e6"
     },
-    bubbleAlpha: 0.35,
-    thinkingColor: "#c77dff"
+    bubbleAlpha: 0.35
   },
 "jasmine":{
     name:"Jasmine",
@@ -117,8 +116,7 @@ const UI_PRESETS = {
       "--memory-bg":"#f2f7f2"
     },
 
-    bubbleAlpha:0.8,
-    thinkingColor:"#8fd3ff"
+    bubbleAlpha:0.8
 },
   "daddy":{
     name:"daddy",
@@ -137,8 +135,7 @@ const UI_PRESETS = {
        "--memory-bg":"#25242b"
     },
 
-    bubbleAlpha:0.8,
-    thinkingColor:"#ff3344"
+    bubbleAlpha:0.8
 },
   
   "frosted":{
@@ -163,8 +160,7 @@ const UI_PRESETS = {
       "--memory-bg":"#e8edf0"
     },
 
-    bubbleAlpha:0.25,
-    thinkingColor:"#9fc8ff"
+    bubbleAlpha:0.25
   }, 
   
   "night-glass": {
@@ -182,8 +178,7 @@ const UI_PRESETS = {
       "--memory-bg":"#6d7a92"
     },
 
-    bubbleAlpha: 0.12,
-    thinkingColor: "#7c5cbf"
+    bubbleAlpha: 0.12
   },
   "rose-night":{
       name:"蔷薇夜",
@@ -201,8 +196,7 @@ const UI_PRESETS = {
           "--memory-bg":"#351624"
       },
   
-      bubbleAlpha:0.45,
-      thinkingColor:"#d98b9b"
+      bubbleAlpha:0.45
   },
   "matcha-tea":{
       name:"茶雾",
@@ -220,9 +214,25 @@ const UI_PRESETS = {
           "--memory-bg":"#dfe8d2"
       },
   
-      bubbleAlpha:0.55,
-      thinkingColor:"#8fa66b"
+      bubbleAlpha:0.55
   },
+  Aries:{
+ root:{
+  "--bg":"#0d1117",
+  "--surface":"rgba(255,255,255,0.04)",
+  "--accent":"#c8a96e",
+  "--accent2":"#8b1a1a",
+  "--text":"#d4cfc8",
+
+  "--user-bubble":"139,26,26",
+  "--ai-bubble":"13,17,23",
+
+  "--thinking-color":"#c8a96e",
+  "--memory-bg":"#111820"
+ },
+
+ bubbleAlpha:0.85
+}
 };
 function today() { return new Date().toISOString().slice(0,10); }
 
