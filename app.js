@@ -45,12 +45,56 @@ async function testDailyChatCount(){
     .from("ai_messages")
     .insert({
       type:"thought",
-      content:"测试：我今天有点想找你。"
+      const text = await generateAIMessage();
+
+await supabaseClient
+.from("ai_messages")
+.insert({
+  type:"message",
+  content:text
+});
     });
 
   console.log(data,error);
 }
+async function generateAIMessage(){
 
+  const prompt = `
+你是一个陪伴型AI。
+根据最近聊天状态，主动发一句自然的话。
+不要解释，不要长篇。
+像平时聊天一样。
+`;
+
+  const req = buildAIRequest(
+    aiApiConfig,
+    [
+      {
+        role:"user",
+        content:prompt
+      }
+    ]
+  );
+
+  const res = await fetch(req.url,{
+    method:"POST",
+    headers:req.headers,
+    body:JSON.stringify(req.body)
+  });
+
+  const data = await res.json();
+
+  let text="";
+
+  if(data.choices){
+    text=data.choices[0].message.content;
+  }
+  else if(data.content){
+    text=data.content[0].text;
+  }
+
+  return text;
+}
 async function loadAiMessages(){
 
   const { data, error } = await supabaseClient
