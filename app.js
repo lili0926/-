@@ -499,7 +499,12 @@ const req = buildAIRequest(aiApiConfig, msgs);
      thinking= msg.reasoning_content ||
     msg.thinking ||
     msg.analysis || ""; }
-if(!text){ text="AI没有返回内容";} addChatMessage('assistant',text, thinking);
+if(!text){ text="AI没有返回内容";} addChatMessage('assistant',text, thinking);await supabaseClient
+.from("chat_messages")
+.insert({
+  role: "assistant",
+  content: reply
+});
 scrollChatBottom();
     state.chatHistory.push({role:'assistant', content:text, thinking:thinking,time:new Date().toISOString()});
     localStorage.setItem( "chatHistory", JSON.stringify(state.chatHistory));
