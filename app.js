@@ -192,7 +192,7 @@ if(savedChat){ state.chatHistory = JSON.parse(savedChat);
     state.chatHistory.forEach(msg=>{
         addChatMessage(msg.role,msg.content, msg.thinking|| "");});
         setTimeout(()=>{      const box = document.getElementById("chatMessages");
-            if(box){ box.scrollTop = box.scrollHeight; } },100);}}
+            if(box){ box.scrollTop = box.scrollHeight; } },100);}};
 // ====== 主题 ======
 function applyTheme(theme) { document.documentElement.setAttribute('data-theme', theme);
   state.theme = theme;
