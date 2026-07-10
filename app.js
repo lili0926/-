@@ -40,11 +40,6 @@ async function testDailyChatCount(){
     "\n今日主动额度："+limit
   );
 
-
-  await supabaseClient
-    .from("ai_messages")
-    .insert({
-      type:"thought",
       const text = await generateAIMessage();
 
 await supabaseClient
