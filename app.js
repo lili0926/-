@@ -50,8 +50,8 @@ async function testDailyChatCount(){
 await supabaseClient
 .from("ai_messages")
 .insert({
-  type:"message",
-  content:text
+ type:"message",
+ content:text
 });
     });
 
@@ -59,27 +59,18 @@ await supabaseClient
 }
 async function generateAIMessage(){
 
-  const prompt = `
-你是一个陪伴型AI。
-根据最近聊天状态，主动发一句自然的话。
-不要解释，不要长篇。
-像平时聊天一样。
-`;
+  const prompt =
+  "你是一个长期陪伴用户的AI。请主动说一句自然的话，不超过30字。";
 
-  const req = buildAIRequest(
-    aiApiConfig,
-    [
-      {
-        role:"user",
-        content:prompt
-      }
-    ]
-  );
+  const req = buildAIRequest(prompt);
 
-  const res = await fetch(req.url,{
+  const res = await fetch(aiApiConfig.baseUrl,{
     method:"POST",
-    headers:req.headers,
-    body:JSON.stringify(req.body)
+    headers:{
+      "Content-Type":"application/json",
+      "Authorization":"Bearer "+aiApiConfig.apiKey
+    },
+    body:JSON.stringify(req)
   });
 
   const data = await res.json();
