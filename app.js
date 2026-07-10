@@ -36,13 +36,13 @@ alert("进入测试函数");
     "今日聊天数量："+data.length+
     "\n今日主动额度："+limit
   );
-}
 await supabaseClient
 .from("ai_messages")
 .insert({
   type:"thought",
   content:"测试：我今天有点想找你。",
-});
+});}
+
 async function loadAiMessages(){
 
   const { data, error } = await supabaseClient
