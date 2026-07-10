@@ -48,7 +48,6 @@ await supabaseClient
  type:"message",
  content:text
 });
-    });
 
   console.log(data,error);
 }
