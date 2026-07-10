@@ -2,6 +2,30 @@ const supabaseClient = supabase.createClient(
   "https://lqcuklhldvkwbkpftjzu.supabase.co",
   "sb_publishable_w13U8_JcT0amx_LVBm9dnA_CoA5xiow"
 );
+async function loadAiMessages(){
+
+  const { data, error } = await supabaseClient
+    .from("ai_messages")
+    .select("*")
+    .order("created_at", { ascending:true });
+
+  if(error){
+    console.log("读取AI主动消息失败:", error);
+    return;
+  }
+
+  console.log("AI主动消息:", data);
+
+  if(data){
+    data.forEach(msg=>{
+      addChatMessage(
+        "assistant",
+        msg.content,
+        ""
+      );
+    });
+  }
+}
 // 页面切换逻辑
 function initPageSwitch() {
   const navItems = document.querySelectorAll('.nav-item');
@@ -33,7 +57,7 @@ const saved = localStorage.getItem("uiPreset");
 if(saved){applyUIPreset(saved);if(sel) sel.value = saved;}
   const savedFontColor =localStorage.getItem("fontColor") || "normal";
 document.documentElement
-.setAttribute("data-font",savedFontColor);initPageSwitch();})
+.setAttribute("data-font",savedFontColor);initPageSwitch();loadAiMessages();})
 // ====== 状态 ======
 const state = {theme: localStorage.getItem('theme') || 'dark',
   uiPreset: localStorage.getItem('uiPreset') || 'ins-soft',
