@@ -16,12 +16,10 @@ async function testDailyChatCount(){
   );
 
   if(error){
-    console.log("读取失败:",error);
-    return;
-  }
-
-  console.log("今日聊天数量:",data.length);
-
+   alert(
+"今日聊天数量："+data.length+
+"\n今日主动额度："+limit
+);
   let limit;
 
   if(data.length < 20){
