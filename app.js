@@ -3,7 +3,7 @@ const supabaseClient = supabase.createClient(
   "sb_publishable_w13U8_JcT0amx_LVBm9dnA_CoA5xiow"
 );
 async function testDailyChatCount(){
-
+alert("进入测试函数");
   const todayStart = new Date();
   todayStart.setHours(0,0,0,0);
 
