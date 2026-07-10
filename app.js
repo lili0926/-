@@ -510,10 +510,7 @@ async function checkOfflineThought(){
  localStorage.setItem(
  "lastThoughtTime",
  Date.now() );
-           localStorage.setItem(
-"lastThoughtTime",
-Date.now()
-);}}
+}}
  console.log("进入generateThoughts");
 async function generateThoughts(){
 console.log("进入generateThoughts");
@@ -718,7 +715,7 @@ function renderThoughts(){
        groups[date].push({ 
        time:item.time,       
        content:item.content       
-       });    });  });
+       });    });  
   let html="";
   
   Object.keys(groups).forEach(date=>{
