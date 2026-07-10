@@ -500,9 +500,6 @@ async function checkOfflineThought(){
  if(!last)return;
  const lastTime =last.time;
  if(!lastTime)return;
- const old = localStorage.getItem(
- "lastThoughtTime" );
- if(old===lastTime){ return;}
  const lastDate =new Date(lastTime);
  const now =new Date();
  const gap =(now-lastDate)
@@ -512,16 +509,11 @@ async function checkOfflineThought(){
  if(gap>30){ generateThoughts();
  localStorage.setItem(
  "lastThoughtTime",
- Date.now() );}}
- const lastThoughtTime =
- localStorage.getItem("lastThoughtTime");
- 
- if(
-  !lastThoughtTime ||
-  Date.now()-Number(lastThoughtTime)>30*60*1000
- ){
-     generateThoughts();
- }
+ Date.now() );
+           localStorage.setItem(
+"lastThoughtTime",
+Date.now()
+);}}
  console.log("进入generateThoughts");
 async function generateThoughts(){
 console.log("进入generateThoughts");
@@ -719,8 +711,7 @@ function renderThoughts(){
         return;}
     // 按日期分组
     let groups={};
-    list.forEach(item=>{
-       list.forEach(item=>{             
+    list.forEach(item=>{       
        let date=item.date;      
        if(!groups[date]){
        groups[date]=[]; }
