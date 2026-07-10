@@ -1,3 +1,7 @@
+const supabaseClient = supabase.createClient(
+  "https://lqcuklhldvkwbkpftjzu.supabase.co",
+  "sb_publishable_w13U8_JcT0amx_LVBm9dnA_CoA5xiow"
+);
 // 页面切换逻辑
 function initPageSwitch() {
   const navItems = document.querySelectorAll('.nav-item');
@@ -189,6 +193,12 @@ if(savedChat){ state.chatHistory = JSON.parse(savedChat);
         addChatMessage(msg.role,msg.content, msg.thinking|| "");});
         setTimeout(()=>{      const box = document.getElementById("chatMessages");
             if(box){ box.scrollTop = box.scrollHeight; } },100);}}
+supabaseClient
+.from("chat_messages")
+.select("*")
+.then(res=>{
+  console.log("Supabase测试:",res);
+});
 // ====== 主题 ======
 function applyTheme(theme) { document.documentElement.setAttribute('data-theme', theme);
   state.theme = theme;
