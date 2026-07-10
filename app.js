@@ -41,10 +41,10 @@ await supabaseClient
 .insert({
   type:"thought",
   content:"测试：我今天有点想找你。",
-});
+});}
 console.log(data,error);
 
-if(error) alert(error.message);}
+if(error) alert(error.message);
 
 async function loadAiMessages(){
 
