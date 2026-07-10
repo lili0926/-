@@ -85,7 +85,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 /* ====== 聊天 ====== */
 .page.active { display: flex;}
 .chat-wrap { display: flex; flex-direction: column; flex: 1; overflow: hidden;}
-.chat-messages { flex: 1; overflow-y: auto;  padding: 20px 24px; display: flex; flex-direction: column; gap: 14px;}
+.chat-messages { flex: 1; overflow-y: auto;  padding: 20px 24px; display: flex; flex-direction: column; gap: 14px;scroll-behavior: smooth;}
 /* ===== 聊天气泡 ===== */
 .chat-message{ display:flex;  width:100%;}
 .chat-message.user{ justify-content:flex-end;}
@@ -378,6 +378,8 @@ body { padding-bottom: env(safe-area-inset-bottom);}
 /* 字体 */
 body.font-cormorant {font-family: 'Cormorant Garamond', serif;}
 body.font-dancing {font-family: 'Dancing Script', cursive;}
+body.font-great{font-family:'Great Vibes',cursive;}
+body.font-eb{font-family:'EB Garamond',serif;}
 [data-font="light"]{ --font-brightness:.65;}
 [data-font="normal"]{--font-brightness:1;}
 [data-font="deep"]{--font-brightness:1.35;}
@@ -410,12 +412,13 @@ html[data-font="deep"] {--text:#111;--text-dim:#222;}
     top:70px;
     width:420px 90vw;
     box-sizing:border-box;
-    max-height:75vh;
+    height:80vh;
+    max-height:80vh;
     background:rgba(255,255,255,.85);
     color:#333;
     border-radius:28px;
     box-shadow:0 15px 40pxrgba(0,0,0,.12);
-    overflow:hidden;
+    overflow-y:auto;
     z-index:9999;
 }
 .thought-header{
@@ -454,7 +457,7 @@ padding:20px;}
 }
 .thoughtContent{
     padding:24px 26px;
-    max-height:calc(100% - 60px);
+    max-height:calc(80vh - 64px);
     overflow-y:auto;
 overflow-x:hidden;}
 .thoughtContent .thought-item{
@@ -484,10 +487,49 @@ overflow-x:hidden;}
     font-size:15px;
     line-height:1.8;
     color:#555;
-    white-space:.3px;}
+    white-space:pre-wrap;
+    word-break:break-word;}
 
     @media(max-width:600px){
     .thought-panel{
      width:min(420px90vw);
     }
+    }
+    /* 思绪日期折叠 */
+    .thought-day{
+        margin-bottom:18px;
+    }
+    
+    
+    .thought-day summary{
+        cursor:pointer;
+        font-size:18px;
+        font-weight:600;
+        padding:12px 10px;
+        list-style:none;
+    }
+    
+    
+    /* 去掉默认小三角 */
+    .thought-day summary::-webkit-details-marker{
+        display:none;
+    }
+    
+    
+    /* 关闭状态 */
+    .thought-day summary::before{
+        content:"▶";
+        margin-right:10px;
+        font-size:14px;
+    }
+    
+    
+    /* 打开状态 */
+    .thought-day[open] summary::before{
+        content:"▼";
+    }
+    
+    
+    .thought-day-content{
+        padding-left:15px;
     }

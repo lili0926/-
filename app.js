@@ -202,9 +202,11 @@ function applyTheme(theme) { document.documentElement.setAttribute('data-theme',
     if(icon) icon.textContent='☼';
     if(lbl) lbl.textContent='浅色模式';
     if(sw) sw.classList.add('active'); }}
-function applyFont(font) {document.body.classList.remove('font-cormorant', 'font-dancing');
+function applyFont(font) {document.body.classList.remove('font-cormorant', 'font-dancing','font-great','font-eb');
   if (font === 'cormorant') document.body.classList.add('font-cormorant');
-  if (font === 'dancing') document.body.classList.add('font-dancing');}
+  if (font === 'dancing') document.body.classList.add('font-dancing');
+if(font === 'great')document.body.classList.add('font-great');
+if(font === 'eb')document.body.classList.add('font-eb');}
 // ====== 壁纸 ======
 const GRADIENTS = {none:'',
   gradient1:'linear-gradient(135deg,#fbc2eb,#a6c1ee)',
@@ -335,7 +337,7 @@ const vchar = {dragging: false,
   init() {const el = document.getElementById('vchar');
     if (!el) return;this.makeDraggable(el);document.getElementById('vcharBody').addEventListener('click', (e) => {
       if (!this.dragging) this.onBodyClick();}); this.resetIdleTimer();
-    ['click','keydown','mousemove','touchstart'].forEach(ev => {document.addEventListener(ev, () => this.resetIdleTimer(), {passive:true});});
+    ['click','keydown','mousemove','touchstart'].forEach(ev => {document.addEventListener(ev, () => this.resetIdleTimer(), {passive:true});setTimeout(scrollChatBottom,500);});
     this.checkNightMode(); setInterval(() => this.checkNightMode(), 60000);},
   makeDraggable(el) { let sx, sy, sl, st;
     const onStart = (cx, cy) => {this.dragging = false;
@@ -385,6 +387,12 @@ const vchar = {dragging: false,
       },4000);} },
   checkNightMode() {const h = new Date().getHours();this.nightMode = (h>=22 || h<6);}};
 // ====== 聊天 ======
+function scrollChatBottom(){
+    const box = document.getElementById("chatMessages");
+    if(box){
+        box.scrollTop = box.scrollHeight;
+    }
+}
 function getTimeContext(){
 const now=new Date();
 return `
@@ -440,7 +448,8 @@ async function sendMessage() {const apiKey = aiApiConfig.key;
   if(welcome) welcome.style.display='none';
   const thinking = document.getElementById('thinkingToggle')?.checked || false;
   addChatMessage('user', content, thinking);
-  state.chatHistory.push({role:'user',content, thinking});favorability.add(1);
+  scrollChatBottom();
+  state.chatHistory.push({role:'user',content, thinking,time:new Date().toISOString()});favorability.add(1);
   const loadingEl = addLoadingMessage();
   try {const msgs = state.chatHistory.slice(-20).map(m=>({role:m.role,content:m.content}));
     const useThinking = document.getElementById('thinkingToggle').checked;
@@ -481,498 +490,284 @@ const req = buildAIRequest(aiApiConfig, msgs);
     msg.thinking ||
     msg.analysis || ""; }
 if(!text){ text="AI没有返回内容";} addChatMessage('assistant',text, thinking);
-    state.chatHistory.push({role:'assistant', content:text, thinking:thinking});
+scrollChatBottom();
+    state.chatHistory.push({role:'assistant', content:text, thinking:thinking,time:new Date().toISOString()});
     localStorage.setItem( "chatHistory", JSON.stringify(state.chatHistory));
   } catch(e) { loadingEl.remove();alert(e.message); console.error("发送错误:",e);showToast('发送失败'); }
   btn.disabled=false; input.focus();}
 async function checkOfflineThought(){
- 
- const last =
- state.chatHistory.at(-1);
- 
- 
+ const last = state.chatHistory.at(-1);
  if(!last)return;
- 
- 
- const lastTime =
- last.time;
- 
- 
+ const lastTime =last.time;
  if(!lastTime)return;
- 
- 
- const old =
- localStorage.getItem(
- "lastThoughtTime"
- );
- 
- 
- if(old===lastTime){
- return;
- }
- 
- 
- const lastDate =
- new Date(lastTime);
- 
- 
- const now =
- new Date();
- 
- 
- const gap =
- (now-lastDate)
+ const old = localStorage.getItem(
+ "lastThoughtTime" );
+ if(old===lastTime){ return;}
+ const lastDate =new Date(lastTime);
+ const now =new Date();
+ const gap =(now-lastDate)
  /1000
  /60;
- 
- 
- // 超过30分钟
- 
- if(gap>150){
- 
-  generateThoughts();
- 
- 
+ // 超过150分钟
+ if(gap>30){ generateThoughts();
  localStorage.setItem(
  "lastThoughtTime",
- lastTime
- );
- 
- }
- 
- }
- 
-  async function generateThoughts(){
- 
- const apiKey = aiApiConfig.key;
- if(!apiKey)return;
- 
- 
- // 最近聊天记录
- const chatHistoryForThought =
- state.chatHistory
- .slice(-20)
- .map(m=>({
-     role:m.role,
-     content:m.content
- }));
- 
- 
- // 最后一条聊天
- const lastMessage =
- state.chatHistory.at(-1);
- 
- 
- if(!lastMessage)return;
- 
- 
- const lastTime =
- lastMessage.time ||
- localStorage.getItem("lastChatTime");
- 
- 
- if(!lastTime)return;
- 
- 
- // 当前时间
- 
- const now = new Date();
- 
- 
- const today =
- `${now.getFullYear()}.${now.getMonth()+1}.${now.getDate()}`;
- 
- 
- const currentTime =
- now.toLocaleTimeString(
- "zh-CN",
- {
- hour:"2-digit",
- minute:"2-digit"
- });
- 
- 
- 
- // 防止重复生成
- 
- const thoughtKey =
- `${today}-${lastTime}-${currentTime}`;
- 
+ Date.now() );}}
+ const lastThoughtTime =
+ localStorage.getItem("lastThoughtTime");
  
  if(
- localStorage.getItem("thoughtKey")
- ===thoughtKey
+  !lastThoughtTime ||
+  Date.now()-Number(lastThoughtTime)>30*60*1000
  ){
- return;
+     generateThoughts();
  }
- 
- 
- 
+ console.log("进入generateThoughts");
+async function generateThoughts(){
+console.log("进入generateThoughts");
+const apiKey = aiApiConfig.key;
+console.log("思绪key:", apiKey);
+if(!apiKey){
+    console.log("没有API KEY");
+    return;
+}
+ // 最近聊天记录
+ const chatHistoryForThought =state.chatHistory
+ .slice(-20)
+ .map(m=>({ role:m.role, content:m.content}));
+ console.log("聊天记录准备完成");
+ // 最后一条聊天
+ const lastMessage = state.chatHistory.at(-1);
+ console.log("最后消息:", lastMessage);
+ if(!lastMessage)return;
+ const lastTime =lastMessage.time ||
+ localStorage.getItem("lastChatTime");
+ if(!lastTime)return;
+ // 当前时间
+ const now = new Date();
+ const today = `${now.getFullYear()}.${now.getMonth()+1}.${now.getDate()}`;
+ const currentTime =now.toLocaleTimeString(
+ "zh-CN", {
+ hour:"2-digit",
+ minute:"2-digit" });
+ // 防止重复生成
+ const thoughtKey = `${today}-${lastTime}-${currentTime}`;
+ if(localStorage.getItem("thoughtKey")
+ ===thoughtKey){return }
  const prompt = `
- 
  你是一个AI角色。
- 
  用户在 ${lastTime} 离开聊天。
- 
  现在用户在 ${today} ${currentTime} 回来。
- 
  期间用户没有发送任何消息。
- 
- 
  请根据用户离开前的聊天内容，
  生成这段时间里AI自己的私人思绪。
- 
- 
  要求：
- 
  1. 不允许描述用户做了什么。
- 
  2. 不知道用户去了哪里。
- 
  3. 只能描述AI自己的等待、回忆、猜测。
- 
  4. 保持AI角色性格。
- 
  5. 按时间推进生成。
- 
  6. 时间必须在：
  ${lastTime}
  到
  ${currentTime}
  之间。
- 
- 
- 返回JSON：
- 
- [
- {
+ 返回JSON:[{
  "date":"${today}",
  "time":"17:30",
- "content":"..."
- }
- ]
- 
- 
+ "content":"..."}]
  聊天记录：
- 
- ${JSON.stringify(chatHistoryForThought)}
- 
- `;
- 
- 
- 
+ ${JSON.stringify(chatHistoryForThought)} `;
+ console.log("body开始生成");
  const body={
- 
  model:aiApiConfig.model,
- 
- messages:[
- 
- {
+ messages:[{
  role:"system",
  content:
  `
  你负责生成AI角色私人思绪。
- 
  只输出JSON数组。
  不要输出Markdown。
  不要解释。
  `
- },
- 
- {
+ },{
  role:"user",
- content:prompt
- }
- 
- ],
- 
- temperature:0.7
- 
- };
- 
- 
- 
+ content:prompt }],
+ temperature:0.7};
  const headers={
- 
  "Content-Type":
  "application/json",
- 
  "Authorization":
- "Bearer "+apiKey
- 
- };
-
- 
- 
- 
+ "Bearer "+apiKey };
  const fullUrl =
  aiApiConfig.baseUrl
  .replace(/\/+$/,'')
  +
  aiApiConfig.path;
- 
- 
- 
- try{
- 
- 
- const res =
+ console.log("思绪请求开始");
+ console.log("baseUrl:", aiApiConfig.baseUrl);
+ console.log("model:", aiApiConfig.model);
+ console.log("body:", body);
+ try{ const res =
  await fetch(
- fullUrl,
- {
+ fullUrl,{
  method:"POST",
  headers,
  body:
- JSON.stringify(body)
- }
- );
- 
- 
- 
+ JSON.stringify(body) } );
  const data =
  await res.json();
+ console.log("完整返回:", data);
+ console.log("思绪最终数据:", data);
  
+ localStorage.setItem(
+   "aithoughts",
+   JSON.stringify(data)
+ );
+ const thinkingContent = data.content?.find(
+   item => item.type === "thinking"
+ );
  
- 
+ console.log("真正思绪:", thinkingContent);
+ console.log("思绪返回:", data);
  let thoughtText="";
- 
- 
- 
  // Claude格式
- 
- if(
- data.content &&
- Array.isArray(data.content)
- ){
- 
- for(
- const b of data.content
- ){
- 
+ if(data.content &&
+ Array.isArray(data.content)){
+ for(const b of data.content ){ 
  if(b.type==="text"){
- thoughtText+=b.text;
- }
- 
- }
- 
- }
- 
- 
- 
+ thoughtText+=b.text; }}}
  // OpenAI格式
- 
  else if(data.choices){
- 
  thoughtText =
  data.choices[0]
  .message
- .content;
- 
- }
- 
- 
- 
+ .content;}
  console.log(
  "AI原始思绪",
- thoughtText
- );
- 
- 
- 
+ thoughtText);
  let thoughts=[];
- 
- 
- try{
- 
- 
- let clean =
+ try{let clean =
  thoughtText
  .replace(/```json/g,"")
  .replace(/```/g,"")
  .trim();
- 
- 
- 
  thoughts =
  JSON.parse(clean);
- 
- 
- 
  }catch(e){
- 
  console.error(
  "JSON解析失败",
- thoughtText
- );
- 
- return;
- 
- }
- 
- 
- 
+ thoughtText);
+ return; }
  // 保存
- 
- 
  let oldThoughts =
  JSON.parse(
- localStorage.getItem("aiThoughts")
- ||
- "[]"
- );
- 
- 
- 
+ localStorage.getItem("aiThoughts") || "[]");
  thoughts.forEach(t=>{
- 
- 
  oldThoughts.push({
- 
  type:"offline",
- 
  date:t.date,
- 
  from:lastTime,
- 
  to:currentTime,
- 
  time:t.time,
- 
  content:t.content,
- 
- createdAt:Date.now()
- 
- });
- 
- 
- });
- 
- 
- 
+ createdAt:Date.now() }); });
  localStorage.setItem(
  "aiThoughts",
- JSON.stringify(oldThoughts)
- );
- 
- 
- 
+ JSON.stringify(oldThoughts));
  localStorage.setItem(
  "thoughtKey",
- thoughtKey
- );
- 
- 
- 
+ thoughtKey ); 
  console.log(
  "保存成功",
- oldThoughts
- );
- 
- 
- 
+ oldThoughts);
  }catch(e){
- 
  console.error(
  "生成思绪失败",
- e
- );
- 
- }
- 
- 
-}
+ e); }}
 window.addEventListener(
 "DOMContentLoaded",
 ()=>{checkOfflineThought();
 const thoughtBtn =
 document.getElementById(
-"thoughtBtn"
-);
+"thoughtBtn");
 const box =
 document.getElementById(
-"thoughtPanel"
-);
+"thoughtPanel");
 if(!thoughtBtn || !box){
 console.log(
-"思绪按钮或弹窗不存在"
-);
-return;
-}
+"思绪按钮或弹窗不存在");
+return;}
 let thoughtPanel = document.querySelector("#thoughtPanel");
 document.getElementById("thoughtBtn").onclick = ()=>{
     console.log("思绪按钮点击成功");
    document.querySelector("#thoughtPanel").style.display="block";
-    renderThoughts();
-};
+    renderThoughts();};
 const close =
 document.getElementById(
-"closeThought"
-);
+"closeThought");
 if(close){
 close.onclick=()=>{
-box.style.display="none";
-}
-}
-});
+box.style.display="none";}}});
 function renderThoughts(){
     const box = document.getElementById("thoughtContent");
     if(!box) return;
     let list = JSON.parse(
-        localStorage.getItem("aiThoughts") || "[]"
-    );
+        localStorage.getItem("aiThoughts") || "[]");
     if(list.length===0){
         box.innerHTML="暂无思绪";
-        return;
-    }
+        return;}
     // 按日期分组
     let groups={};
     list.forEach(item=>{
-       list.forEach(item=>{
-       
-       
-       let date=item.date;
-       
-       
+       list.forEach(item=>{             
+       let date=item.date;      
        if(!groups[date]){
-       groups[date]=[];
-       }
-       
-       
-       groups[date].push({
-       
-       time:item.time,
-       
-       content:item.content
-       
-       });
-       
-       
-       });
-   
-    });
-    let html="";
-    Object.keys(groups).forEach(date=>{
-        html+=`
-        <div class="thought-date">
-            ${date}
-        </div>
-        `;
-        groups[date].forEach(x=>{
-            html+=`
-            <div class="thought-item">
-
-                <div class="thought-time">
-                    ${x.time}——
-                </div>
-<div class="thought-text">
-    ${x.content.replace(/\n/g,'<br>')}
-</div>
-            </div>
-            `;
-        });
-    });
-    box.innerHTML=html;
-}
+       groups[date]=[]; }
+       groups[date].push({ 
+       time:item.time,       
+       content:item.content       
+       });    });  });
+  let html="";
+  
+  Object.keys(groups).forEach(date=>{
+  
+  html += `
+  <details class="thought-day">
+  <summary>${date}</summary>
+  
+  <div class="thought-day-content">
+  `;
+  
+  
+  groups[date].forEach(x=>{
+  
+  html += `
+  <div class="thought-item">
+  
+  <div class="thought-time">
+  ${x.time}
+  </div>
+  
+  <div class="thought-text">
+  ${x.content.replace(/\n/g,"<br>")}
+  </div>
+  
+  </div>
+  `;
+  
+  });
+  
+  
+  html += `
+  </div>
+  </details>
+  `;
+  
+  });
+  
+  
+  box.innerHTML=html;}
 // ========== 站子API扩展代码 ==========
 // 站子API本地缓存
 let stationApiConfig = JSON.parse(localStorage.getItem("stationApiCfg")) ||
@@ -1320,28 +1115,11 @@ function addLoadingMessage(){ const box=document.getElementById("chatMessages");
     div.appendChild(bubble); box.appendChild(div);
     box.scrollTop=box.scrollHeight;  return div;}
     function buildAIRequest(message){
-    
-    return {
-     model: aiApiConfig.model,
-    
-     system:
-     `
-    你是一个长期陪伴用户的AI。
-    
+    return { model: aiApiConfig.model,
+     system: ` 你是一个长期陪伴用户的AI。
     ${getTimeContext()}
-    
-    用户询问时间时，必须结合当前时间回答。
-    `,
-    
-     messages:[
-      {
-       role:"user",
-       content:message
-      }
-     ],
-    
-     temperature:0.7
-    }
-    
-    }
+    用户询问时间时，必须结合当前时间回答。 `,
+     messages:[ { role:"user",
+       content:message  } ],
+     temperature:0.7  } }
 function removeLoadingMessage(){const loading = document.getElementById("loadingMessage");if(loading){loading.remove();}}
