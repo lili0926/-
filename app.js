@@ -453,8 +453,7 @@ async function sendMessage() {const apiKey = aiApiConfig.key;
   role: "user",
   content: content
 }); */                           const btn = document.getElementById('sendBtn');
-  btn.disabled=true; 
-  await supabaseClientinput.value=''; autoResize(input);
+  btn.disabled=true; .value=＇＇; autoResize(input);
   const welcome = document.getElementById('chatWelcome');
   if(welcome) welcome.style.display='none';
   const thinking = document.getElementById('thinkingToggle')?.checked || false;
