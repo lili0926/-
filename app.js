@@ -3,20 +3,23 @@ const supabaseClient = supabase.createClient(
   "sb_publishable_w13U8_JcT0amx_LVBm9dnA_CoA5xiow"
 );
 async function testDailyChatCount(){
-alert("进入测试函数");
+
+  alert("进入测试函数");
+
   const todayStart = new Date();
   todayStart.setHours(0,0,0,0);
 
   const {data,error}=await supabaseClient
-  .from("chat_messages")
-  .select("*")
-  .gte(
-    "created_at",
-    todayStart.toISOString()
-  );
+    .from("chat_messages")
+    .select("*")
+    .gte(
+      "created_at",
+      todayStart.toISOString()
+    );
 
   if(error){
     console.log(error);
+    alert(error.message);
     return;
   }
 
@@ -36,15 +39,17 @@ alert("进入测试函数");
     "今日聊天数量："+data.length+
     "\n今日主动额度："+limit
   );
-await supabaseClient
-.from("ai_messages")
-.insert({
-  type:"thought",
-  content:"测试：我今天有点想找你。",
-});}
-console.log(data,error);
 
-if(error) alert(error.message);
+
+  await supabaseClient
+    .from("ai_messages")
+    .insert({
+      type:"thought",
+      content:"测试：我今天有点想找你。"
+    });
+
+  console.log(data,error);
+}
 
 async function loadAiMessages(){
 
