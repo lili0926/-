@@ -2,7 +2,41 @@ const supabaseClient = supabase.createClient(
   "https://lqcuklhldvkwbkpftjzu.supabase.co",
   "sb_publishable_w13U8_JcT0amx_LVBm9dnA_CoA5xiow"
 );
+async function testDailyChatCount(){
 
+  const todayStart = new Date();
+  todayStart.setHours(0,0,0,0);
+
+  const {data,error}=await supabaseClient
+  .from("chat_messages")
+  .select("*")
+  .gte(
+    "created_at",
+    todayStart.toISOString()
+  );
+
+  if(error){
+    console.log(error);
+    return;
+  }
+
+  let limit;
+
+  if(data.length < 20){
+    limit=Math.floor(Math.random()*4)+7;
+  }
+  else if(data.length < 100){
+    limit=Math.floor(Math.random()*4)+3;
+  }
+  else{
+    limit=Math.floor(Math.random()*3)+1;
+  }
+
+  alert(
+    "今日聊天数量："+data.length+
+    "\n今日主动额度："+limit
+  );
+}
 async function loadAiMessages(){
 
   const { data, error } = await supabaseClient
