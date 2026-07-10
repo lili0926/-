@@ -447,12 +447,12 @@ async function sendMessage() {const apiKey = aiApiConfig.key;
   const input = document.getElementById('chatInput');
   const content = input.value.trim();
   if(!content) return;
-  await supabaseClient
+  /*await supabaseClient
 .from("chat_messages")
 .insert({
   role: "user",
   content: content
-});                            const btn = document.getElementById('sendBtn');
+}); */                           const btn = document.getElementById('sendBtn');
   btn.disabled=true; 
   await supabaseClientinput.value=''; autoResize(input);
   const welcome = document.getElementById('chatWelcome');
