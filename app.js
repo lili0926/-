@@ -503,7 +503,7 @@ if(!text){ text="AI没有返回内容";} addChatMessage('assistant',text, thinki
 .from("chat_messages")
 .insert({
   role: "assistant",
-  content: reply
+  content: text
 });
 scrollChatBottom();
     state.chatHistory.push({role:'assistant', content:text, thinking:thinking,time:new Date().toISOString()});
