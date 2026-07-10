@@ -507,7 +507,7 @@ async function checkOfflineThought(){
   const gap = (now - lastDate) / 1000 / 60;
   
   // 超过30分钟则触发
-  if(gap > 5){ 
+  if(gap > 1){ 
     await generateThoughts();
     localStorage.setItem("lastThoughtTime", Date.now());
   }
