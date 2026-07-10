@@ -446,8 +446,15 @@ async function sendMessage() {const apiKey = aiApiConfig.key;
   if(!apiKey){showToast('请先在设置中填写 API Key');return;}
   const input = document.getElementById('chatInput');
   const content = input.value.trim();
-  if(!content) return;const btn = document.getElementById('sendBtn');
-  btn.disabled=true; input.value=''; autoResize(input);
+  if(!content) return;
+  await supabaseClient
+.from("chat_messages")
+.insert({
+  role: "user",
+  content: content
+});                            const btn = document.getElementById('sendBtn');
+  btn.disabled=true; 
+  await supabaseClientinput.value=''; autoResize(input);
   const welcome = document.getElementById('chatWelcome');
   if(welcome) welcome.style.display='none';
   const thinking = document.getElementById('thinkingToggle')?.checked || false;
@@ -499,12 +506,7 @@ scrollChatBottom();
     localStorage.setItem( "chatHistory", JSON.stringify(state.chatHistory));
   } catch(e) { loadingEl.remove();alert(e.message); console.error("发送错误:",e);showToast('发送失败'); }
   btn.disabled=false; input.focus();
-                             await supabaseClient
-.from("chat_messages")
-.insert({
- role:"user",
- content:"测试消息"
-});}
+                             }
 // 1. 检查离线时间并触发思绪生成
 async function checkOfflineThought(){
   const last = state.chatHistory.at(-1);
