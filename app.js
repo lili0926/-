@@ -1250,27 +1250,31 @@ async function registerServiceWorker(){
 }
 
 // 初始化通知（页面加载时调用）
-async function initNotifications(){
-  await registerServiceWorker();
-  const granted = await requestNotificationPermission();
-  if(granted){
-    console.log("通知权限已获取");
+async function initNotifications() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+  
+  const reg = await navigator.serviceWorker.register("/sw.js");
+  await navigator.serviceWorker.ready;
+  
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted") return;
+
+  // 检查是否已经订阅
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) {
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: "BO9X3bAfXa9EtgTci2mM0GyFpm9AcW8S0w79IZVA3sOByXCMYfxfGSe4pNhroZvRTO3uQYMzhLvWVF5u3aG-Is0"
+    });
   }
-}
 
-// 触发主动消息时同时推送通知
-async function triggerDailyPushMessageWithNotification(){
-  const text = await generateAIMessage();
-  if(!text) return;
-  addChatMessage("assistant", text, "");
-  // 推送到通知栏
-  sendLocalNotification("Aries", text, "/icon.png");
-  const {error: insertError} = await supabaseClient
-    .from("chat_messages")
-    .insert({ role:"assistant", type:"daily_ai", content:text });
-  if(insertError) console.error("保存失败：", insertError.message);
-}
+  // 存进Supabase
+  const subJson = sub.toJSON();
+  await supabaseClient.from("push_subscriptions").upsert({
+    endpoint: subJson.endpoint,
+    p256dh: subJson.keys.p256dh,
+    auth: subJson.keys.auth
+  }, { onConflict: "endpoint" });
 
-window.addEventListener("DOMContentLoaded", () => {
-  initNotifications();
-});
+  console.log("推送订阅成功");
+}
