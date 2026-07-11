@@ -424,16 +424,17 @@ html[data-font="deep"] {--text:#111;--text-dim:#222;}
     padding:20px;
     height:calc(80vh - 64px);
     overflow-y:auto;
-}
-.thought-header{
+}.thought-header{
     height:64px;
+    flex-shrink:0;
     padding:0 22px;
     display:flex;
     align-items:center;
     justify-content:space-between;
     font-size:18px;
     font-weight:600;
-    border-bottom:1px solid #eee;}
+    border-bottom:1px solid #eee;
+}
 .thought-date{
     font-size:14px;
     color:#999;
@@ -492,11 +493,19 @@ overflow-x:hidden;}
     white-space:pre-wrap;
     word-break:break-word;}
 
-    @media(max-width:600px){
+  @media(max-width:768px){
     .thought-panel{
-     width:min(420px90vw);
+        right:10px;
+        left:10px;
+        width:auto;
+        height:75vh;
     }
+
+    .thought-list{
+        height:calc(75vh - 64px);
+        padding:16px;
     }
+  }
     /* 思绪日期折叠 */
     .thought-day{
         margin-bottom:18px;
