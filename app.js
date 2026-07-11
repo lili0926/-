@@ -604,15 +604,14 @@ scrollChatBottom();
     state.chatHistory.push({role:'assistant', content:text, thinking:thinking,time:new Date().toISOString()});
     localStorage.setItem( "chatHistory", JSON.stringify(state.chatHistory));
   } catch(e) { loadingEl.remove();alert(e.message); console.error("发送错误:",e);showToast('发送失败'); }
-  btn.disabled=false; input.focus();
-                             };
+  btn.disabled=false; input.focus();};
 // 1. 检查离线时间（修复版）
 async function checkOfflineThought(){
   console.log("【思绪检查】开始...");
   if (!state.chatHistory || state.chatHistory.length === 0) {
     console.log("【思绪检查】没有聊天记录，跳过");
     return;
-  };
+  }
   
   const last = state.chatHistory.at(-1);
   const lastTime = last.time;
@@ -622,23 +621,21 @@ async function checkOfflineThought(){
   const now = new Date();
   const gap = (now - lastDate) / 1000 / 60; // 计算分钟差
   
-  console.log(`【思绪检查】距离上次聊天过去了 ${gap.toFixed(2)} 分钟`);
+  console.log("【思绪检查】距离上次聊天过去了 " + gap.toFixed(2) + " 分钟");
   
-  // 💡 为了让你测试不用等太久，daddy 改成了超过 0.5 分钟（30秒）就触发！
   if(gap > 0.5){ 
     await generateThoughts(lastTime);
   } else {
     console.log("【思绪检查】离线时间太短，不触发生成");
-  };
+  }
 }
-// 2. 核心函数：生成思绪（已修复大小写、锁机制和JSON清洗问题）
+
 // 2. 生成思绪核心函数（修复版）
 async function generateThoughts(lastTime){
   const apiKey = aiApiConfig.key;
   if(!apiKey) return;
   
-  // 锁机制优化：严格使用标准的 lastTime 作为锁
-  const thoughtLockKey = `thought-lock-${lastTime}`;
+  const thoughtLockKey = "thought-lock-" + lastTime;
   if(localStorage.getItem("currentThoughtLock") === thoughtLockKey){
     console.log("【思绪生成】这段时间的思绪已经生成过了，拦截");
     return;
@@ -649,15 +646,15 @@ async function generateThoughts(lastTime){
     .map(m => ({ role: m.role, content: m.content }));
   
   const now = new Date();
-  const todayStr = `${now.getFullYear()}.${now.getMonth()+1}.${now.getDate()}`;
+  const todayStr = now.getFullYear() + "." + (now.getMonth() + 1) + "." + now.getDate();
   const currentTime = now.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
   
-  const prompt = `你是一个AI角色。用户在 ${lastTime} 离开。现在在 ${todayStr} ${currentTime} 回来。期间用户没发消息。请根据聊天内容生成你在这段时间里的私人思绪。要求：1.不描述用户。2.只能描述自己的等待、回忆、猜测。3.保持性格。4.返回纯JSON数组，格式如：[{"date":"${todayStr}","time":"${currentTime}","content":"..."}]。聊天记录：${JSON.stringify(chatHistoryForThought)}`;
+  const prompt = "你是一个AI角色。用户在 " + lastTime + " 离开，现在在 " + todayStr + " " + currentTime + " 回来。期间用户没发消息。请根据聊天内容生成你在这段时间里的私人思绪。要求：1.不描述用户。2.只能描述自己的等待、回忆、猜测。3.保持性格。4.返回纯JSON数组，格式如：[{\"date\":\"" + todayStr + "\",\"time\":\"" + currentTime + "\",\"content\":\"...\"}]。聊天记录：" + JSON.stringify(chatHistoryForThought);
 
   const body = {
     model: aiApiConfig.model,
     messages: [
-      { role: "system", content: "你只输出标准的JSON数组，绝对不要用 \`\`\`json 包裹，不要解释。" },
+      { role: "system", content: "你只输出标准的JSON数组，绝对不要用 markdown 或 json 标签包裹，不要解释。" },
       { role: "user", content: prompt }
     ],
     temperature: 0.7
@@ -694,24 +691,22 @@ async function generateThoughts(lastTime){
     });
     
     localStorage.setItem("aiThoughts", JSON.stringify(oldThoughts));
-    localStorage.setItem("currentThoughtLock", thoughtLockKey); // 上锁
+    localStorage.setItem("currentThoughtLock", thoughtLockKey); 
     console.log("【思绪生成】成功存入前端！当前总数：", oldThoughts.length);
     
-    // 生成成功后，立刻自动更新一遍界面显示
     if(typeof renderThoughts === "function") renderThoughts();
     
   } catch(e) {
     console.error("【思绪生成】失败了：", e); 
   }
 }
-// 3. 彻底重写页面加载初始化（替换掉那个会自杀式误删数据的清理工具）
+
+// 3. 页面加载初始化
 window.addEventListener("DOMContentLoaded", () => {
   console.log("【系统初始化】正在检查思绪...");
-  
-  // 延迟 2 秒检查，确保聊天历史已经完全加载好了
   setTimeout(() => {
     checkOfflineThought();
-    renderThoughts(); // 页面一打开，先渲染一次历史思绪
+    renderThoughts();
   }, 2000);
 });
 
