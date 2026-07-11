@@ -547,3 +547,16 @@ overflow-x:hidden;}
     .thought-day-content{
         padding-left:15px;
     }
+#thoughtPanel{
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+}
+
+#thoughtContent{
+    flex:1;
+    overflow-y:auto;
+    overflow-x:hidden;
+    padding:24px 26px;
+    min-height:0;
+}
