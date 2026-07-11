@@ -1249,12 +1249,19 @@ if(lastActive === today){
   const diff =
   Date.now()-last;
 
-  const hours =
-  diff/(1000*60*60);
-const needHours =
-Math.floor(Math.random()*4)+2;
+  let needHours =
+Number(localStorage.getItem("needHours"));
 
-  console.log("离开时间:",hours,"小时");
+if(!needHours){
+
+  needHours=Math.floor(Math.random()*4)+2;
+
+  localStorage.setItem(
+    "needHours",
+    needHours
+  );
+
+}
 
 
   if(hours>=needHours){
