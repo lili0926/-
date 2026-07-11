@@ -496,8 +496,11 @@ const vchar = {
     document.addEventListener('mouseup', onEnd);
     el.addEventListener('touchstart', e=>{ e.preventDefault(); const t=e.touches[0]; onStart(t.clientX,t.clientY);},{passive:false});
     document.addEventListener('touchmove', e=>{ 
-  e.preventDefault();  // 不用判断dragging，直接拦
-  const t=e.touches[0]; 
+  if(!this.dragging) return;
+
+  e.preventDefault();
+
+  const t=e.touches[0];
   onMove(t.clientX,t.clientY);
 },{passive:false});   document.addEventListener('touchend', onEnd);
   },
