@@ -2,10 +2,7 @@ const supabaseClient = supabase.createClient(
   "https://lqcuklhldvkwbkpftjzu.supabase.co",
   "sb_publishable_w13U8_JcT0amx_LVBm9dnA_CoA5xiow"
 );
-async function testDailyChatCount(){
-
-  alert("进入测试函数");
-
+async function triggerDailyPushMessage(){
   const todayStart = new Date();
   todayStart.setHours(0,0,0,0);
 
@@ -21,19 +18,19 @@ async function testDailyChatCount(){
     console.log(error);
     alert(error.message);
     return;
-  }
+  };
 
   let limit;
 
   if(data.length < 20){
     limit=Math.floor(Math.random()*4)+7;
-  }
+  };
   else if(data.length < 100){
     limit=Math.floor(Math.random()*4)+3;
-  }
+  };
   else{
     limit=Math.floor(Math.random()*3)+1;
-  }
+  };
 const todayAI = await supabaseClient
 .from("chat_messages")
 .select("*")
@@ -43,13 +40,9 @@ const todayAI = await supabaseClient
 if(todayAI.data && todayAI.data.length >= limit){
   console.log("今日主动消息额度已用完");
   return;
-}
-  alert(
-    "今日聊天数量："+data.length+
-    "\n今日主动额度："+limit
-  );
+};
   const text = await generateAIMessage();
-  alert(text);
+  
   addChatMessage("assistant", text,"");
 const {error:insertError}=await supabaseClient
 .from("chat_messages")
@@ -60,25 +53,20 @@ const {error:insertError}=await supabaseClient
 
 if(insertError){
   alert("保存失败："+insertError.message);
-}
+};
   console.log(data,error);
-}
+};
 
 async function generateAIMessage(){
-
-  alert("进入AI生成");
 
   const msgs=[
     {
       role:"user",
       content:"请主动说一句自然的话，不超过30字。"
-    }
+    };
   ];
 
   const req = buildAIRequest(aiApiConfig,msgs);
-
-  alert("准备请求");
-
   const res=await fetch(aiApiConfig.baseUrl,{
     method:"POST",
     headers:{
@@ -88,19 +76,17 @@ async function generateAIMessage(){
     body:JSON.stringify(req)
   });
 
-  alert("请求返回");
-
   const data=await res.json();
 
   console.log("主动消息返回:",data);
 
   if(data.choices){
     return data.choices[0].message.content;
-  }
+  };
 
   if(data.content){
     return data.content[0].text;
-  }
+  };
 
   return "我刚刚突然想找你。";
 }
@@ -136,9 +122,7 @@ if(saved){applyUIPreset(saved);if(sel) sel.value = saved;}
   const savedFontColor =localStorage.getItem("fontColor") || "normal";
 document.documentElement
 .setAttribute("data-font",savedFontColor);initPageSwitch();loadAiMessages();
-setTimeout(()=>{
-  testDailyChatCount();
-},3000);
+
   checkAwayTime();})
 document.addEventListener("visibilitychange",()=>{
  if(document.hidden){
