@@ -77,29 +77,39 @@ async function generateAIMessage(){
 
   return text;
 }
-async function loadAiMessages(){
+async function generateAIMessage(){
 
-  const { data, error } = await supabaseClient
-    .from("ai_messages")
-    .select("*")
-    .order("created_at", { ascending:true });
+  const msgs=[
+    {
+      role:"user",
+      content:"请主动说一句自然的话，不超过30字。"
+    }
+  ];
 
-  if(error){
-    console.log("读取AI主动消息失败:", error);
-    return;
+  const req=buildAIRequest(msgs);
+
+  const res=await fetch(aiApiConfig.baseUrl,{
+    method:"POST",
+    headers:{
+      "Content-Type":"application/json",
+      "Authorization":"Bearer "+aiApiConfig.apiKey
+    },
+    body:JSON.stringify(req)
+  });
+
+  const data=await res.json();
+
+  console.log("主动消息返回:",data);
+
+  if(data.choices){
+    return data.choices[0].message.content;
   }
 
-  console.log("AI主动消息:", data);
-
-  if(data){
-    data.forEach(msg=>{
-      addChatMessage(
-        "assistant",
-        msg.content,
-        ""
-      );
-    });
+  if(data.content){
+    return data.content[0].text;
   }
+
+  return "我刚刚突然想找你。";
 }
 // 页面切换逻辑
 function initPageSwitch() {
