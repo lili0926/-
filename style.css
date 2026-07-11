@@ -418,6 +418,9 @@ html[data-font="deep"] {--text:#111;--text-dim:#222;}
     border-radius:28px;
     overflow:hidden;
     z-index:9999;
+    display:flex;
+    flex-direction:column;
+  
 }
 
 .thought-list{
