@@ -1204,16 +1204,16 @@ function addLoadingMessage(){ const box=document.getElementById("chatMessages");
     async function loadAiMessages(){
 
   const { data, error } = await supabaseClient
-    .from("ai_messages")
-    .select("*")
-    .order("created_at",{ascending:true});
-
+  .from("ai_messages")
+  .select("*")
+  .order("created_at", { ascending:false })
+  .limit(10);
   if(error){
     console.log("读取主动消息失败:",error);
     return;
   }
 
-  if(data){
+  if(data){data.reverse();
     data.forEach(msg=>{
       addChatMessage(
         "assistant",
