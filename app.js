@@ -496,7 +496,7 @@ const vchar = {
     document.addEventListener('mouseup', onEnd);
     el.addEventListener('touchstart', e=>{
  e.preventDefault();
-    const t=e.touches[0]; onStart(t.clientX,t.clientY);},{passive:false});
+    const t=e.touches[0]; onStart(t.clientX,t.clientY);},{passive:true});
     document.addEventListener('touchmove', e=>{ 
   if(!this.dragging) return;
 
@@ -504,7 +504,7 @@ const vchar = {
 
   const t=e.touches[0];
   onMove(t.clientX,t.clientY);
-},{passive:true});   document.addEventListener('touchend', onEnd);
+},{passive:false});   document.addEventListener('touchend', onEnd);
   },
   async onBodyClick() { 
     const expr = this.EXPRESSIONS[Math.floor(Math.random()*this.EXPRESSIONS.length)];
