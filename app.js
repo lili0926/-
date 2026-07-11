@@ -491,18 +491,11 @@ const vchar = {
       el.style.left=(this.sl+(cx-this.sx))+'px'; el.style.top=(this.st+(cy-this.sy))+'px'; el.style.right='auto'; el.style.bottom='auto';
     };
     const onEnd = () => { setTimeout(()=>{this.dragging=false;},50); el.style.transition=''; };
-    // touchstart 改成 passive:false，并加 preventDefault
-el.addEventListener('touchstart', e=>{ 
-  e.preventDefault();  // 加这行
-  const t=e.touches[0]; 
-  onStart(t.clientX,t.clientY);
-},{passive:false});  // passive改false
-
-  document.addEventListener('mousemove', e=>{ if(this.sl!==undefined) onMove(e.clientX,e.clientY);});
+    el.addEventListener('mousedown', e=>{ onStart(e.clientX,e.clientY); e.preventDefault();});
+    document.addEventListener('mousemove', e=>{ if(this.sl!==undefined) onMove(e.clientX,e.clientY);});
     document.addEventListener('mouseup', onEnd);
-    el.addEventListener('touchstart', e=>{ const t=e.touches[0]; onStart(t.clientX,t.clientY);},{passive:true});
-    // touchmove 去掉条件判断，直接preventDefault
-document.addEventListener('touchmove', e=>{ 
+    el.addEventListener('touchstart', e=>{ e.preventDefault(); const t=e.touches[0]; onStart(t.clientX,t.clientY);},{passive:false});
+    document.addEventListener('touchmove', e=>{ 
   e.preventDefault();  // 不用判断dragging，直接拦
   const t=e.touches[0]; 
   onMove(t.clientX,t.clientY);
