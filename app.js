@@ -124,14 +124,6 @@ if(saved){applyUIPreset(saved);if(sel) sel.value = saved;}
 document.documentElement
 .setAttribute("data-font",savedFontColor);initPageSwitch();loadAiMessages();
 
-
-alert("B");
-
-loadAiMessages();
-alert("A");
-initPageSwitch();
-alert("C");
-
 testDailyChatCount();})
 // ====== 状态 ======
 const state = {theme: localStorage.getItem('theme') || 'dark',
