@@ -1233,7 +1233,14 @@ function buildAIRequest(message){
      temperature:0.7  } }
 function removeLoadingMessage(){const loading = document.getElementById("loadingMessage");if(loading){loading.remove();}}
 function checkAwayTime(){
+const today = new Date().toDateString();
 
+const lastActive =
+localStorage.getItem("aiActiveDay",today);
+
+if(lastActive === today){
+  return;
+}
   const last =
   Number(localStorage.getItem("lastLeaveTime"));
 
@@ -1244,17 +1251,17 @@ function checkAwayTime(){
 
   const hours =
   diff/(1000*60*60);
-
+const needHours =
+Math.floor(Math.random()*4)+2;
 
   console.log("离开时间:",hours,"小时");
 
 
-  if(hours>=2){
+  if(hours>=needHours){
 
     console.log("可以触发主动消息");
 
     testDailyChatCount();
-
   }
 
 }
