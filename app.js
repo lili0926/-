@@ -111,7 +111,7 @@ function initPageSwitch() {
 }
 
 // 页面加载完成初始化切换
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', () => {initNotifications();
   const sel = document.getElementById("uiPresetSelect");
   const btn = document.getElementById("applyPresetBtn");
   if(sel && btn){
@@ -125,7 +125,6 @@ window.addEventListener('DOMContentLoaded', () => {
   initPageSwitch();
   loadAiMessages();
   checkAwayTime();
-  initNotifications()
 });
 
 document.addEventListener("visibilitychange", () => {
