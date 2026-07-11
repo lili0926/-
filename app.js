@@ -50,13 +50,17 @@ if(todayAI.data && todayAI.data.length >= limit){
   );
   const text = await generateAIMessage();
   alert(text);
-await supabaseClient
+  addChatMessage("assistant", text);
+const {error:insertError}=await supabaseClient
 .from("chat_messages")
 .insert({
  role:"assistant",
- content:text,
- type:"daily_ai"
+ content:text
 });
+
+if(insertError){
+  alert("保存失败："+insertError.message);
+}
   console.log(data,error);
 }
 
