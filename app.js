@@ -50,7 +50,7 @@ if(todayAI.data && todayAI.data.length >= limit){
   );
   const text = await generateAIMessage();
   alert(text);
-  addChatMessage("assistant", text);
+  addChatMessage("assistant", text,thinking);
 const {error:insertError}=await supabaseClient
 .from("chat_messages")
 .insert({
@@ -75,7 +75,7 @@ async function generateAIMessage(){
     }
   ];
 
-  const req=buildAIRequest(msgs);
+  const req = buildAIRequest(aiApiConfig,msgs);
 
   alert("准备请求");
 
@@ -562,13 +562,7 @@ async function sendMessage() {const apiKey = aiApiConfig.key;
   if(!apiKey){showToast('请先在设置中填写 API Key');return;}
   const input = document.getElementById('chatInput');
   const content = input.value.trim();
-  if(!content) return;
-  await supabaseClient
-.from("chat_messages")
-.insert({
-  role: "user",
-  content: content
-});                    const btn = document.getElementById('sendBtn');
+  if(!content) return;                 const btn = document.getElementById('sendBtn');
   btn.disabled=true; input.value=''; autoResize(input);
   const welcome = document.getElementById('chatWelcome');
   if(welcome) welcome.style.display='none';
@@ -618,8 +612,9 @@ const req = buildAIRequest(aiApiConfig, msgs);
 if(!text){ text="AI没有返回内容";} addChatMessage('assistant',text, thinking);await supabaseClient
 .from("chat_messages")
 .insert({
-  role: "assistant",
-  content: text
+ role:"assistant",
+ type:"daily_ai",
+ content:text
 });
 scrollChatBottom();
     state.chatHistory.push({role:'assistant', content:text, thinking:thinking,time:new Date().toISOString()});
