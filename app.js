@@ -497,7 +497,8 @@ const vchar = {
     el.addEventListener('touchstart', e=>{
  const t=e.touches[0];
  onStart(t.clientX,t.clientY);
-},{passive:true}); const t=e.touches[0]; onStart(t.clientX,t.clientY);},{passive:false});
+},{passive:true});
+    const t=e.touches[0]; onStart(t.clientX,t.clientY);},{passive:false});
     document.addEventListener('touchmove', e=>{ 
   if(!this.dragging) return;
 
