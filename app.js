@@ -1254,7 +1254,7 @@ Number(localStorage.getItem("needHours"));
 
 if(!needHours){
 
-  needHours=Math.floor(Math.random()*4)+2;
+  needHours=/*Math.floor(Math.random()*4)+2;*/0;
 
   localStorage.setItem(
     "needHours",
