@@ -125,6 +125,7 @@ window.addEventListener('DOMContentLoaded', () => {
   initPageSwitch();
   loadAiMessages();
   checkAwayTime();
+  initNotifications()
 });
 
 document.addEventListener("visibilitychange", () => {
