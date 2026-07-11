@@ -494,7 +494,10 @@ const vchar = {
     el.addEventListener('mousedown', e=>{ onStart(e.clientX,e.clientY); e.preventDefault();});
     document.addEventListener('mousemove', e=>{ if(this.sl!==undefined) onMove(e.clientX,e.clientY);});
     document.addEventListener('mouseup', onEnd);
-    el.addEventListener('touchstart', e=>{ e.preventDefault(); const t=e.touches[0]; onStart(t.clientX,t.clientY);},{passive:false});
+    el.addEventListener('touchstart', e=>{
+ const t=e.touches[0];
+ onStart(t.clientX,t.clientY);
+},{passive:true}); const t=e.touches[0]; onStart(t.clientX,t.clientY);},{passive:false});
     document.addEventListener('touchmove', e=>{ 
   if(!this.dragging) return;
 
