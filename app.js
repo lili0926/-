@@ -1201,7 +1201,29 @@ function addLoadingMessage(){ const box=document.getElementById("chatMessages");
     bubble.className="bubble"; bubble.innerText="正在思考...";
     div.appendChild(bubble); box.appendChild(div);
     box.scrollTop=box.scrollHeight;  return div;}
-    function buildAIRequest(message){
+    async function loadAiMessages(){
+
+  const { data, error } = await supabaseClient
+    .from("ai_messages")
+    .select("*")
+    .order("created_at",{ascending:true});
+
+  if(error){
+    console.log("读取主动消息失败:",error);
+    return;
+  }
+
+  if(data){
+    data.forEach(msg=>{
+      addChatMessage(
+        "assistant",
+        msg.content,
+        ""
+      );
+    });
+  }
+    }
+function buildAIRequest(message){
     return { model: aiApiConfig.model,
      system: ` 你是一个长期陪伴用户的AI。
     ${getTimeContext()}
