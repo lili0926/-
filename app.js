@@ -122,7 +122,17 @@ const saved = localStorage.getItem("uiPreset");
 if(saved){applyUIPreset(saved);if(sel) sel.value = saved;}
   const savedFontColor =localStorage.getItem("fontColor") || "normal";
 document.documentElement
-.setAttribute("data-font",savedFontColor);initPageSwitch();loadAiMessages();alert("app加载到这里");
+.setAttribute("data-font",savedFontColor);initPageSwitch();loadAiMessages();
+alert("A");
+
+initPageSwitch();
+
+alert("B");
+
+loadAiMessages();
+
+alert("C");
+
 testDailyChatCount();})
 // ====== 状态 ======
 const state = {theme: localStorage.getItem('theme') || 'dark',
