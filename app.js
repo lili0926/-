@@ -50,7 +50,7 @@ if(todayAI.data && todayAI.data.length >= limit){
   );
   const text = await generateAIMessage();
   alert(text);
-  addChatMessage("assistant", text,thinking);
+  addChatMessage("assistant", text,"");
 const {error:insertError}=await supabaseClient
 .from("chat_messages")
 .insert({
@@ -1237,7 +1237,7 @@ if(box) box.innerHTML="";
     });
   }
     }
-function buildAIRequest(message){
+function buildAIRequest(aiApiConfig, msgs){
     return { model: aiApiConfig.model,
      system: ` 你是一个长期陪伴用户的AI。
     ${getTimeContext()}
@@ -1276,7 +1276,7 @@ if(!needHours){
   );
 
 }
-
+const hours = diff / 1000 / 60 / 60;
 
   if(hours>=needHours){
 
