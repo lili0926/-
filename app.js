@@ -708,7 +708,7 @@ async function checkOfflineThought(){
   const gap = (now - lastDate) / 1000 / 60; 
   
   console.log("【思绪检查】距离上次聊天过去了 " + gap.toFixed(2) + " 分钟");
-  if(gap > 0.5){ 
+  if(gap > 100){ 
     await generateThoughts(lastTime);
   }
 }
