@@ -122,12 +122,12 @@ const saved = localStorage.getItem("uiPreset");
 if(saved){applyUIPreset(saved);if(sel) sel.value = saved;}
   const savedFontColor =localStorage.getItem("fontColor") || "normal";
 document.documentElement
-.setAttribute("data-font",savedFontColor);initPageSwitch();/*loadAiMessages();
+.setAttribute("data-font",savedFontColor);initPageSwitch();loadAiMessages();
 
 
 alert("B");
 
-loadAiMessages();*/
+loadAiMessages();
 alert("A");
 initPageSwitch();
 alert("C");
