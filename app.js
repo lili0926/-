@@ -50,35 +50,7 @@ await supabaseClient
 
   console.log(data,error);
 }
-async function generateAIMessage(){
 
-  const prompt =
-  "你是一个长期陪伴用户的AI。请主动说一句自然的话，不超过30字。";
-
-  const req = buildAIRequest(prompt);
-
-  const res = await fetch(aiApiConfig.baseUrl,{
-    method:"POST",
-    headers:{
-      "Content-Type":"application/json",
-      "Authorization":"Bearer "+aiApiConfig.apiKey
-    },
-    body:JSON.stringify(req)
-  });
-
-  const data = await res.json();
-
-  let text="";
-
-  if(data.choices){
-    text=data.choices[0].message.content;
-  }
-  else if(data.content){
-    text=data.content[0].text;
-  }
-
-  return text;
-}
 async function generateAIMessage(){
 
   alert("进入AI生成");
