@@ -124,7 +124,13 @@ if(saved){applyUIPreset(saved);if(sel) sel.value = saved;}
 document.documentElement
 .setAttribute("data-font",savedFontColor);initPageSwitch();loadAiMessages();
 
-testDailyChatCount();})
+/*testDailyChatCount();*/checkAwayTime();})
+window.addEventListener("beforeunload",()=>{
+  localStorage.setItem(
+    "lastLeaveTime",
+    Date.now()
+  );
+});
 // ====== 状态 ======
 const state = {theme: localStorage.getItem('theme') || 'dark',
   uiPreset: localStorage.getItem('uiPreset') || 'ins-soft',
@@ -1226,3 +1232,29 @@ function buildAIRequest(message){
        content:message  } ],
      temperature:0.7  } }
 function removeLoadingMessage(){const loading = document.getElementById("loadingMessage");if(loading){loading.remove();}}
+function checkAwayTime(){
+
+  const last =
+  Number(localStorage.getItem("lastLeaveTime"));
+
+  if(!last) return;
+
+  const diff =
+  Date.now()-last;
+
+  const hours =
+  diff/(1000*60*60);
+
+
+  console.log("离开时间:",hours,"小时");
+
+
+  if(hours>=2){
+
+    console.log("可以触发主动消息");
+
+    testDailyChatCount();
+
+  }
+
+}
