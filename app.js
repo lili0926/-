@@ -504,7 +504,7 @@ const vchar = {
 
   const t=e.touches[0];
   onMove(t.clientX,t.clientY);
-},{passive:false});   document.addEventListener('touchend', onEnd);
+},{passive:true});   document.addEventListener('touchend', onEnd);
   },
   async onBodyClick() { 
     const expr = this.EXPRESSIONS[Math.floor(Math.random()*this.EXPRESSIONS.length)];
