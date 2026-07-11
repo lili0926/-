@@ -1247,42 +1247,31 @@ function buildAIRequest(aiApiConfig, msgs){
      temperature:0.7  } }
 function removeLoadingMessage(){const loading = document.getElementById("loadingMessage");if(loading){loading.remove();}}
 function checkAwayTime(){
-const today = new Date().toDateString();
+  const today = new Date().toDateString();
+  const lastActive = localStorage.getItem("aiActiveDay"); // 修复：去掉原代码里多余的参数
 
-const lastActive =
-localStorage.getItem("aiActiveDay",today);
-
-if(lastActive === today){
-  return;
-}
-  const last =
-  Number(localStorage.getItem("lastLeaveTime"));
-
+  if(lastActive === today){
+    return;
+  }
+  
+  const last = Number(localStorage.getItem("lastLeaveTime"));
   if(!last) return;
 
-  const diff =
-  Date.now()-last;
+  const diff = Date.now() - last;
+  const hours = diff / 1000 / 60 / 60; //  【核心修复】计算出离开了多少小时
 
-  let needHours =
-Number(localStorage.getItem("needHours"));
+  let needHours = Number(localStorage.getItem("needHours"));
 
-if(!needHours){
-
-  needHours=/*Math.floor(Math.random()*4)+2;*/0;
-
-  localStorage.setItem(
-    "needHours",
-    needHours
-  );
-
-}
-const hours = diff / 1000 / 60 / 60;
-
-  if(hours>=needHours){
-
-    console.log("可以触发主动消息");
-
-    testDailyChatCount();
+  // 如果没有设置需要等待的小时数，默认随机 2 到 5 小时
+  if(!needHours && needHours !== 0){ 
+    needHours = Math.floor(Math.random() * 4) + 2; 
+    localStorage.setItem("needHours", needHours);
   }
 
-}
+  if(hours >= needHours){
+    console.log("可以触发主动消息");
+    localStorage.setItem("aiActiveDay", today); // 触发后，标记今天已触发
+    localStorage.removeItem("needHours");       // 清除等待时间，下次重新随机
+    testDailyChatCount(); // 触发主动发消息
+  }
+                      }
