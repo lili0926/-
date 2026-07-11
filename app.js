@@ -39,6 +39,8 @@ async function testDailyChatCount(){
     "今日聊天数量："+data.length+
     "\n今日主动额度："+limit
   );
+  const text = await generateAIMessage();
+  alert(text);
 await supabaseClient
 .from("ai_messages")
 .insert({
