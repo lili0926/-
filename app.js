@@ -34,7 +34,16 @@ async function testDailyChatCount(){
   else{
     limit=Math.floor(Math.random()*3)+1;
   }
+const todayAI = await supabaseClient
+.from("chat_messages")
+.select("*")
+.eq("type","daily_ai")
+.gte("created_at",todayStart.toISOString());
 
+if(todayAI.data && todayAI.data.length >= limit){
+  console.log("今日主动消息额度已用完");
+  return;
+}
   alert(
     "今日聊天数量："+data.length+
     "\n今日主动额度："+limit
@@ -42,12 +51,12 @@ async function testDailyChatCount(){
   const text = await generateAIMessage();
   alert(text);
 await supabaseClient
-.from("ai_messages")
+.from("chat_messages")
 .insert({
- type:"message",
- content:"测试主动消息"
+ role:"assistant",
+ content:text,
+ type:"daily_ai"
 });
-
   console.log(data,error);
 }
 
@@ -123,14 +132,20 @@ if(saved){applyUIPreset(saved);if(sel) sel.value = saved;}
   const savedFontColor =localStorage.getItem("fontColor") || "normal";
 document.documentElement
 .setAttribute("data-font",savedFontColor);initPageSwitch();loadAiMessages();
-
-/*testDailyChatCount();*/checkAwayTime();})
-window.addEventListener("beforeunload",()=>{
-  localStorage.setItem(
+setTimeout(()=>{
+  testDailyChatCount();
+},3000);
+  checkAwayTime();})
+document.addEventListener("visibilitychange",()=>{
+ if(document.hidden){
+   localStorage.setItem(
     "lastLeaveTime",
     Date.now()
-  );
+   );
+ }
 });
+  
+
 // ====== 状态 ======
 const state = {theme: localStorage.getItem('theme') || 'dark',
   uiPreset: localStorage.getItem('uiPreset') || 'ins-soft',
