@@ -605,196 +605,114 @@ scrollChatBottom();
     localStorage.setItem( "chatHistory", JSON.stringify(state.chatHistory));
   } catch(e) { loadingEl.remove();alert(e.message); console.error("发送错误:",e);showToast('发送失败'); }
   btn.disabled=false; input.focus();
-                             }
-// 1. 检查离线时间并触发思绪生成
+                             };
+// 1. 检查离线时间（修复版）
 async function checkOfflineThought(){
+  console.log("【思绪检查】开始...");
+  if (!state.chatHistory || state.chatHistory.length === 0) {
+    console.log("【思绪检查】没有聊天记录，跳过");
+    return;
+  };
+  
   const last = state.chatHistory.at(-1);
-  if(!last) return;
   const lastTime = last.time;
   if(!lastTime) return;
   
   const lastDate = new Date(lastTime);
   const now = new Date();
-  const gap = (now - lastDate) / 1000 / 60;
+  const gap = (now - lastDate) / 1000 / 60; // 计算分钟差
   
-  // 超过30分钟则触发
-  if(gap > 1){ 
-    await generateThoughts();
-    localStorage.setItem("lastThoughtTime", Date.now());
-  }
+  console.log(`【思绪检查】距离上次聊天过去了 ${gap.toFixed(2)} 分钟`);
+  
+  // 💡 为了让你测试不用等太久，daddy 改成了超过 0.5 分钟（30秒）就触发！
+  if(gap > 0.5){ 
+    await generateThoughts(lastTime);
+  } else {
+    console.log("【思绪检查】离线时间太短，不触发生成");
+  };
 }
-
 // 2. 核心函数：生成思绪（已修复大小写、锁机制和JSON清洗问题）
-async function generateThoughts(){
-  console.log("进入generateThoughts");
+// 2. 生成思绪核心函数（修复版）
+async function generateThoughts(lastTime){
   const apiKey = aiApiConfig.key;
-  console.log("思绪key:", apiKey);
-  if(!apiKey){
-      console.log("没有API KEY");
-      return;
-  }
+  if(!apiKey) return;
   
-  // 最近聊天记录
-  const chatHistoryForThought = state.chatHistory
-    .slice(-20)
-    .map(m => ({ role: m.role, content: m.content }));
-  console.log("聊天记录准备完成");
-  
-  // 最后一条聊天
-  const lastMessage = state.chatHistory.at(-1);
-  console.log("最后消息:", lastMessage);
-  if(!lastMessage) return;
-  
-  const lastTime = lastMessage.time || localStorage.getItem("lastChatTime");
-  if(!lastTime) return;
-  
-  // 当前时间
-  const now = new Date();
-  const today = `${now.getFullYear()}.${now.getMonth()+1}.${now.getDate()}`;
-  const currentTime = now.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
-  
-  // 锁机制优化：以最后一条消息的时间为锁，只要用户没发新消息，这期间只生成一次
-  const thoughtKey = `thought-lock-${lastTime}`;
-  if(localStorage.getItem("thoughtKey") === thoughtKey){
-    console.log("这段离线时间的思绪已经生成过了，跳过");
+  // 锁机制优化：严格使用标准的 lastTime 作为锁
+  const thoughtLockKey = `thought-lock-${lastTime}`;
+  if(localStorage.getItem("currentThoughtLock") === thoughtLockKey){
+    console.log("【思绪生成】这段时间的思绪已经生成过了，拦截");
     return;
   }
   
-  const prompt = `
-你是一个AI角色。
-用户在 ${lastTime} 离开聊天。
-现在用户在 ${today} ${currentTime} 回来。
-期间用户没有发送任何消息。
-请根据用户离开前的聊天内容，
-生成这段时间里AI自己的私人思绪。
-要求：
-1. 不允许描述用户做了什么。
-2. 不知道用户去了哪里。
-3. 只能描述AI自己的等待、回忆、猜测。
-4. 保持AI角色性格。
-5. 按时间推进生成。
-6. 时间必须在：
-${lastTime}
-到
-${currentTime}
-之间。
-返回JSON:[{
-"date":"${today}",
-"time":"17:30",
-"content":"..."}]
-聊天记录：
-${JSON.stringify(chatHistoryForThought)} `;
+  const chatHistoryForThought = state.chatHistory
+    .slice(-10)
+    .map(m => ({ role: m.role, content: m.content }));
+  
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}.${now.getMonth()+1}.${now.getDate()}`;
+  const currentTime = now.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+  
+  const prompt = `你是一个AI角色。用户在 ${lastTime} 离开。现在在 ${todayStr} ${currentTime} 回来。期间用户没发消息。请根据聊天内容生成你在这段时间里的私人思绪。要求：1.不描述用户。2.只能描述自己的等待、回忆、猜测。3.保持性格。4.返回纯JSON数组，格式如：[{"date":"${todayStr}","time":"${currentTime}","content":"..."}]。聊天记录：${JSON.stringify(chatHistoryForThought)}`;
 
-  console.log("body开始生成");
   const body = {
     model: aiApiConfig.model,
     messages: [
-      {
-        role: "system",
-        content: "你负责生成AI角色私人思绪。只输出标准的JSON数组，绝对不要用 ```json 包裹，不要输出Markdown标记，不要解释，不要输出任何正文以外的内容。"
-      },
-      {
-        role: "user",
-        content: prompt 
-      }
+      { role: "system", content: "你只输出标准的JSON数组，绝对不要用 \`\`\`json 包裹，不要解释。" },
+      { role: "user", content: prompt }
     ],
     temperature: 0.7
   };
   
-  const headers = {
-    "Content-Type": "application/json",
-    "Authorization": "Bearer " + apiKey 
-  };
-  
-  const fullUrl = aiApiConfig.baseUrl.replace(/\/+$/, '') + aiApiConfig.path;
-  console.log("思绪请求开始");
-  console.log("baseUrl:", aiApiConfig.baseUrl);
-  console.log("model:", aiApiConfig.model);
-  
   try { 
-    const res = await fetch(fullUrl, { method: "POST", headers, body: JSON.stringify(body) });
+    console.log("【思绪生成】正在请求大模型...");
+    const fullUrl = aiApiConfig.baseUrl.replace(/\/+$/, '') + aiApiConfig.path;
+    const res = await fetch(fullUrl, { 
+      method: "POST", 
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey }, 
+      body: JSON.stringify(body) 
+    });
     const data = await res.json();
-    console.log("完整返回:", data);
-    
-    // 统一大小写，作为原始备份
-    localStorage.setItem("aiThoughtsRaw", JSON.stringify(data));
     
     let thoughtText = "";
-    // Claude格式
-    if(data.content && Array.isArray(data.content)){
-      for(const b of data.content ){ 
-        if(b.type === "text"){ thoughtText += b.text; }
-      }
-    }
-    // OpenAI格式
-    else if(data.choices && data.choices[0]?.message?.content){
+    if(data.choices && data.choices[0]?.message?.content){
       thoughtText = data.choices[0].message.content;
+    } else if(data.content && Array.isArray(data.content)){
+      thoughtText = data.content.find(b => b.type === "text")?.text || "";
     }
     
-    console.log("AI原始思绪", thoughtText);
+    let clean = thoughtText.replace(/```json/g, "").replace(/```/g, "").trim();
+    let newThoughts = JSON.parse(clean);
     
-    let thoughts = [];
-    try {
-      // 增强清洗，防止大模型抽风带上 <think> 标签或者 ```json
-      let clean = thoughtText
-        .replace(/<think>[\s\S]*?<\/think>/g, "")
-        .replace(/```json/g, "")
-        .replace(/```/g, "")
-        .trim();
-      thoughts = JSON.parse(clean);
-    } catch(e) {
-      console.error("JSON解析失败", thoughtText);
-      return; 
-    }
-    
-    // 统一大写 aiThoughts 读取
     let oldThoughts = JSON.parse(localStorage.getItem("aiThoughts") || "[]");
-    thoughts.forEach(t => {
+    newThoughts.forEach(t => {
       oldThoughts.push({
         type: "offline",
-        date: t.date,
-        from: lastTime,
-        to: currentTime,
-        time: t.time,
-        content: t.content,
-        createdAt: Date.now() 
+        date: t.date || todayStr,
+        time: t.time || currentTime,
+        content: t.content
       }); 
     });
     
-    // 统一大写 aiThoughts 写入
     localStorage.setItem("aiThoughts", JSON.stringify(oldThoughts));
-    localStorage.setItem("thoughtKey", thoughtKey); 
-    console.log("保存成功", oldThoughts);
+    localStorage.setItem("currentThoughtLock", thoughtLockKey); // 上锁
+    console.log("【思绪生成】成功存入前端！当前总数：", oldThoughts.length);
+    
+    // 生成成功后，立刻自动更新一遍界面显示
+    if(typeof renderThoughts === "function") renderThoughts();
+    
   } catch(e) {
-    console.error("生成思绪失败", e); 
+    console.error("【思绪生成】失败了：", e); 
   }
 }
-
-// 3. 页面加载完毕后绑定点击事件与初始化检查
+// 3. 彻底重写页面加载初始化（替换掉那个会自杀式误删数据的清理工具）
 window.addEventListener("DOMContentLoaded", () => {
-  // 检查是否需要生成思绪
-  checkOfflineThought();
+  console.log("【系统初始化】正在检查思绪...");
   
-  const thoughtBtn = document.getElementById("thoughtBtn");
-  const box = document.getElementById("thoughtPanel");
-  if(!thoughtBtn || !box){
-    console.log("思绪按钮或弹窗不存在");
-    return;
-  }
-  
-  // 绑定点击事件展示思绪面板
-  thoughtBtn.onclick = () => {
-    console.log("思绪按钮点击成功");
-    box.style.display = "block";
-    renderThoughts();
-  };
-  
-  const close = document.getElementById("closeThought");
-  if(close){
-    close.onclick = () => {
-      box.style.display = "none";
-    };
-  }
+  // 延迟 2 秒检查，确保聊天历史已经完全加载好了
+  setTimeout(() => {
+    checkOfflineThought();
+    renderThoughts(); // 页面一打开，先渲染一次历史思绪
+  }, 2000);
 });
 
 // 4. 渲染思绪到前端页面上
@@ -1256,6 +1174,6 @@ function checkAwayTime(){
     console.log("可以触发主动消息");
     localStorage.setItem("aiActiveDay", today); // 触发后，标记今天已触发
     localStorage.removeItem("needHours");       // 清除等待时间，下次重新随机
-    testDailyChatCount(); // 触发主动发消息
+    triggerDailyPushMessage(); // 触发主动发消息
   }
                       }
