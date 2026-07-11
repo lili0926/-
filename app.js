@@ -1213,7 +1213,9 @@ function addLoadingMessage(){ const box=document.getElementById("chatMessages");
     return;
   }
 
-  if(data){data.reverse();
+  if(data){const box=document.getElementById("chatMessages");
+if(box) box.innerHTML="";
+    data.reverse();
     data.forEach(msg=>{
       addChatMessage(
         "assistant",
