@@ -410,16 +410,20 @@ html[data-font="deep"] {--text:#111;--text-dim:#222;}
     position:fixed;
     right:20px;
     top:70px;
-    width:420px 90vw;
-    box-sizing:border-box;
+    width:420px;
+    max-width:90vw;
     height:80vh;
     max-height:80vh;
     background:rgba(255,255,255,.85);
-    color:#333;
     border-radius:28px;
-    box-shadow:0 15px 40pxrgba(0,0,0,.12);
-    overflow-y:auto;
+    overflow:hidden;
     z-index:9999;
+}
+
+.thought-list{
+    padding:20px;
+    height:calc(80vh - 64px);
+    overflow-y:auto;
 }
 .thought-header{
     height:64px;
@@ -430,8 +434,6 @@ html[data-font="deep"] {--text:#111;--text-dim:#222;}
     font-size:18px;
     font-weight:600;
     border-bottom:1px solid #eee;}
-.thought-list{
-padding:20px;}
 .thought-date{
     font-size:14px;
     color:#999;
