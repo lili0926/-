@@ -111,7 +111,11 @@ function initPageSwitch() {
 }
 
 // 页面加载完成初始化切换
-window.addEventListener('DOMContentLoaded', () => {initNotifications();
+window.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('click', function askOnce(){
+  initNotifications();
+  document.removeEventListener('click', askOnce);
+}, {once: true});
   const sel = document.getElementById("uiPresetSelect");
   const btn = document.getElementById("applyPresetBtn");
   if(sel && btn){
