@@ -492,7 +492,9 @@ const vchar = {
     };
     const onEnd = () => { setTimeout(()=>{this.dragging=false;},50); el.style.transition=''; };
     el.addEventListener('mousedown', e=>{ onStart(e.clientX,e.clientY); e.preventDefault();});
-    document.addEventListener('mousemove', e=>{ if(this.sl!==undefined) onMove(e.clientX,e.clientY);});
+    document.addEventListener('mousemove', e=>{
+ if(this.dragging) onMove(e.clientX,e.clientY);
+});
     document.addEventListener('mouseup', onEnd);
     el.addEventListener('touchstart', e=>{
  e.preventDefault();
