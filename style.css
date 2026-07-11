@@ -547,17 +547,21 @@ overflow-x:hidden;}
     .thought-day-content{
         padding-left:15px;
     }
-#thoughtPanel{
+
+.thought-panel{
     display:flex;
     flex-direction:column;
     overflow:hidden;
 }
 
+.thought-header{
+    flex-shrink:0;
+}
+
 #thoughtContent{
+    height:0;
     flex:1;
     overflow-y:auto;
     overflow-x:hidden;
-    padding:24px 26px;
-    min-height:0;
+    -webkit-overflow-scrolling:touch;
 }
-#thoughtContent{background:red;}
