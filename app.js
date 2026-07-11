@@ -81,6 +81,8 @@ async function generateAIMessage(){
 }
 async function generateAIMessage(){
 
+  alert("进入AI生成");
+
   const msgs=[
     {
       role:"user",
@@ -90,6 +92,8 @@ async function generateAIMessage(){
 
   const req=buildAIRequest(msgs);
 
+  alert("准备请求");
+
   const res=await fetch(aiApiConfig.baseUrl,{
     method:"POST",
     headers:{
@@ -98,6 +102,8 @@ async function generateAIMessage(){
     },
     body:JSON.stringify(req)
   });
+
+  alert("请求返回");
 
   const data=await res.json();
 
