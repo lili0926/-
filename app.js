@@ -478,8 +478,14 @@ const vchar = {
     this.checkNightMode(); setInterval(() => this.checkNightMode(), 60000);
   },
   makeDraggable(el) {
-    const onStart = (cx, cy) => { this.dragging = false; this.sx=cx; this.sy=cy; this.sl=el.offsetLeft; this.st=el.offsetTop; el.style.transition='none'; };
-    const onMove = (cx, cy) => {
+    const onStart = (cx, cy) => { 
+  this.dragging = false; 
+  this.sx=cx; this.sy=cy; 
+  const rect = el.getBoundingClientRect();
+  this.sl=rect.left; 
+  this.st=rect.top; 
+  el.style.transition='none'; 
+};   const onMove = (cx, cy) => {
       if (Math.abs(cx-this.sx)>3||Math.abs(cy-this.sy)>3) this.dragging=true;
       if (!this.dragging) return;
       el.style.left=(this.sl+(cx-this.sx))+'px'; el.style.top=(this.st+(cy-this.sy))+'px'; el.style.right='auto'; el.style.bottom='auto';
