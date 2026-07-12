@@ -1206,7 +1206,19 @@ function buildAIRequest(aiApiConfig, msgs){
     temperature: 0.7  
   };
 }
+async function initNotifications(){
 
+if(!("serviceWorker" in navigator) ||
+   !("PushManager" in window)){
+    alert("当前浏览器不支持主动消息");
+    return;
+}
+
+const permission = await Notification.requestPermission();
+
+console.log(permission);
+
+}
 function checkAwayTime(){
   const todayStr = new Date().toDateString();
   const lastActive = localStorage.getItem("aiActiveDay");
