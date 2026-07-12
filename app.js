@@ -1167,18 +1167,35 @@ function addLoadingMessage(){
 }
 
 async function loadAiMessages(){
-  const { data, error } = await supabaseClient
-    .from("chat_messages") // 修正为正确的表名读取历史
+
+    const { data, error } = await supabaseClient
+    .from("chat_messages")
     .select("*")
-    .order("created_at", { ascending:false })
-    .limit(10);
-  if(error){ console.log("读取消息失败:", error); return; }
-  if(data){
-    const box=document.getElementById("chatMessages");
-    if(box) box.innerHTML="";
-    data.reverse();
-    data.forEach(msg=>{ addChatMessage(msg.role || "assistant", msg.content, ""); });
-  }
+    .order("created_at",{ascending:true})
+    .limit(50);
+
+    if(error){
+        console.log("读取消息失败:",error);
+        return;
+    }
+
+    if(data){
+
+        const box=document.getElementById("chatMessages");
+
+        // 已经有聊天，不重复覆盖
+        if(box && box.children.length > 0){
+            return;
+        }
+
+        data.forEach(msg=>{
+            addChatMessage(
+                msg.role || "assistant",
+                msg.content,
+                ""
+            );
+        });
+    }
 }
 
 function buildAIRequest(aiApiConfig, msgs){
