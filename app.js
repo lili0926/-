@@ -1742,6 +1742,33 @@ function bindEvents(){
     saveBgApiConfig(cfg);
     showToast('后台AI配置已保存 ✨');
   });
+
+  // 远程服务地址
+  function loadRemoteUrls(){
+    try {
+      const urls = JSON.parse(localStorage.getItem('remoteServiceUrls') || '{}');
+      const dUrl = document.getElementById('remoteDuettoUrl');
+      const cUrl = document.getElementById('remoteCedarecoUrl');
+      if(dUrl) dUrl.value = urls.duetto || '';
+      if(cUrl) cUrl.value = urls.cedareco || '';
+      // Aries 版
+      const arD = document.getElementById('arRemoteDuettoUrl');
+      const arC = document.getElementById('arRemoteCedarecoUrl');
+      if(arD) arD.value = urls.duetto || '';
+      if(arC) arC.value = urls.cedareco || '';
+    } catch(e){}
+  }
+  function saveRemoteUrls(){
+    const urls = {
+      duetto: document.getElementById('remoteDuettoUrl')?.value.trim() || document.getElementById('arRemoteDuettoUrl')?.value.trim() || '',
+      cedareco: document.getElementById('remoteCedarecoUrl')?.value.trim() || document.getElementById('arRemoteCedarecoUrl')?.value.trim() || ''
+    };
+    localStorage.setItem('remoteServiceUrls', JSON.stringify(urls));
+    loadRemoteUrls(); // 同步另一套
+    showToast('远程地址已保存 ✨');
+  }
+  document.getElementById('saveRemoteUrlsBtn')?.addEventListener('click', saveRemoteUrls);
+  loadRemoteUrls();
   
   document.getElementById('wallpaperBtn').addEventListener('click', ()=>openModal('wallpaperModal'));
   document.getElementById('wallpaperSettingBtn').addEventListener('click', ()=>openModal('wallpaperModal'));
@@ -3375,15 +3402,26 @@ window.openPanel = window.openPanel || function(panel){
 /* ═══════════════════════════════════
    游戏大厅
 ═══════════════════════════════════ */
-// 生成外部服务的 URL，使用当前的 hostname（手机访问时自动用电脑 IP）
+// 读取远程服务地址（设置页可配置）
+function getRemoteServiceUrl(id, defaultUrl){
+  try {
+    const urls = JSON.parse(localStorage.getItem('remoteServiceUrls') || '{}');
+    return urls[id] || defaultUrl;
+  } catch(e){ return defaultUrl; }
+}
+// 生成外部服务的 URL
 function serviceUrl(port, path){
   const host = window.location.hostname;
-  // GitHub Pages → 使用浏览器版
-  if (host.includes('github.io') || host === 'lili0926.github.io') {
-    const clientPages = { 4183: '/music-client.html', 8765: '/eco-client.html' };
-    return clientPages[port] || '/offline.html#port=' + port;
+  // 本地开发 → 用局域网地址
+  if(host === '127.0.0.1' || host === 'localhost' || host.match(/^192\.|^10\.|^172\./)){
+    return `http://localhost:${port}${path || ''}`;
   }
-  return `http://${host === '127.0.0.1' ? 'localhost' : host}:${port}${path || ''}`;
+  // 非本地 → 使用远程 URL（从 localStorage 读取）
+  const remoteUrls = JSON.parse(localStorage.getItem('remoteServiceUrls') || '{}');
+  if(port === 8765 && remoteUrls.cedareco) return remoteUrls.cedareco;
+  if(port === 4183 && remoteUrls.duetto) return remoteUrls.duetto + (path || '');
+  // 未知环境，尝试同域端口
+  return `http://${host}:${port}${path || ''}`;
 }
 
 const GAMES = [

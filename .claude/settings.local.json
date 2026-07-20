@@ -23,7 +23,12 @@
       "Bash(xargs -r kill -9)",
       "Bash(echo \"PID=$!\")",
       "Bash(pkill -f \"server/index.mjs\")",
-      "Bash(echo \"Cedereco PID=$!\")"
+      "Bash(echo \"Cedereco PID=$!\")",
+      "Bash(git add *)",
+      "Bash(git restore *)",
+      "Bash(git push *)",
+      "Bash(git remote *)",
+      "Bash(git commit -m 'feat: 添加远程服务地址设置（Duetto + 瓶中生态） *)"
     ]
   }
 }

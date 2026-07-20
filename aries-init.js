@@ -470,6 +470,18 @@ $('arSaveBtn')?.addEventListener('click', ()=>{
   // 同步到全局变量
   if(typeof bgApiConfig !== 'undefined') bgApiConfig = JSON.parse(JSON.stringify(bgApi));
 
+  // 远程服务地址
+  const urls = {
+    duetto: get('arRemoteDuettoUrl'),
+    cedareco: get('arRemoteCedarecoUrl')
+  };
+  localStorage.setItem('remoteServiceUrls', JSON.stringify(urls));
+  // 同步到旧版输入框
+  const oldDuetto = document.getElementById('remoteDuettoUrl');
+  const oldCedareco = document.getElementById('remoteCedarecoUrl');
+  if(oldDuetto) oldDuetto.value = urls.duetto;
+  if(oldCedareco) oldCedareco.value = urls.cedareco;
+
   // UI 预设
   const uiPresetVal = get('arUiPresetSelect');
   if(uiPresetVal && typeof applyUIPreset === 'function') applyUIPreset(uiPresetVal);
