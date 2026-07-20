@@ -291,7 +291,7 @@ def make_handler(store, allowed_origin="*"):
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="启动瓶中生态独立前端与 API")
     parser.add_argument("--host", default=os.getenv("CEDARECO_HOST", "0.0.0.0"))
-    parser.add_argument("--port", type=int, default=int(os.getenv("CEDARECO_PORT", "8765")))
+    parser.add_argument("--port", type=int, default=int(os.getenv("CEDARECO_PORT", os.getenv("PORT", "8765"))))
     parser.add_argument("--save", default=os.getenv("CEDARECO_SAVE_FILE", str(ROOT / "eco_save.json")))
     parser.add_argument("--seed", type=int, default=int(os.getenv("CEDARECO_SEED", "12345")))
     parser.add_argument("--allowed-origin", default=os.getenv("CEDARECO_ALLOWED_ORIGIN", "*"))

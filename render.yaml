@@ -1,0 +1,21 @@
+services:
+  # 🎵 Duetto 音乐 — Node.js + WebSocket
+  - type: web
+    name: duetto
+    env: node
+    region: singapore
+    buildCommand: npm install
+    startCommand: node server/index.mjs
+    rootDir: Duetto
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+
+  # 🌿 瓶中生态 — Python 纯标准库
+  - type: web
+    name: cedareco
+    env: python
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: python standalone_server.py --host 0.0.0.0
+    rootDir: cedareco
