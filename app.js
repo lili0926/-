@@ -2918,9 +2918,10 @@ window.openPanel = window.openPanel || function(panel){
 // 生成外部服务的 URL，使用当前的 hostname（手机访问时自动用电脑 IP）
 function serviceUrl(port, path){
   const host = window.location.hostname;
-  // GitHub Pages / 非本地环境 → 显示离线提示
+  // GitHub Pages → 使用浏览器版
   if (host.includes('github.io') || host === 'lili0926.github.io') {
-    return '/offline.html#port=' + port;
+    const clientPages = { 4183: '/music-client.html', 8765: '/eco-client.html' };
+    return clientPages[port] || '/offline.html#port=' + port;
   }
   return `http://${host === '127.0.0.1' ? 'localhost' : host}:${port}${path || ''}`;
 }

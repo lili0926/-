@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>瓶中生态 · 浏览器版</title>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js"></script>
+<link rel="stylesheet" href="cedareco/web/style.css">
+<style>
+body{background:#0d1b2a;color:#e0e0e0;font-family:system-ui,sans-serif;margin:0;padding:16px;min-height:100vh}
+.container{max-width:600px;margin:0 auto}
+h1{font-size:20px;display:flex;align-items:center;gap:8px;margin:0 0 16px}
+h1 span{font-size:24px}
+.loading{text-align:center;padding:60px 20px;color:#888}
+.spinner{width:32px;height:32px;border:3px solid #1e3a5f;border-top-color:#4a9eff;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.card{background:#1b2838;border-radius:12px;padding:16px;margin-bottom:12px}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.controls button,.controls input{padding:8px 16px;border-radius:8px;border:1px solid #2a4060;background:#1b2838;color:#e0e0e0;font-size:14px;cursor:pointer}
+.controls button:hover{background:#2a4060}
+.controls input{flex:1;min-width:120px}
+.state-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.metric{background:#0d1b2a;border-radius:8px;padding:10px;text-align:center}
+.metric small{display:block;font-size:11px;color:#888;margin-bottom:2px}
+.metric strong{font-size:18px}
+.species-list{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.species-tag{background:#0d1b2a;border-radius:4px;padding:2px 8px;font-size:12px;white-space:nowrap}
+pre{font-size:12px;line-height:1.6;color:#aaa;white-space:pre-wrap;margin:8px 0 0}
+.tab-bar{display:flex;gap:4px;margin-bottom:12px;overflow-x:auto}
+.tab-btn{padding:6px 14px;border-radius:6px 6px 0 0;border:none;background:#1b2838;color:#888;cursor:pointer;font-size:13px;white-space:nowrap}
+.tab-btn.active{background:#2a4060;color:#fff}
+.error{color:#ff6b6b;font-size:13px;margin:8px 0}
+</style>
+</head>
+<body>
+<div class="container" id="app">
+  <h1><span>🌿</span> 瓶中生态 · 浏览器版</h1>
+
+  <div id="loadingScreen" class="loading">
+    <div class="spinner"></div>
+    <p>正在加载生态引擎…</p>
+    <p style="font-size:12px;color:#666;margin-top:8px">首次加载需下载 Python 运行环境 (~12MB)</p>
+  </div>
+
+  <div id="mainUI" style="display:none">
+    <div class="controls">
+      <input type="number" id="seedInput" value="12345" placeholder="种子" style="max-width:100px">
+      <button onclick="newGame()">🔄 新游戏</button>
+      <button onclick="nextTurn()">⏭ 过一天</button>
+      <button onclick="skipWeek()">⏭ 过一周</button>
+      <button onclick="saveToLocal()">💾 存档</button>
+    </div>
+
+    <div class="tab-bar" id="tabBar">
+      <button class="tab-btn active" data-tab="state">状态</button>
+      <button class="tab-btn" data-tab="codex">图鉴</button>
+      <button class="tab-btn" data-tab="annals">年鉴</button>
+      <button class="tab-btn" data-tab="cmd">指令</button>
+    </div>
+
+    <div id="tab-state">
+      <div class="card" id="statusCard">
+        <div id="dayInfo" style="font-size:16px;font-weight:600"></div>
+        <div id="comment" style="font-size:13px;color:#aaa;margin-top:4px"></div>
+      </div>
+      <div class="card">
+        <div class="state-grid" id="metricsGrid"></div>
+      </div>
+      <div class="card">
+        <div style="font-size:13px;color:#888;margin-bottom:8px">🌱 种群</div>
+        <div id="populations"></div>
+      </div>
+      <div class="card" id="observeCard">
+        <div style="font-size:13px;color:#888;margin-bottom:8px">🔍 观察</div>
+        <pre id="observeText"></pre>
+      </div>
+    </div>
+
+    <div id="tab-codex" style="display:none">
+      <div class="card" id="codexContent"></div>
+    </div>
+
+    <div id="tab-annals" style="display:none">
+      <div class="card" id="annalsContent"></div>
+    </div>
+
+    <div id="tab-cmd" style="display:none">
+      <div class="card">
+        <div style="font-size:13px;color:#888;margin-bottom:8px">🎮 执行指令</div>
+        <div class="controls">
+          <input type="text" id="cmdInput" placeholder="输入指令（如：观察）" style="flex:1">
+          <button onclick="runCmd()">执行</button>
+        </div>
+        <div id="cmdResult" style="font-size:13px;color:#aaa;margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let pyodide = null;
+let engine = null;
+let currentState = null;
+
+// ═══ Pyodide 初始化 ═══
+async function init() {
+  try {
+    pyodide = await loadPyodide({
+      indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.25.0/full/',
+    });
+
+    // 加载引擎文件
+    const [engineCode] = await Promise.all([
+      fetch('./cedareco/engine.py').then(r => r.text()),
+    ]);
+
+    // Pyodide 中：覆盖文件 IO + _STATE 管理
+    await pyodide.runPythonAsync(`
+import json
+from js import localStorage
+
+def _patch_engine():
+    import engine as _eng
+    orig_save = _eng.save_state
+    orig_load = _eng.load_state
+
+    def _browser_save(state):
+        try:
+            s = json.dumps(state, ensure_ascii=False)
+            localStorage.setItem('cedareco_save', s)
+        except Exception:
+            pass
+
+    def _browser_load():
+        global _STATE
+        s = localStorage.getItem('cedareco_save')
+        if s:
+            try:
+                _STATE = json.loads(s)
+                _eng._migrate(_STATE)
+                return _STATE
+            except Exception:
+                pass
+        _STATE = _eng.fresh_state(12345)
+        _browser_save(_STATE)
+        return _STATE
+
+    _eng.save_state = _browser_save
+    _eng.load_state = _browser_load
+    _eng.save_state = _browser_save
+    _eng.load_state = _browser_load
+    _eng.SAVE_PATH = '/tmp/eco_save.json'
+
+_patch_engine()
+`);
+
+    // 加载引擎
+    await pyodide.runPythonAsync(engineCode);
+    await pyodide.runPythonAsync(`_patch_io()`);
+
+    engine = {
+      cmd: (text) => pyodide.runPython(`cmd(${JSON.stringify(text)})`),
+      newGame: (seed) => pyodide.runPython(`new_game(${seed || 12345})`),
+      apiState: () => {
+        const s = pyodide.runPython(`json.dumps(api_state(load_state()))`);
+        return JSON.parse(s);
+      },
+      apiCodex: () => {
+        const s = pyodide.runPython(`json.dumps(api_codex(load_state()))`);
+        return JSON.parse(s);
+      },
+      apiAnnals: () => {
+        const s = pyodide.runPython(`json.dumps(api_annals(load_state()))`);
+        return JSON.parse(s);
+      },
+      save: () => pyodide.runPython(`save_state(load_state())`),
+      load: () => {
+        const s = pyodide.runPython(`load_state()`);
+        return s;
+      },
+    };
+
+    document.getElementById('loadingScreen').style.display = 'none';
+    document.getElementById('mainUI').style.display = 'block';
+
+    // 尝试读取存档，没有就新游戏
+    try {
+      const saved = localStorage.getItem('cedareco_save');
+      if (saved) {
+        engine.load();
+      } else {
+        engine.newGame(12345);
+      }
+    } catch(e) {
+      engine.newGame(12345);
+    }
+
+    refreshState();
+  } catch(e) {
+    document.querySelector('#loadingScreen p').textContent = '加载失败: ' + e.message;
+    console.error(e);
+  }
+}
+
+// ═══ UI 刷新 ═══
+function refreshState() {
+  try {
+    currentState = engine.apiState();
+    render(currentState);
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function render(state) {
+  const data = state.data || state;
+
+  document.getElementById('dayInfo').textContent =
+    `第 ${data.day || 0} 天 · ${data.season || '—'} · ${data.weather || '—'}` +
+    `  🌡 ${data.environment?.water_temp || '—'}℃`;
+  document.getElementById('comment').textContent = data.comment || '池塘安静地呼吸着。';
+
+  const env = data.environment || {};
+  const metrics = {
+    '溶氧': env.dissolved_oxygen?.value != null ? Number(env.dissolved_oxygen.value).toFixed(1) : '—',
+    '光照': env.light != null ? Number(env.light).toFixed(1) : '—',
+    '营养盐': env.nutrients?.value != null ? Number(env.nutrients.value).toFixed(1) : '—',
+    '碎屑': env.detritus?.value != null ? Number(env.detritus.value).toFixed(1) : '—',
+    '浑浊': env.turbidity != null ? Number(env.turbidity).toFixed(1) : '—',
+    '得分': data.score || 0,
+  };
+  document.getElementById('metricsGrid').innerHTML = Object.entries(metrics)
+    .map(([k,v]) => `<div class="metric"><small>${k}</small><strong>${v}</strong></div>`)
+    .join('');
+
+  // 种群
+  const pops = data.populations || [];
+  const popHtml = pops.map(g => `
+    <div style="margin-bottom:8px">
+      <div style="font-size:12px;color:#888;margin-bottom:4px">${g.label || g.trophic}</div>
+      <div class="species-list">
+        ${(g.species||[]).filter(s => s.name !== '???' && Number(s.count) > 0)
+          .map(s => `<span class="species-tag">${s.name} ${Number(s.count).toFixed(0)}</span>`)
+          .join('')}
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('populations').innerHTML = popHtml || '<div style="font-size:12px;color:#666">暂无数据</div>';
+
+  document.getElementById('observeText').textContent = data.observe_text || '—';
+}
+
+function nextTurn() {
+  try {
+    const result = engine.cmd('等待一天');
+    refreshState();
+    engine.save();
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function skipWeek() {
+  for (let i = 0; i < 7; i++) {
+    try { engine.cmd('等待一天'); } catch(e) { break; }
+  }
+  refreshState();
+  engine.save();
+}
+
+function runCmd() {
+  const input = document.getElementById('cmdInput');
+  const result = document.getElementById('cmdResult');
+  try {
+    const output = engine.cmd(input.value.trim());
+    result.textContent = output || '(无返回)';
+    refreshState();
+    engine.save();
+  } catch(e) {
+    result.textContent = '错误: ' + e.message;
+  }
+}
+
+function newGame() {
+  const seed = parseInt(document.getElementById('seedInput').value) || 12345;
+  engine.newGame(seed);
+  engine.save();
+  refreshState();
+}
+
+function saveToLocal() {
+  engine.save();
+  const el = document.getElementById('cmdResult');
+  el.textContent = '✅ 已存档';
+  setTimeout(() => el.textContent = '', 2000);
+}
+
+// ═══ Tab 切换 ═══
+document.getElementById('tabBar').addEventListener('click', (e) => {
+  const btn = e.target.closest('.tab-btn');
+  if (!btn) return;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('[id^="tab-"]').forEach(t => t.style.display = 'none');
+  const tab = document.getElementById('tab-' + btn.dataset.tab);
+  if (tab) tab.style.display = 'block';
+  if (btn.dataset.tab === 'codex') loadCodex();
+  if (btn.dataset.tab === 'annals') loadAnnals();
+});
+
+async function loadCodex() {
+  try {
+    const data = engine.apiCodex();
+    const d = data.data || data;
+    const count = d.species_count || {};
+    document.getElementById('codexContent').innerHTML = `
+      <div style="font-size:15px;margin-bottom:12px">物种图鉴 ${count.appeared || 0} / ${count.total || 0}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">
+        ${(d.species||[]).map(s => `<span class="species-tag">${s.name}</span>`).join('')}
+      </div>
+    `;
+  } catch(e) {
+    document.getElementById('codexContent').innerHTML = `<div class="error">${e.message}</div>`;
+  }
+}
+
+async function loadAnnals() {
+  try {
+    const data = engine.apiAnnals();
+    const timeline = data.data?.timeline || [];
+    document.getElementById('annalsContent').innerHTML = `
+      <div style="font-size:15px;margin-bottom:12px">池塘年鉴</div>
+      <ol style="font-size:13px;color:#aaa;line-height:1.8;padding-left:20px">
+        ${timeline.map(e => `<li>${e}</li>`).join('')}
+      </ol>
+      ${timeline.length === 0 ? '<div style="font-size:12px;color:#666">尚无记录。</div>' : ''}
+    `;
+  } catch(e) {
+    document.getElementById('annalsContent').innerHTML = `<div class="error">${e.message}</div>`;
+  }
+}
+
+// 按回车执行指令
+document.getElementById('cmdInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') runCmd();
+});
+
+// 启动
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>音乐 · 浏览器版</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:linear-gradient(135deg,#0c0c1e,#1a1a3e);color:#e8e0d8;font-family:system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column}
+.container{max-width:500px;margin:0 auto;padding:16px;width:100%;flex:1;display:flex;flex-direction:column}
+h1{font-size:20px;display:flex;align-items:center;gap:8px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.08)}
+h1 span{font-size:24px}
+.search-box{display:flex;gap:8px;margin-bottom:16px}
+.search-box input{flex:1;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:#e8e0d8;font-size:14px;outline:none}
+.search-box input:focus{border-color:#6366f1}
+.search-box button{padding:10px 18px;border-radius:10px;border:none;background:#6366f1;color:#fff;font-size:14px;cursor:pointer;font-weight:500}
+.search-box button:active{transform:scale(.96)}
+
+.now-playing{background:rgba(255,255,255,.04);border-radius:16px;padding:20px;margin-bottom:16px;text-align:center}
+.now-playing .cover{width:160px;height:160px;border-radius:12px;margin:0 auto 12px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:48px;overflow:hidden}
+.now-playing .cover img{width:100%;height:100%;object-fit:cover}
+.now-playing .title{font-size:17px;font-weight:600;margin-bottom:4px}
+.now-playing .artist{font-size:13px;opacity:.5;margin-bottom:12px}
+.progress-bar{height:4px;background:rgba(255,255,255,.1);border-radius:2px;margin-bottom:8px;cursor:pointer;position:relative}
+.progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#a855f7);border-radius:2px;width:0%;transition:width .3s}
+.time-row{display:flex;justify-content:space-between;font-size:11px;opacity:.4;margin-bottom:12px}
+.controls{display:flex;align-items:center;justify-content:center;gap:24px}
+.controls button{background:none;border:none;color:#e8e0d8;font-size:20px;cursor:pointer;width:44px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:background .2s}
+.controls button:hover{background:rgba(255,255,255,.08)}
+.controls .play-btn{width:56px;height:56px;font-size:24px;background:rgba(255,255,255,.08)}
+.controls .play-btn:hover{background:rgba(255,255,255,.14)}
+
+.lyrics{background:rgba(255,255,255,.04);border-radius:12px;padding:16px;margin-bottom:16px;flex:1;overflow-y:auto;max-height:200px;min-height:80px}
+.lyrics .line{padding:6px 0;font-size:13px;opacity:.4;transition:all .3s}
+.lyrics .line.active{opacity:1;color:#a78bfa;font-size:14px;font-weight:500}
+
+.result-list{flex:1;overflow-y:auto}
+.song-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer;transition:background .2s}
+.song-item:hover{background:rgba(255,255,255,.06)}
+.song-item:active{background:rgba(255,255,255,.1)}
+.song-item .idx{width:24px;text-align:center;font-size:12px;opacity:.3;flex-shrink:0}
+.song-item .info{flex:1;min-width:0}
+.song-item .name{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.song-item .desc{font-size:11px;opacity:.4;margin-top:2px}
+.song-item .dur{font-size:11px;opacity:.3;flex-shrink:0}
+.no-result{padding:40px;text-align:center;font-size:13px;opacity:.4}
+.settings-row{display:flex;gap:8px;margin-bottom:16px;align-items:center}
+.settings-row label{font-size:12px;opacity:.6;white-space:nowrap}
+.settings-row input{flex:1;padding:6px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:#e8e0d8;font-size:12px;outline:none}
+.status-text{font-size:11px;opacity:.3;text-align:center;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1><span>🎵</span> 音乐播放器</h1>
+
+  <details style="margin-bottom:12px">
+    <summary style="font-size:12px;opacity:.4;cursor:pointer">API 设置</summary>
+    <div class="settings-row">
+      <label>API 地址</label>
+      <input type="text" id="apiUrl" value="https://netease-cloud-music-api-iota-bice.vercel.app" placeholder="Netease API 地址"><br>
+      <span style="font-size:11px;opacity:.3">常用 API: netease-cloud-music-api-iota-bice.vercel.app</span>
+    </div>
+  </details>
+
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="搜索歌曲..." autocomplete="off">
+    <button onclick="search()">搜索</button>
+  </div>
+
+  <div class="now-playing" id="nowPlaying" style="display:none">
+    <div class="cover" id="coverArt"><span>🎵</span></div>
+    <div class="title" id="trackTitle">未播放</div>
+    <div class="artist" id="trackArtist">—</div>
+    <div class="progress-bar" id="progressBar" onclick="seek(event)">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="time-row">
+      <span id="timeCurrent">0:00</span>
+      <span id="timeTotal">0:00</span>
+    </div>
+    <div class="controls">
+      <button onclick="prevTrack()">⏮</button>
+      <button class="play-btn" id="playBtn" onclick="togglePlay()">▶</button>
+      <button onclick="nextTrack()">⏭</button>
+    </div>
+  </div>
+
+  <div class="lyrics" id="lyricsBox">
+    <div style="text-align:center;font-size:12px;opacity:.3;padding:20px">搜索歌曲开始播放</div>
+  </div>
+
+  <div id="resultBox" class="result-list"></div>
+  <div class="status-text" id="statusText"></div>
+</div>
+
+<script>
+// ═══ 状态 ═══
+let currentList = [];
+let currentIndex = -1;
+let audio = new Audio();
+let isPlaying = false;
+let lyricsData = [];
+
+const API_KEY = 'duetto-browser-player';
+
+// 默认 API URL（用户可改）
+function getApiBase() {
+  let val = document.getElementById('apiUrl').value.trim();
+  if (!val) val = 'https://netease-cloud-music-api-puce-phi.vercel.app';
+  return val.replace(/\/+$/, '');
+}
+
+// ═══ 搜索 ═══
+async function search() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) return;
+  const box = document.getElementById('resultBox');
+  box.innerHTML = '<div class="no-result">搜索中…</div>';
+  document.getElementById('statusText').textContent = '搜索中';
+
+  try {
+    const base = getApiBase();
+    const url = `${base}/search?keywords=${encodeURIComponent(q)}&limit=30`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    const data = await res.json();
+    const songs = data?.result?.songs || [];
+    if (!songs.length) {
+      box.innerHTML = '<div class="no-result">没有找到结果</div>';
+      document.getElementById('statusText').textContent = '';
+      return;
+    }
+    currentList = songs.map(s => ({
+      id: s.id,
+      name: s.name,
+      artist: (s.artists || []).map(a => a.name).join(' / '),
+      album: s.album?.name || '',
+      cover: s.album?.picUrl || s.album?.artist?.img1v1Url || '',
+      duration: s.duration || 0,
+    }));
+    renderList();
+    document.getElementById('statusText').textContent = `找到 ${songs.length} 首`;
+  } catch(e) {
+    box.innerHTML = `<div class="no-result">搜索失败: ${e.message}<br>可以试试更换 API 地址</div>`;
+    document.getElementById('statusText').textContent = '连接失败';
+  }
+}
+
+function renderList() {
+  const box = document.getElementById('resultBox');
+  box.innerHTML = currentList.map((s, i) => `
+    <div class="song-item" onclick="playTrack(${i})">
+      <span class="idx">${i + 1}</span>
+      <div class="info">
+        <div class="name">${esc(s.name)}</div>
+        <div class="desc">${esc(s.artist)} · ${esc(s.album)}</div>
+      </div>
+      <span class="dur">${fmtDur(s.duration)}</span>
+    </div>
+  `).join('');
+}
+
+// ═══ 播放 ═══
+async function playTrack(index) {
+  currentIndex = index;
+  const song = currentList[index];
+  const base = getApiBase();
+  document.getElementById('statusText').textContent = '获取播放链接…';
+
+  try {
+    const urlRes = await fetch(`${base}/song/url?id=${song.id}&br=320000`, { signal: AbortSignal.timeout(8000) });
+    const urlData = await urlRes.json();
+    const playUrl = urlData?.data?.[0]?.url;
+    if (!playUrl) {
+      document.getElementById('statusText').textContent = '该歌曲无播放链接（可能需要 VIP）';
+      return;
+    }
+
+    // 设置封面
+    const coverEl = document.getElementById('coverArt');
+    if (song.cover) {
+      coverEl.innerHTML = `<img src="${song.cover}" alt="cover">`;
+    } else {
+      coverEl.innerHTML = '<span>🎵</span>';
+    }
+    document.getElementById('trackTitle').textContent = song.name;
+    document.getElementById('trackArtist').textContent = song.artist;
+    document.getElementById('nowPlaying').style.display = 'block';
+
+    audio.src = playUrl;
+    audio.play();
+    isPlaying = true;
+    document.getElementById('playBtn').textContent = '⏸';
+    document.getElementById('statusText').textContent = '正在播放';
+
+    // 获取歌词
+    fetchLyrics(song.id);
+  } catch(e) {
+    document.getElementById('statusText').textContent = '播放失败: ' + e.message;
+  }
+}
+
+async function fetchLyrics(id) {
+  try {
+    const base = getApiBase();
+    const res = await fetch(`${base}/lyric?id=${id}`, { signal: AbortSignal.timeout(5000) });
+    const data = await res.json();
+    const lrc = data?.lrc?.lyric || '';
+    parseLyrics(lrc);
+  } catch(e) {
+    lyricsData = [];
+    document.getElementById('lyricsBox').innerHTML = '<div style="text-align:center;font-size:12px;opacity:.3;padding:20px">暂无歌词</div>';
+  }
+}
+
+function parseLyrics(lrc) {
+  lyricsData = [];
+  const lines = lrc.split('\n');
+  const regex = /\[(\d{2}):(\d{2})(?:\.(\d{2,3}))?\]/;
+  for (const line of lines) {
+    const match = line.match(regex);
+    if (match) {
+      const min = parseInt(match[1]);
+      const sec = parseInt(match[2]);
+      const ms = parseInt(match[3] || '0');
+      const time = min * 60 + sec + ms / 1000;
+      const text = line.replace(/\[.*?\]/, '').trim();
+      if (text) lyricsData.push({ time, text });
+    }
+  }
+  if (!lyricsData.length) {
+    document.getElementById('lyricsBox').innerHTML = '<div style="text-align:center;font-size:12px;opacity:.3;padding:20px">暂无歌词</div>';
+  }
+}
+
+function togglePlay() {
+  if (!audio.src) return;
+  if (isPlaying) {
+    audio.pause();
+    document.getElementById('playBtn').textContent = '▶';
+  } else {
+    audio.play();
+    document.getElementById('playBtn').textContent = '⏸';
+  }
+  isPlaying = !isPlaying;
+}
+
+function nextTrack() {
+  if (currentList.length && currentIndex < currentList.length - 1) playTrack(currentIndex + 1);
+  else if (currentList.length) playTrack(0);
+}
+
+function prevTrack() {
+  if (currentList.length && currentIndex > 0) playTrack(currentIndex - 1);
+  else if (currentList.length) playTrack(currentList.length - 1);
+}
+
+function seek(e) {
+  const bar = document.getElementById('progressBar');
+  const rect = bar.getBoundingClientRect();
+  const pct = (e.clientX - rect.left) / rect.width;
+  if (audio.duration) audio.currentTime = pct * audio.duration;
+}
+
+// ═══ 播放进度 ═══
+audio.addEventListener('timeupdate', () => {
+  if (!audio.duration) return;
+  const pct = (audio.currentTime / audio.duration * 100);
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('timeCurrent').textContent = fmt(audio.currentTime);
+  document.getElementById('timeTotal').textContent = fmt(audio.duration);
+
+  // 歌词高亮
+  if (lyricsData.length) {
+    let activeIdx = -1;
+    for (let i = lyricsData.length - 1; i >= 0; i--) {
+      if (audio.currentTime >= lyricsData[i].time) { activeIdx = i; break; }
+    }
+    const container = document.getElementById('lyricsBox');
+    container.querySelectorAll('.line').forEach((el, i) => {
+      el.classList.toggle('active', i === activeIdx);
+      if (i === activeIdx) el.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+    });
+  }
+});
+
+audio.addEventListener('ended', () => nextTrack());
+audio.addEventListener('error', () => {
+  document.getElementById('statusText').textContent = '播放出错，尝试下一首';
+  setTimeout(nextTrack, 2000);
+});
+
+// ═══ 工具 ═══
+function esc(s) { return String(s || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])); }
+function fmt(s) { const m = Math.floor(s / 60); const sec = Math.floor(s % 60); return `${m}:${String(sec).padStart(2,'0')}`; }
+function fmtDur(ms) { if (!ms) return '—'; return fmt(ms / 1000); }
+
+// 回车搜索
+document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') search(); });
+</script>
+</body>
+</html>
