@@ -2915,11 +2915,7 @@ window.openPanel = window.openPanel || function(panel){
 /* ═══════════════════════════════════
    游戏大厅
 ═══════════════════════════════════ */
-// 生成同服务器的相对 URL（同一台 python http.server 提供的资源）
-function localUrl(path){
-  return path;
-}
-// 生成外部服务的绝对 URL，使用当前 hostname（手机访问时自动用电脑 IP）
+// 生成外部服务的 URL，使用当前的 hostname（手机访问时自动用电脑 IP）
 function serviceUrl(port, path){
   const host = window.location.hostname === '127.0.0.1' ? 'localhost' : window.location.hostname;
   return `http://${host}:${port}${path || ''}`;
@@ -2932,7 +2928,7 @@ const GAMES = [
     icon: '🌿',
     desc: '观察与干预的池塘模拟',
     get url(){ return serviceUrl(8765, ''); },
-    embed: false,
+    embed: true,
   },
   {
     id: 'duetto',
@@ -2940,7 +2936,7 @@ const GAMES = [
     icon: '🎵',
     desc: '听歌、歌词、AI 陪伴',
     get url(){ return serviceUrl(4183, '/pkg/index.html'); },
-    embed: false,
+    embed: true,
   },
   {
     id: 'memory',

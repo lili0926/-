@@ -176,7 +176,7 @@ def make_handler(store, allowed_origin="*"):
         def _security_headers(self):
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("Referrer-Policy", "no-referrer")
-            self.send_header("Content-Security-Policy", "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src *; font-src 'self'; base-uri 'none'; frame-ancestors 'none'")
+            self.send_header("Content-Security-Policy", "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src *; font-src 'self'; base-uri 'none'; frame-ancestors *")
 
         def _json(self, status, value):
             body = json.dumps(value, ensure_ascii=False).encode("utf-8")
@@ -290,7 +290,7 @@ def make_handler(store, allowed_origin="*"):
 
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="启动瓶中生态独立前端与 API")
-    parser.add_argument("--host", default=os.getenv("CEDARECO_HOST", "127.0.0.1"))
+    parser.add_argument("--host", default=os.getenv("CEDARECO_HOST", "0.0.0.0"))
     parser.add_argument("--port", type=int, default=int(os.getenv("CEDARECO_PORT", "8765")))
     parser.add_argument("--save", default=os.getenv("CEDARECO_SAVE_FILE", str(ROOT / "eco_save.json")))
     parser.add_argument("--seed", type=int, default=int(os.getenv("CEDARECO_SEED", "12345")))
