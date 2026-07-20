@@ -5,7 +5,7 @@ services:
     env: node
     region: singapore
     buildCommand: npm install
-    startCommand: bash start.sh
+    startCommand: bash start
     rootDir: Duetto
     healthCheckPath: /api/health
     envVars:
@@ -18,7 +18,7 @@ services:
     env: python
     region: singapore
     buildCommand: pip install -r requirements.txt
-    startCommand: bash start.sh
+    startCommand: bash start
     rootDir: cedareco
     envVars:
       - key: PYTHON_VERSION
