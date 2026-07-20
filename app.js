@@ -1749,13 +1749,13 @@ function bindEvents(){
       const urls = JSON.parse(localStorage.getItem('remoteServiceUrls') || '{}');
       const dUrl = document.getElementById('remoteDuettoUrl');
       const cUrl = document.getElementById('remoteCedarecoUrl');
-      if(dUrl) dUrl.value = urls.duetto || '';
-      if(cUrl) cUrl.value = urls.cedareco || '';
+      if(dUrl) dUrl.value = urls.duetto || RENDER_URLS.duetto;
+      if(cUrl) cUrl.value = urls.cedareco || RENDER_URLS.cedareco;
       // Aries 版
       const arD = document.getElementById('arRemoteDuettoUrl');
       const arC = document.getElementById('arRemoteCedarecoUrl');
-      if(arD) arD.value = urls.duetto || '';
-      if(arC) arC.value = urls.cedareco || '';
+      if(arD) arD.value = urls.duetto || RENDER_URLS.duetto;
+      if(arC) arC.value = urls.cedareco || RENDER_URLS.cedareco;
     } catch(e){}
   }
   function saveRemoteUrls(){
@@ -3403,12 +3403,12 @@ window.openPanel = window.openPanel || function(panel){
    游戏大厅
 ═══════════════════════════════════ */
 // 读取远程服务地址（设置页可配置）
-function getRemoteServiceUrl(id, defaultUrl){
-  try {
-    const urls = JSON.parse(localStorage.getItem('remoteServiceUrls') || '{}');
-    return urls[id] || defaultUrl;
-  } catch(e){ return defaultUrl; }
-}
+// Render 部署的远程服务地址（默认值）
+const RENDER_URLS = {
+  duetto: 'https://duetto-mqc7.onrender.com',
+  cedareco: 'https://cedareco-e0hj.onrender.com'
+};
+
 // 生成外部服务的 URL
 function serviceUrl(port, path){
   const host = window.location.hostname;
@@ -3416,10 +3416,10 @@ function serviceUrl(port, path){
   if(host === '127.0.0.1' || host === 'localhost' || host.match(/^192\.|^10\.|^172\./)){
     return `http://localhost:${port}${path || ''}`;
   }
-  // 非本地 → 使用远程 URL（从 localStorage 读取）
+  // 从 localStorage 读取用户自定义的远程地址
   const remoteUrls = JSON.parse(localStorage.getItem('remoteServiceUrls') || '{}');
-  if(port === 8765 && remoteUrls.cedareco) return remoteUrls.cedareco;
-  if(port === 4183 && remoteUrls.duetto) return remoteUrls.duetto + (path || '');
+  if(port === 8765) return remoteUrls.cedareco || RENDER_URLS.cedareco;
+  if(port === 4183) return (remoteUrls.duetto || RENDER_URLS.duetto) + (path || '');
   // 未知环境，尝试同域端口
   return `http://${host}:${port}${path || ''}`;
 }
