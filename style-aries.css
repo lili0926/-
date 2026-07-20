@@ -1259,6 +1259,43 @@
 }
 .ar-settings-field-label small { color: var(--ar-text-ghost); font-size: 10px; font-weight: 400; }
 
+/* Aries 设置项 — 紧凑同行布局（类似旧 UI） */
+#arSettingsTab .ar-settings-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(220, 190, 175, 0.12);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+#arSettingsTab .ar-settings-item:last-child { border-bottom: none; }
+#arSettingsTab .ar-settings-item .ar-settings-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+#arSettingsTab .ar-settings-item .ar-settings-label span { font-size: 13px; color: var(--ar-text); }
+#arSettingsTab .ar-settings-item .ar-settings-label small { font-size: 10px; color: var(--ar-text-ghost); font-weight: 400; }
+#arSettingsTab .ar-settings-item .ar-settings-input,
+#arSettingsTab .ar-settings-item .ar-settings-select {
+  width: auto;
+  min-width: 140px;
+  max-width: 180px;
+  margin-top: 0;
+  flex: 0 1 auto;
+}
+#arSettingsTab .ar-settings-item .ar-settings-textarea {
+  width: 100%;
+  margin-top: 4px;
+  min-height: 60px;
+}
+#arSettingsTab .ar-settings-item.ar-settings-full { flex-direction: column; align-items: stretch; }
+#arSettingsTab .ar-settings-item.ar-settings-full .ar-settings-label { flex-direction: row; justify-content: space-between; }
+#arSettingsTab .ar-settings-item.ar-settings-full .ar-settings-input { max-width: none; width: 100%; }
+
 /* toggle */
 .ar-toggle {
   width: 44px; height: 24px;

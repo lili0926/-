@@ -279,6 +279,9 @@
           <div class="settings-item"><div class="settings-label"><span>主题</span><small>深色 / 浅色</small></div><div class="toggle-switch" id="themeSwitch"><div class="toggle-knob"></div></div></div>
           <div class="settings-item"><div class="settings-label"><span>壁纸</span></div><button class="btn-secondary" id="wallpaperSettingBtn">更换</button></div>
           <div class="settings-item"><div class="settings-label"><span>壁纸遮罩</span></div><div class="slider-wrap"><input type="range" id="overlaySlider" min="0" max="90" value="60" class="slider"><span id="overlayVal">60%</span></div></div>
+          <div class="settings-item"><div class="settings-label"><span>通话头像</span></div><div><img id="oldCallAvatarPreview" src="assets/avatar.jpg" style="width:36px;height:36px;border-radius:50%;object-fit:cover;vertical-align:middle;cursor:pointer" title="点击更换"><input type="file" id="oldCallAvatarUpload" accept="image/*" style="display:none"></div></div>
+          <div class="settings-item"><div class="settings-label"><span>朋友圈头像</span></div><div><img id="oldMomentsAvatarPreview" src="assets/moments/avatar.jpg" style="width:36px;height:36px;border-radius:50%;object-fit:cover;vertical-align:middle;cursor:pointer" title="点击更换"><input type="file" id="oldMomentsAvatarUpload" accept="image/*" style="display:none"></div></div>
+          <div class="settings-item"><div class="settings-label"><span>朋友圈封面</span></div><div><img id="oldMomentsCoverPreview" src="assets/moments/cover.jpg" style="width:60px;height:36px;border-radius:6px;object-fit:cover;vertical-align:middle;cursor:pointer" title="点击更换"><input type="file" id="oldMomentsCoverUpload" accept="image/*" style="display:none"></div></div>
         </div>
         <div class="settings-group">
           <div class="settings-title">个人</div>
@@ -289,15 +292,15 @@
         <div class="settings-group"><div class="settings-title">字体深浅</div><div class="font-color-buttons"><button class="btn-secondary" onclick="setFontColor('light')">浅</button><button class="btn-secondary" onclick="setFontColor('normal')">中</button><button class="btn-secondary" onclick="setFontColor('deep')">深</button></div></div>
         <div class="settings-group">
           <div class="settings-title">远程服务 <small style="font-weight:400">部署到云端后使用</small></div>
-          <div class="settings-item"><div class="settings-label"><span>🎵 Duetto 音乐</span></div><input type="text" class="settings-input" id="remoteDuettoUrl" placeholder="https://duetto-anax.onrender.com"></div>
-          <div class="settings-item"><div class="settings-label"><span>🌿 瓶中生态</span></div><input type="text" class="settings-input" id="remoteCedarecoUrl" placeholder="https://cedareco.onrender.com"></div>
+          <div class="settings-item"><div class="settings-label"><span>🎵 Duetto 音乐</span></div><input type="text" class="settings-input" id="remoteDuettoUrl" placeholder="https://duetto-mqc7.onrender.com"></div>
+          <div class="settings-item"><div class="settings-label"><span>🌿 瓶中生态</span></div><input type="text" class="settings-input" id="remoteCedarecoUrl" placeholder="https://cedareco-e0hj.onrender.com"></div>
           <div style="display:flex;justify-content:flex-end;margin-top:4px"><button class="btn-primary" id="saveRemoteUrlsBtn">保存远程地址</button></div>
         </div>
         <button class="btn-save" id="saveSettings">保存设置</button>
       </section>
       <section class="page" id="page-moments">
         <div class="moments-actions"></div>
-        <div class="moments-cover"><img class="moments-cover-img" src="assets/moments/cover.jpg"><div class="moments-profile"><img class="moments-avatar" src="assets/moments/avatar.jpg"><div class="moments-name">Jasmine</div><div class="moments-bio">🫧啵啵pupa</div></div></div>
+        <div class="moments-cover"><img class="moments-cover-img" id="momentsCoverImg" src="assets/moments/cover.jpg" title="点击更换封面"><div class="moments-profile"><img class="moments-avatar" id="momentsAvatarImg" src="assets/moments/avatar.jpg" title="点击更换头像"><div class="moments-name">Jasmine</div><div class="moments-bio">🫧啵啵pupa</div></div><input type="file" id="momentsCoverFileInput" accept="image/*" style="display:none"><input type="file" id="momentsAvatarFileInput" accept="image/*" style="display:none"></div>
         <div id="momentList"></div>
         <button class="postMoment" onclick="openMomentModal()"><span>✎</span></button>
         <div id="momentModal" class="moment-modal hidden"><div class="moment-dialog"><textarea id="momentInput" placeholder="分享今天发生的事情..."></textarea><div class="moment-toolbar"><button id="chooseMomentImage">📷 图片</button></div><div class="moment-image-preview" id="momentImagePreview" style="display:none;margin-top:8px;position:relative;"><img id="momentPreviewImg" style="width:100%;max-height:200px;object-fit:cover;border-radius:12px;"><span class="moment-img-remove" id="momentImgRemove" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.5);color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;">✕</span></div><div class="moment-actions"><button id="cancelMoment">取消</button><button id="publishMoment">发布</button></div></div></div>
@@ -511,7 +514,7 @@
         <div class="ar-mfeed-cover">
           <div class="ar-mfeed-cover-bg"></div>
           <div class="ar-mfeed-profile">
-            <div class="ar-mfeed-avatar"><img src="assets/moments/avatar.jpg"></div>
+            <div class="ar-mfeed-avatar"><img id="arMfeedAvatar" src="assets/moments/avatar.jpg"></div>
             <div class="ar-mfeed-name">Jasmine</div>
             <div class="ar-mfeed-bio">🫧啵啵pupa</div>
           </div>
@@ -524,9 +527,10 @@
     <!-- ④ 设置 TAB -->
     <div class="ar-tab-panel" id="arSettingsTab">
       <div class="ar-settings-panel">
+
         <!-- 资料头 -->
         <div class="ar-profile-head">
-          <div class="ar-profile-avatar"><img src="assets/moments/avatar.jpg" onerror="this.style.display='none';this.parentNode.textContent='🦉'"></div>
+          <div class="ar-profile-avatar" id="arSettingsProfileAvatar"><img src="assets/moments/avatar.jpg" onerror="this.style.display='none';this.parentNode.textContent='🦉'"></div>
           <div>
             <div class="ar-profile-name" id="arProfileName">Aries 🌿</div>
             <div class="ar-profile-id">ID: ZestLorn</div>
@@ -537,75 +541,69 @@
         <!-- AI 接入 -->
         <div class="ar-settings-group">
           <div class="ar-settings-group-title">AI 接入</div>
-          <div class="ar-settings-field"><div class="ar-settings-field-label">API地址 <small>留空默认Claude</small></div><input class="ar-settings-input" id="arApiBaseUrl" placeholder="https://api.deepseek.com"></div>
-          <div class="ar-settings-field"><div class="ar-settings-field-label">接口路径 <small>如 /v1/chat/completions</small></div><input class="ar-settings-input" id="arApiPath" placeholder="/v1/chat/completions"></div>
-          <div class="ar-settings-field"><div class="ar-settings-field-label">接口格式</div><select class="ar-settings-select" id="arApiFormat"><option value="anthropic">Claude原生</option><option value="openai">OpenAI兼容</option></select></div>
-          <div class="ar-settings-field"><div class="ar-settings-field-label">API Key <small>仅本地存储</small></div><input class="ar-settings-input" type="password" id="arApiKey" placeholder="sk-ant-..."></div>
-          <div class="ar-settings-field"><div class="ar-settings-field-label">模型</div><select class="ar-settings-select" id="arModelSelect"><option value="claude-sonnet-4-6">Sonnet 4.6</option><option value="claude-opus-4-6">Opus 4.6</option><option value="claude-haiku-4-5-20251001">Haiku 4.5</option></select></div>
-          <div class="ar-settings-field"><div class="ar-settings-field-label">系统提示词 <small>定义 AI 人格</small></div><textarea class="ar-settings-textarea" id="arSystemPrompt" placeholder="你是..."></textarea></div>
-          <div class="ar-settings-row"><div class="ar-settings-icon">🔞</div><div class="ar-settings-label">NSFW 模式</div><div class="ar-toggle" id="arNsfwToggle"></div></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>API地址</span><small>留空默认Claude</small></div><input class="ar-settings-input" id="arApiBaseUrl" placeholder="https://api.deepseek.com"></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>接口路径</span><small>如 /v1/chat/completions</small></div><input class="ar-settings-input" id="arApiPath" placeholder="/v1/chat/completions"></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>接口格式</span></div><select class="ar-settings-select" id="arApiFormat"><option value="anthropic">Claude原生</option><option value="openai">OpenAI兼容</option></select></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>API Key</span><small>仅本地存储</small></div><input class="ar-settings-input" type="password" id="arApiKey" placeholder="sk-ant-..."></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>模型</span></div><select class="ar-settings-select" id="arModelSelect"><option value="claude-sonnet-4-6">Sonnet 4.6</option><option value="claude-opus-4-6">Opus 4.6</option><option value="claude-haiku-4-5-20251001">Haiku 4.5</option></select></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>系统提示词</span><small>定义 AI 人格</small></div></div>
+          <div class="ar-settings-item ar-settings-full"><textarea class="ar-settings-textarea" id="arSystemPrompt" placeholder="你是..."></textarea></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>NSFW 模式</span><small>解锁成人内容</small></div><div class="ar-toggle" id="arNsfwToggle"></div></div>
         </div>
 
-        <!-- 后台任务 AI 配置 -->
+        <!-- 后台任务 AI -->
         <div class="ar-settings-group">
-          <div class="ar-settings-group-title">后台任务 AI <small style="font-weight:400;font-size:11px">日记/思绪/主动消息等</small></div>
-          <div class="ar-settings-field"><div class="ar-settings-field-label">后台API地址</div><input class="ar-settings-input" id="arBgBaseUrl" placeholder="https://api.deepseek.com"></div>
-          <div class="ar-settings-field"><div class="ar-settings-field-label">后台API路径</div><input class="ar-settings-input" id="arBgPath" placeholder="/v1/chat/completions"></div>
-          <div class="ar-settings-field"><div class="ar-settings-field-label">后台API Key</div><input class="ar-settings-input" type="password" id="arBgKey" placeholder="sk-..."></div>
-          <div class="ar-settings-field"><div class="ar-settings-field-label">后台模型</div><input class="ar-settings-input" id="arBgModel" placeholder="deepseek-chat"></div>
+          <div class="ar-settings-group-title">后台任务 AI <small style="font-weight:400;font-size:10px">日记/思绪/主动消息等</small></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>API地址</span><small>默认DeepSeek</small></div><input class="ar-settings-input" id="arBgBaseUrl" placeholder="https://api.deepseek.com"></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>API路径</span></div><input class="ar-settings-input" id="arBgPath" placeholder="/v1/chat/completions"></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>API Key</span></div><input class="ar-settings-input" type="password" id="arBgKey" placeholder="sk-..."></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>模型</span></div><input class="ar-settings-input" id="arBgModel" placeholder="deepseek-chat"></div>
         </div>
 
         <!-- 聊天外观 -->
         <div class="ar-settings-group">
           <div class="ar-settings-group-title">聊天外观</div>
-          <div class="ar-settings-field"><div class="ar-settings-field-label">UI美化方案</div><select class="ar-settings-select" id="arUiPresetSelect"><option value="ins-soft">Ins奶油风</option><option value="night-glass">夜间玻璃</option><option value="jasmine">Jasmine</option><option value="daddy">daddy</option><option value="frosted">雾面玻璃</option><option value="rose-night">蔷薇夜</option><option value="matcha-tea">茶雾</option><option value="aries">Aries</option></select></div>
-          <div class="ar-settings-field" style="flex-direction:row;display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid rgba(220,190,175,0.12);"><div class="ar-settings-field-label" style="margin:0">思考链颜色</div><input type="color" id="arThinkingColor" value="#7c5cbf" style="width:36px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;padding:0"></div>
-          <div class="ar-settings-row"><div class="ar-settings-icon">🫧</div><div class="ar-settings-label">气泡不透明度</div><input type="range" id="arBubbleOpacity" min="2" max="60" value="10" style="width:80px;accent-color:var(--ar-accent)"><span id="arBubbleOpacityVal" style="font-size:11px;color:var(--ar-text-soft);min-width:28px">10%</span></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>UI美化方案</span></div><select class="ar-settings-select" id="arUiPresetSelect"><option value="ins-soft">Ins奶油风</option><option value="night-glass">夜间玻璃</option><option value="jasmine">Jasmine</option><option value="daddy">daddy</option><option value="frosted">雾面玻璃</option><option value="rose-night">蔷薇夜</option><option value="matcha-tea">茶雾</option><option value="aries">Aries</option></select></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>思考链颜色</span></div><div><input type="color" id="arThinkingColor" value="#7c5cbf" style="width:36px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;padding:0;vertical-align:middle"><span id="arThinkingColorVal" style="font-size:11px;color:var(--ar-text-ghost);margin-left:4px">#7c5cbf</span></div></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>气泡不透明度</span></div><div style="display:flex;align-items:center;gap:8px"><input type="range" id="arBubbleOpacity" min="2" max="60" value="10" style="width:80px;accent-color:var(--ar-accent)"><span id="arBubbleOpacityVal" style="font-size:11px;color:var(--ar-text-soft);min-width:28px">10%</span></div></div>
         </div>
 
         <!-- 外观 -->
         <div class="ar-settings-group">
           <div class="ar-settings-group-title">外观</div>
-          <div class="ar-settings-field"><div class="ar-settings-field-label">英文字体</div><select class="ar-settings-select" id="arFontSelect"><option value="default">默认</option><option value="cormorant">Cormorant Garamond</option><option value="dancing">Dancing Script</option><option value="great">Great Vibes</option><option value="eb">EB Garamond</option></select></div>
-          <div class="ar-settings-row"><div class="ar-settings-icon">🖼</div><div class="ar-settings-label">壁纸设置</div><div class="ar-settings-arrow" id="arWpBtn2">›</div></div>
-          <div class="ar-settings-row"><div class="ar-settings-icon">🌙</div><div class="ar-settings-label">深色模式</div><div class="ar-toggle" id="arDarkToggle"></div></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>英文字体</span></div><select class="ar-settings-select" id="arFontSelect"><option value="default">默认</option><option value="cormorant">Cormorant Garamond</option><option value="dancing">Dancing Script</option><option value="great">Great Vibes</option><option value="eb">EB Garamond</option></select></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>壁纸设置</span></div><button class="ar-btn-secondary" id="arWpBtn2" style="font-size:12px;padding:4px 12px">更换</button></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>深色模式</span></div><div class="ar-toggle" id="arDarkToggle"></div></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>通话头像</span></div><div><img id="arCallAvatarPreview" src="assets/avatar.jpg" style="width:36px;height:36px;border-radius:50%;object-fit:cover;vertical-align:middle;cursor:pointer" title="点击更换通话头像"><input type="file" id="arCallAvatarUpload" accept="image/*" style="display:none"></div></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>朋友圈头像</span></div><div><img id="arMomentsAvatarPreview" src="assets/moments/avatar.jpg" style="width:36px;height:36px;border-radius:50%;object-fit:cover;vertical-align:middle;cursor:pointer" title="点击更换朋友圈头像"><input type="file" id="arMomentsAvatarUpload" accept="image/*" style="display:none"></div></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>朋友圈封面</span></div><div><img id="arMomentsCoverPreview" src="assets/moments/cover.jpg" style="width:60px;height:36px;border-radius:6px;object-fit:cover;vertical-align:middle;cursor:pointer" title="点击更换朋友圈封面"><input type="file" id="arMomentsCoverUpload" accept="image/*" style="display:none"></div></div>
         </div>
 
         <!-- 远程服务 -->
         <div class="ar-settings-group">
           <div class="ar-settings-group-title">远程服务</div>
-          <div class="ar-settings-field"><div class="ar-settings-field-label">🎵 Duetto 音乐</div><input class="ar-settings-input" id="arRemoteDuettoUrl" placeholder="https://duetto-anax.onrender.com"></div>
-          <div class="ar-settings-field"><div class="ar-settings-field-label">🌿 瓶中生态</div><input class="ar-settings-input" id="arRemoteCedarecoUrl" placeholder="https://cedareco.onrender.com"></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>🎵 Duetto 音乐</span></div><input class="ar-settings-input" id="arRemoteDuettoUrl" placeholder="https://duetto-mqc7.onrender.com"></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>🌿 瓶中生态</span></div><input class="ar-settings-input" id="arRemoteCedarecoUrl" placeholder="https://cedareco-e0hj.onrender.com"></div>
         </div>
 
         <!-- 天气 & 位置 -->
         <div class="ar-settings-group">
           <div class="ar-settings-group-title">天气 &amp; 位置</div>
-          <div class="ar-settings-field"><div class="ar-settings-field-label">城市</div><input class="ar-settings-input" id="arCityInput" placeholder="Beijing"></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>城市</span></div><input class="ar-settings-input" id="arCityInput" placeholder="Beijing"></div>
         </div>
 
         <!-- 个人 -->
         <div class="ar-settings-group">
           <div class="ar-settings-group-title">个人</div>
-          <div class="ar-settings-field"><div class="ar-settings-field-label">名字</div><input class="ar-settings-input" id="arNameInput" placeholder="小猫" maxlength="10"></div>
-          <div class="ar-settings-field"><div class="ar-settings-field-label">在一起从</div><input class="ar-settings-input" type="date" id="arDateInput"></div>
-          <div class="ar-settings-field"><div class="ar-settings-field-label">纪念日 <small>格式 MM-DD，逗号分隔</small></div><input class="ar-settings-input" id="arAnniversaryInput" placeholder="02-14,06-01"></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>名字</span></div><input class="ar-settings-input" id="arNameInput" placeholder="小猫" maxlength="10"></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>在一起从</span></div><input class="ar-settings-input" type="date" id="arDateInput"></div>
+          <div class="ar-settings-item"><div class="ar-settings-label"><span>纪念日</span><small>格式 MM-DD，逗号分隔</small></div><input class="ar-settings-input" id="arAnniversaryInput" placeholder="02-14,06-01"></div>
         </div>
 
-        <!-- 字体深浅 -->
-        <div class="ar-settings-group" style="padding:12px 16px;display:flex;flex-direction:row;align-items:center;justify-content:space-between">
-          <span style="font-size:13px;color:var(--ar-text)">字体深浅</span>
-          <div style="display:flex;gap:8px">
-            <button class="ar-btn-secondary" onclick="setFontColor('light')">浅</button>
-            <button class="ar-btn-secondary" onclick="setFontColor('normal')">中</button>
-            <button class="ar-btn-secondary" onclick="setFontColor('deep')">深</button>
-          </div>
-        </div>
-
-        <!-- 底部大按钮 -->
+        <!-- 底部按钮 -->
         <button class="ar-save-btn" id="arSaveBtn">保存设置</button>
         <button class="ar-btn-secondary" style="width:100%;padding:14px;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px" id="arAIMomentBtn"><span>🦉</span> 让 Elliott 发一条朋友圈</button>
-        <button class="ar-btn-secondary" style="width:100%;padding:14px;display:flex;align-items:center;justify-content:center;gap:8px" id="arSwitchThemeBtn"><span>🎨</span> 切换回经典主题</button>
+        <button class="ar-btn-secondary" style="width:100%;padding:14px;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px" id="arSwitchThemeBtn"><span>🎨</span> 切换回经典主题</button>
       </div>
     </div>
 

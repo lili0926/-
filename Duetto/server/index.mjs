@@ -1,3 +1,7 @@
+// 顶层错误捕获（避免静默崩溃）
+process.on('uncaughtException', e => { console.error('[FATAL]', e); process.exit(1); });
+process.on('unhandledRejection', (reason) => { console.error('[UNHANDLED]', reason); });
+
 import express from 'express';
 import http from 'http';
 import { WebSocketServer } from 'ws';

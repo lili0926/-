@@ -1783,7 +1783,131 @@ function bindEvents(){
     const file=e.target.files[0]; if(!file) return;
     const r=new FileReader();
     r.onload=ev=>{applyWallpaper(ev.target.result); localStorage.setItem('wallpaper-custom', ev.target.result); closeModal('wallpaperModal'); showToast('壁纸已更换 🌸');};
-    r.readAsDataURL(file); 
+    r.readAsDataURL(file);
+  });
+
+  // ====== 可更换头像 / 封面 ======
+  const uploadImage = (inputId, storageKey, ...previewIds) => {
+    const input = document.getElementById(inputId);
+    if(!input) return;
+    input.addEventListener('change', function(){
+      if(!this.files?.length) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const dataUrl = ev.target.result;
+        localStorage.setItem(storageKey, dataUrl);
+        previewIds.forEach(id => {
+          const el = document.getElementById(id);
+          if(el) el.src = dataUrl;
+        });
+        showToast('已更换 ✨');
+      };
+      reader.readAsDataURL(this.files[0]);
+    });
+  };
+  // 上传绑定
+  uploadImage('oldCallAvatarUpload', 'callAvatar', 'oldCallAvatarPreview', 'arCallAvatarPreview', 'callAvatarMain', 'callAvAries');
+  uploadImage('arCallAvatarUpload', 'callAvatar', 'oldCallAvatarPreview', 'arCallAvatarPreview', 'callAvatarMain', 'callAvAries');
+  uploadImage('oldMomentsAvatarUpload', 'momentsAvatar', 'oldMomentsAvatarPreview', 'arMomentsAvatarPreview', 'momentsAvatarImg');
+  uploadImage('arMomentsAvatarUpload', 'momentsAvatar', 'oldMomentsAvatarPreview', 'arMomentsAvatarPreview', 'momentsAvatarImg');
+  uploadImage('oldMomentsCoverUpload', 'momentsCover', 'oldMomentsCoverPreview', 'arMomentsCoverPreview', 'momentsCoverImg');
+  uploadImage('arMomentsCoverUpload', 'momentsCover', 'oldMomentsCoverPreview', 'arMomentsCoverPreview', 'momentsCoverImg');
+  // moments 页面内直接点击头像/封面
+  document.getElementById('momentsAvatarImg')?.addEventListener('click', () => document.getElementById('momentsAvatarFileInput')?.click());
+  document.getElementById('momentsCoverImg')?.addEventListener('click', () => document.getElementById('momentsCoverFileInput')?.click());
+  document.getElementById('momentsAvatarFileInput')?.addEventListener('change', function(){
+    if(!this.files?.length) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const url = ev.target.result;
+      localStorage.setItem('momentsAvatar', url);
+      ['momentsAvatarImg','oldMomentsAvatarPreview','arMomentsAvatarPreview','arMfeedAvatar'].forEach(id => {
+        const el = document.getElementById(id); if(el) el.src = url;
+      });
+      const profileAv = document.querySelector('#arSettingsProfileAvatar img');
+      if(profileAv) profileAv.src = url;
+      showToast('头像已更换 ✨');
+    };
+    reader.readAsDataURL(this.files[0]);
+  });
+  document.getElementById('momentsCoverFileInput')?.addEventListener('change', function(){
+    if(!this.files?.length) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const url = ev.target.result;
+      localStorage.setItem('momentsCover', url);
+      document.getElementById('momentsCoverImg').src = url;
+      document.getElementById('oldMomentsCoverPreview').src = url;
+      document.getElementById('arMomentsCoverPreview').src = url;
+      showToast('封面已更换 ✨');
+    };
+    reader.readAsDataURL(this.files[0]);
+  });
+
+  // 点击预览图也触发上传
+  ['oldCallAvatarPreview','arCallAvatarPreview'].forEach(id => {
+    document.getElementById(id)?.addEventListener('click', function(){
+      const inputId = id.startsWith('ar') ? 'arCallAvatarUpload' : 'oldCallAvatarUpload';
+      document.getElementById(inputId)?.click();
+    });
+  });
+  ['oldMomentsAvatarPreview','arMomentsAvatarPreview'].forEach(id => {
+    document.getElementById(id)?.addEventListener('click', function(){
+      const inputId = id.startsWith('ar') ? 'arMomentsAvatarUpload' : 'oldMomentsAvatarUpload';
+      document.getElementById(inputId)?.click();
+    });
+  });
+  ['oldMomentsCoverPreview','arMomentsCoverPreview'].forEach(id => {
+    document.getElementById(id)?.addEventListener('click', function(){
+      const inputId = id.startsWith('ar') ? 'arMomentsCoverUpload' : 'oldMomentsCoverUpload';
+      document.getElementById(inputId)?.click();
+    });
+  });
+
+  // 加载已保存的头像
+  const savedCallAvatar = localStorage.getItem('callAvatar');
+  if(savedCallAvatar){
+    ['callAvatarMain','callAvAries','oldCallAvatarPreview','arCallAvatarPreview'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.src = savedCallAvatar;
+    });
+    // Aries 通话中也换
+    const arEmoji = document.getElementById('arCallActAvAries');
+    if(arEmoji) arEmoji.innerHTML = `<img src="${savedCallAvatar}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    // 来电卡片
+    document.querySelectorAll('.call-incoming-av img').forEach(img => img.src = savedCallAvatar);
+  }
+  const savedMomentsAvatar = localStorage.getItem('momentsAvatar');
+  if(savedMomentsAvatar){
+    ['momentsAvatarImg','oldMomentsAvatarPreview','arMomentsAvatarPreview','arMfeedAvatar'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.src = savedMomentsAvatar;
+    });
+    // 设置页 Aries profile 头像
+    const profileAv = document.querySelector('#arSettingsProfileAvatar img');
+    if(profileAv) profileAv.src = savedMomentsAvatar;
+  }
+  const savedMomentsCover = localStorage.getItem('momentsCover');
+  if(savedMomentsCover){
+    ['momentsCoverImg','oldMomentsCoverPreview','arMomentsCoverPreview'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.src = savedMomentsCover;
+    });
+  }
+
+  // Aries 来电/通话头像也跟随
+  const updateAriesCallAvatars = () => {
+    const saved = localStorage.getItem('callAvatar');
+    if(!saved) return;
+    const incomingAv = document.querySelector('.ar-call-av-inner');
+    if(incomingAv) incomingAv.innerHTML = `<img src="${saved}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+    const idleAv = document.querySelector('#arCallIdle .ar-call-avatar');
+    if(idleAv) idleAv.innerHTML = `<img src="${saved}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  };
+  updateAriesCallAvatars();
+  // 监听 localStorage 变化
+  window.addEventListener('storage', e => {
+    if(e.key === 'callAvatar') updateAriesCallAvatars();
   });
   
   document.getElementById('overlaySlider').addEventListener('input', function(){ applyOverlay(parseInt(this.value)); document.getElementById('overlayVal').textContent=this.value+'%'; localStorage.setItem('overlay', this.value); });

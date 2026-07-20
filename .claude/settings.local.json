@@ -28,7 +28,14 @@
       "Bash(git restore *)",
       "Bash(git push *)",
       "Bash(git remote *)",
-      "Bash(git commit -m 'feat: 添加远程服务地址设置（Duetto + 瓶中生态） *)"
+      "Bash(git commit -m 'feat: 添加远程服务地址设置（Duetto + 瓶中生态） *)",
+      "Bash(git ls-tree *)",
+      "Bash(chmod +x *)",
+      "Bash(git rm *)",
+      "Bash(git commit -m 'fix: Render 解析命令时吞掉扩展名，改用无扩展名的 start 脚本 *)",
+      "Bash(git commit -m 'fix: Render 改用 npm start 和 python3 -m 方式（避免解析吞扩展名） *)",
+      "Bash(git commit -m 'feat: 硬编码 Render 默认远程地址，开箱即用 *)",
+      "Bash(git commit -m 'feat: Aries 设置页改为紧凑同行布局 + 可更换头像 *)"
     ]
   }
 }
