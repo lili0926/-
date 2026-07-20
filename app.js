@@ -2917,8 +2917,12 @@ window.openPanel = window.openPanel || function(panel){
 ═══════════════════════════════════ */
 // 生成外部服务的 URL，使用当前的 hostname（手机访问时自动用电脑 IP）
 function serviceUrl(port, path){
-  const host = window.location.hostname === '127.0.0.1' ? 'localhost' : window.location.hostname;
-  return `http://${host}:${port}${path || ''}`;
+  const host = window.location.hostname;
+  // GitHub Pages / 非本地环境 → 显示离线提示
+  if (host.includes('github.io') || host === 'lili0926.github.io') {
+    return '/offline.html#port=' + port;
+  }
+  return `http://${host === '127.0.0.1' ? 'localhost' : host}:${port}${path || ''}`;
 }
 
 const GAMES = [

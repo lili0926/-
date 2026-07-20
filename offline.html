@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>服务未启动</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#1a1a2e;color:#e0d8d0;font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:20px}
+.card{background:#16213e;border-radius:16px;padding:40px 32px;max-width:400px;width:100%}
+.icon{font-size:56px;margin-bottom:16px;opacity:0.6}
+h2{margin-bottom:8px;font-weight:600}
+p{font-size:14px;opacity:0.6;line-height:1.6;margin-bottom:20px}
+.code{background:#0f3460;padding:10px 16px;border-radius:10px;font-family:monospace;font-size:13px;white-space:pre-wrap;word-break:break-all;text-align:left;margin-bottom:12px}
+.hint{font-size:12px;opacity:0.4}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">💻</div>
+  <h2 id="serviceName">服务未启动</h2>
+  <p>此功能需要在电脑端运行后端服务</p>
+  <div class="code">bash start.sh</div>
+  <div class="hint">然后在同一局域网下用手机访问</div>
+</div>
+<script>
+const names = { 4183: '🎵 Duetto 音乐', 8765: '🌿 瓶中生态' };
+const p = location.hash.match(/port=(\d+)/);
+if (p) document.getElementById('serviceName').textContent = names[p[1]] || '服务未启动';
+</script>
+</body>
+</html>
