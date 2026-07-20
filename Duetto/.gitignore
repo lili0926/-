@@ -1,0 +1,10 @@
+node_modules/
+data/
+*.log
+*.bak
+.DS_Store
+*.tgz
+_*.mjs
+.image-slots.state.json
+nohup.out
+frontend/pkg/duetto-guide.pdf

@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git clone *)",
+      "Bash(python3 standalone_server.py)",
+      "Bash(curl -s http://127.0.0.1:8765)",
+      "Bash(curl *)",
+      "Bash(node -c /mnt/c/Users/86139/Desktop/Claude/app.js)",
+      "Bash(node -c /mnt/c/Users/86139/Desktop/Claude/aries-init.js)",
+      "Bash(grep -n \"^\\\\$ = \" /mnt/c/Users/86139/Desktop/Claude/aries-init.js)",
+      "Bash(grep *)",
+      "Bash(python3 *)",
+      "Bash(npm install *)",
+      "Bash(node server/index.mjs)",
+      "Bash(node -e \"require\\('better-sqlite3'\\)\")",
+      "Bash(node *)",
+      "Bash(kill -9 5161)",
+      "Read(//tmp/**)",
+      "Bash(xargs kill -9)",
+      "Bash(kill -9 6189)",
+      "Bash(kill %1)",
+      "Bash(echo \"Restarted Duetto PID=$!\")",
+      "Bash(xargs -r kill -9)",
+      "Bash(echo \"PID=$!\")",
+      "Bash(pkill -f \"server/index.mjs\")",
+      "Bash(echo \"Cedereco PID=$!\")"
+    ]
+  }
+}

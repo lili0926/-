@@ -1,0 +1,3061 @@
+const supabaseClient = supabase.createClient(
+  "https://lqcuklhldvkwbkpftjzu.supabase.co",
+  "sb_publishable_w13U8_JcT0amx_LVBm9dnA_CoA5xiow"
+);
+// AI主动呼叫监听
+supabaseClient
+.channel("callhome-listener")
+.on(
+  "postgres_changes",
+  {
+    event: "INSERT",
+    schema: "public",
+    table: "call_sessions"
+  },
+  (payload)=>{
+
+    console.log("收到AI呼叫:", payload.new);
+
+    if(payload.new.status === "calling" && payload.new.call_type === "ai主动"){
+
+      currentCallId = payload.new.id;
+      const reason = payload.new.reason || "想你了";
+
+      // 切换旧主题到来电卡片
+      document.getElementById("page-callhome")?.classList.remove("hidden");
+      document.getElementById("callIdle")?.classList.add("hidden");
+      document.getElementById("callScreen")?.classList.add("hidden");
+      const incoming = document.getElementById("callIncomingOverlay");
+      if(incoming){
+        incoming.style.display = "flex";
+        document.getElementById("callIncomingReason").textContent = reason;
+        document.getElementById("callQuickDecline").style.display = "none";
+      }
+
+      // Aries 主题也切换到来电卡片
+      const arIncoming = document.getElementById("arCallIncoming");
+      if(arIncoming){
+        document.getElementById("arCallIdle").style.display = "none";
+        document.getElementById("arCallActive").style.display = "none";
+        arIncoming.style.display = "flex";
+        document.getElementById("arCallReason").textContent = reason;
+        document.getElementById("arCallQuick").style.display = "none";
+        document.getElementById("arCallOverlay").style.display = "flex";
+      }
+
+    }
+
+  }
+)
+.subscribe();
+// hex字符串 -> base64字符串（MiniMax TTS返回的audio字段是hex编码，不是base64）
+function hexToBase64(hexStr){
+    const bytes = new Uint8Array(hexStr.length / 2);
+    for(let i = 0; i < hexStr.length; i += 2){
+        bytes[i/2] = parseInt(hexStr.substr(i, 2), 16);
+    }
+    let binary = "";
+    for(let i = 0; i < bytes.length; i++){
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+}
+
+async function aiSpeak(text){
+
+    try{
+        const res = await fetch(
+            "https://lqcuklhldvkwbkpftjzu.supabase.co/functions/v1/tts",
+            {
+                method:"POST",
+                headers:{
+                    "Content-Type":"application/json"
+                },
+                body:JSON.stringify({
+                    text:text
+                })
+            }
+        );
+
+        const data = await res.json();
+
+        // MiniMax 正常返回时 data.data.status === 2；异常时base_resp.status_code非0
+        if(data.base_resp && data.base_resp.status_code !== 0){
+            console.error("TTS生成失败:", data.base_resp.status_msg);
+            return;
+        }
+
+        const audioHex = data.data?.audio;
+        if(!audioHex){
+            console.error("TTS返回中没有audio字段:", data);
+            return;
+        }
+
+        const audioBase64 = hexToBase64(audioHex);
+
+        const audio = new Audio(
+            "data:audio/mp3;base64," + audioBase64
+        );
+
+        audio.play();
+    }catch(e){
+        console.error("aiSpeak失败:", e);
+    }
+
+}
+
+// 生成通话接通时的开场白：根据最近聊天历史，走DeepSeek动态生成，不再用固定文案
+async function generateCallOpeningLine(){
+    const apiKey = bgApiConfig.key;
+    if(!apiKey) {
+        console.log("【通话开场白】未配置后台AI Key，用兜底文案");
+        return "喂？在吗。";
+    }
+
+    const recentChat = (state.chatHistory || [])
+        .slice(-10)
+        .map(m => ({ role: m.role, content: m.content }));
+
+    const prompt = "你现在刚接起/拨通了和用户的电话，请说一句自然的通话开场白，就像真的在打电话一样。不超过25字，口语化，符合你的性格（嘴硬、闷骚、话少）。只返回这句话本身，不要加引号，不要解释。" +
+        (recentChat.length ? "\n最近聊天记录供参考：" + JSON.stringify(recentChat) : "");
+
+    const body = {
+        model: bgApiConfig.model,
+        messages: [
+            { role: "system", content: "你只返回一句纯文本台词，不要任何markdown、引号或解释。" },
+            { role: "user", content: prompt }
+        ],
+        temperature: 0.8,
+        max_tokens: 100
+    };
+
+    try{
+        const fullUrl = bgApiConfig.baseUrl.replace(/\/+$/, '') + bgApiConfig.path;
+        const controller = new AbortController();
+        setTimeout(()=>{ controller.abort(); }, 15000);
+
+        const res = await fetch(fullUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey },
+            body: JSON.stringify(body),
+            signal: controller.signal
+        });
+        const data = await res.json();
+
+        let line = "";
+        if(data.choices && data.choices[0]?.message?.content){
+            line = data.choices[0].message.content;
+        } else if(data.content && Array.isArray(data.content)){
+            line = data.content.find(b => b.type === "text")?.text || "";
+        }
+
+        line = line.replace(/^["""]|["""]$/g, "").trim();
+        return line || "喂？在吗。";
+    }catch(e){
+        console.error("【通话开场白】生成失败:", e);
+        return "喂？在吗。";
+    }
+}
+
+let statusAnimation;
+
+// ── 测试用：模拟AI主动发起呼叫 ──
+async function aiCallHome(reason = "AI想你了", ai_id = "Aries", call_type = "ai主动"){
+
+    const {data, error} = await supabaseClient
+        .from("call_sessions")
+        .insert([
+            {
+                status: "calling",
+                reason: reason,
+                ai_id: ai_id,
+                call_type: call_type
+            }
+        ])
+        .select()
+        .single();
+
+    if(error){
+        console.error("aiCallHome 插入失败:", error);
+        alert("aiCallHome 失败：" + error.message);
+        return;
+    }
+
+    console.log("aiCallHome 插入成功:", data);
+    return data;
+}
+
+// ── 快速拒接（带原因） ──
+function showQuickDecline(){
+  document.getElementById("callQuickDecline").style.display = "flex";
+}
+async function declineCall(reason){
+  if(!currentCallId) return;
+  document.getElementById("callIncomingOverlay").style.display = "none";
+  document.getElementById("callIdle").classList.remove("hidden");
+
+  // 写入 Supabase
+  await supabaseClient
+    .from("call_sessions")
+    .update({ status: "declined", declined_reason: reason, ended_at: new Date() })
+    .eq("id", currentCallId);
+
+  stopCallTimer();
+  document.getElementById("callStatus").innerText = reason ? "已拒接：" + reason : "已拒接";
+  document.getElementById("endCallBtn").classList.add("hidden");
+  document.getElementById("answerBtn").classList.add("hidden");
+  document.getElementById("startCallBtn").classList.remove("hidden");
+  document.getElementById("startCallBtn").disabled = false;
+  document.getElementById("callTime").innerText = "00:00";
+  currentCallId = null;
+
+  // 如果是走Aries主题
+  arResetCallUI("已拒接：" + reason);
+}
+
+// Aries 通话界面重置
+function arResetCallUI(statusText){
+  document.getElementById("arCallIncoming").style.display = "none";
+  document.getElementById("arCallActive").style.display = "none";
+  const idle = document.getElementById("arCallIdle");
+  if(idle){
+    idle.style.display = "flex";
+    document.getElementById("arCallStatus").textContent = statusText || "准备呼叫...";
+    document.getElementById("arCallTime").textContent = "00:00";
+    document.getElementById("arCallStartBtn").style.display = "";
+    document.getElementById("arCallEndBtn").style.display = "none";
+    document.getElementById("arCallAnswerBtn").style.display = "none";
+  }
+}
+
+// ── DND 勿扰模式 ──
+let dndMode = localStorage.getItem("callDnd") === "true";
+function toggleDnd(){
+  dndMode = !dndMode;
+  localStorage.setItem("callDnd", dndMode);
+  showToast(dndMode ? "勿扰模式已开启" : "勿扰模式已关闭");
+  return dndMode;
+}
+function isDndOn(){ return dndMode; }
+
+// ── 时间问候语 ──
+function callGreetingFor(h){
+  if(h >= 5 && h < 8)  return '天刚亮，慢慢醒';
+  if(h >= 8 && h < 11) return '上午好，慢慢说';
+  if(h >= 11 && h < 13) return '中午好，记得吃饭';
+  if(h >= 13 && h < 18) return '下午好，喝口水';
+  if(h >= 18 && h < 22) return '晚上好，聊会儿吧';
+  return '夜深了，慢慢聊';
+}
+function callByeFor(h){
+  if(h >= 22 || h < 5) return '晚安，早点休息';
+  if(h >= 5 && h < 11) return '今天也加油';
+  if(h >= 18) return '晚上愉快';
+  return '回头再聊';
+}
+
+// ── 声波动画 ──
+let callWaveCtx = null, callWaveAnim = null;
+let callWaveLevel = 0;
+let callSpeaker = -1; // 0=Aries, 1=用户
+let callAnimId = null;
+function initCallWave(canvas){
+  if(!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+function animateCallWave(cv, t){
+  if(!cv || !cv.ctx) return;
+  const ctx = cv.ctx, w = cv.w, h = cv.h, cy = h / 2;
+  ctx.clearRect(0, 0, w, h);
+  const amp = 0.06 + callWaveLevel * 0.72;
+  const N = 36, F = 3.8, spread = 1, taper = 4, speed = 1.6;
+  for(let i = 0; i < N; i++){
+    const frac = i / (N - 1);
+    const fi = F * (1 + (frac - 0.5) * spread);
+    const amul = 0.45 + 0.55 * Math.sin(frac * Math.PI);
+    const shimmer = Math.sin(t * 0.7) * frac * 1.6;
+    const alpha = 0.04 + 0.05 * Math.sin(frac * Math.PI);
+    ctx.beginPath();
+    for(let x = 0; x <= w; x += 2){
+      const nx = x / w;
+      const env = Math.pow(Math.sin(Math.PI * nx), taper);
+      const arg = (nx - 0.5) * Math.PI * 2 * fi + t * speed + shimmer;
+      const y = cy + env * (amp * amul * h) * Math.sin(arg);
+      x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = 'rgba(255,252,248,' + alpha + ')';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+}
+const callGlowRGB = '255,240,216';
+function startCallWaveLoop(){
+  let t = 0;
+  function loop(){
+    t += 0.03;
+    // 旧主题
+    const cv1 = window._callWaveCtx;
+    if(cv1) animateCallWave(cv1, t);
+    // Aries主题
+    const cv2 = window._arCallWaveCtx;
+    if(cv2) animateCallWave(cv2, t);
+
+    // 头像发光
+    const avAries = document.getElementById("callAvAries");
+    const avUser = document.getElementById("callAvUser");
+    if(avAries){
+      const lvl = callSpeaker === 0 ? (0.22 + 0.20 * Math.abs(Math.sin(t * 6)) + 0.10 * Math.sin(t * 11)) : 0.02;
+      avAries.style.boxShadow = '0 0 ' + (14 + lvl * 64) + 'px ' + (lvl * 14) + 'px rgba(' + callGlowRGB + ',' + (0.20 + lvl * 0.9) + ')';
+      avAries.style.transform = 'scale(' + (1 + lvl * 0.03) + ')';
+      document.querySelector(".call-screen-names span:first-child").style.opacity = 0.5 + Math.min(lvl * 3.5, 0.5);
+    }
+    if(avUser){
+      const lvl2 = callSpeaker === 1 ? (0.22 + 0.20 * Math.abs(Math.sin(t * 6 + 1)) + 0.10 * Math.sin(t * 11 + 1)) : 0.02;
+      avUser.style.boxShadow = '0 0 ' + (14 + lvl2 * 64) + 'px ' + (lvl2 * 14) + 'px rgba(' + callGlowRGB + ',' + (0.20 + lvl2 * 0.9) + ')';
+      avUser.style.transform = 'scale(' + (1 + lvl2 * 0.03) + ')';
+      document.querySelector(".call-screen-names span:last-child").style.opacity = 0.5 + Math.min(lvl2 * 3.5, 0.5);
+    }
+
+    // Aries 主题头像发光
+    const arAvAries = document.getElementById("arCallActAvAries");
+    const arAvUser = document.getElementById("arCallActAvUser");
+    if(arAvAries){
+      const lvl = callSpeaker === 0 ? (0.22 + 0.20 * Math.abs(Math.sin(t * 6)) + 0.10 * Math.sin(t * 11)) : 0.02;
+      arAvAries.style.boxShadow = '0 0 ' + (12 + lvl * 50) + 'px ' + (lvl * 10) + 'px rgba(' + callGlowRGB + ',' + (0.20 + lvl * 0.9) + ')';
+      arAvAries.style.transform = 'scale(' + (1 + lvl * 0.03) + ')';
+    }
+    if(arAvUser){
+      const lvl2 = callSpeaker === 1 ? (0.22 + 0.20 * Math.abs(Math.sin(t * 6 + 1)) + 0.10 * Math.sin(t * 11 + 1)) : 0.02;
+      arAvUser.style.boxShadow = '0 0 ' + (12 + lvl2 * 50) + 'px ' + (lvl2 * 10) + 'px rgba(' + callGlowRGB + ',' + (0.20 + lvl2 * 0.9) + ')';
+      arAvUser.style.transform = 'scale(' + (1 + lvl2 * 0.03) + ')';
+    }
+
+    callAnimId = requestAnimationFrame(loop);
+  }
+  loop();
+}
+function stopCallWaveLoop(){
+  if(callAnimId){ cancelAnimationFrame(callAnimId); callAnimId = null; }
+}
+
+// ── 通话气泡 ──
+function addCallBubble(who, text, capsEl){
+  if(!capsEl) return;
+  const b = document.createElement('div');
+  b.className = 'call-bubble ' + (who === 0 ? 'left' : 'right');
+  const txt = document.createElement('span');
+  txt.className = 'call-txt';
+  txt.innerHTML = '<span class="call-typing"><i></i><i></i><i></i></span>';
+  b.appendChild(txt);
+  capsEl.appendChild(b);
+  capsEl.scrollTop = capsEl.scrollHeight;
+
+  // typewriter effect
+  setTimeout(() => {
+    txt.textContent = '';
+    txt.classList.add('caret');
+    let i = 0;
+    (function type(){
+      if(i <= text.length){
+        txt.textContent = text.slice(0, i);
+        capsEl.scrollTop = capsEl.scrollHeight;
+        i++;
+        setTimeout(type, 50);
+      } else {
+        txt.classList.remove('caret');
+      }
+    })();
+  }, 600);
+  return b;
+}
+
+// ── 通话结束后写一条记录 ──
+async function writeCallRecord(durationSec, reason){
+  if(durationSec < 5) return; // 太短不记录
+  const summary = "📞 语音通话 · " + Math.floor(durationSec/60) + ":" + String(durationSec%60).padStart(2,"0") +
+    (reason ? " (" + reason + ")" : "");
+  // 作为一条系统消息写入聊天
+  const chatInput = document.getElementById('chatInput');
+  if(chatInput){
+    const msg = document.createElement('div');
+    msg.className = 'msg system';
+    msg.textContent = summary;
+    document.getElementById('chatBox')?.appendChild(msg);
+  }
+  console.log("通话记录:", summary);
+}
+
+function animateCalling(){
+    let dots=0;
+    clearInterval(statusAnimation);
+    statusAnimation=setInterval(()=>{
+        dots=(dots+1)%4;
+        document.getElementById("callStatus").innerText="正在拨号"+".".repeat(dots);
+    },400);
+    setTimeout(()=>{
+      document.querySelector(".call-container")?.classList.add("connected");
+    }, 500);
+}
+async function triggerDailyPushMessage(){
+  const todayStart = new Date();
+  todayStart.setHours(0,0,0,0);
+
+  const {data, error} = await supabaseClient
+    .from("chat_messages")
+    .select("*")
+    .gte("created_at", todayStart.toISOString());
+
+  if(error){
+    console.log(error);
+    alert(error.message);
+    return;
+  }
+
+  let limit;
+  // 修复：去掉了原代码中 if/else 后面的错误分号
+  if(data.length < 20){
+    limit = Math.floor(Math.random()*4)+7;
+  }
+  else if(data.length < 100){
+    limit = Math.floor(Math.random()*4)+3;
+  }
+  else{
+    limit = Math.floor(Math.random()*3)+1;
+  }
+
+  const todayAI = await supabaseClient
+    .from("chat_messages")
+    .select("*")
+    .eq("type", "daily_ai")
+    .gte("created_at", todayStart.toISOString());
+
+  if(todayAI.data && todayAI.data.length >= limit){
+    console.log("今日主动消息额度已用完");
+    return;
+  }
+  
+  const text = await generateAIMessage();
+  addChatMessage("assistant", text, "");
+
+  const {error: insertError} = await supabaseClient
+    .from("chat_messages")
+    .insert({
+      role: "assistant",
+      type: "daily_ai", // 修复：确保主动消息类型一致，以便上方限制额度能正确数数
+      content: text
+    });
+
+  if(insertError){
+    alert("保存失败：" + insertError.message);
+  }
+  console.log(data, error);
+}
+
+async function generateAIMessage(){
+  const msgs = [
+    {
+      role: "user",
+      content: "请主动说一句自然的话，不超过30字。"
+    } // 修复：去掉了对象数组内部的错误分号
+  ];
+
+  const req = buildAIRequest(bgApiConfig, msgs);
+  const fullUrl = bgApiConfig.baseUrl.replace(/\/+$/, '') + bgApiConfig.path;
+  const res = await fetch(fullUrl,{
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + bgApiConfig.key
+    },
+    body: JSON.stringify(req)
+  });
+
+  const data = await res.json();
+  console.log("主动消息返回:", data);
+
+  if(data.choices && data.choices[0]?.message?.content){
+    return data.choices[0].message.content;
+  }
+  if(data.content && Array.isArray(data.content)){
+    return data.content[0].text;
+  }
+
+  return "我刚刚突然想找你。";
+}
+
+// 页面切换逻辑
+function initPageSwitch() {
+  const navItems = document.querySelectorAll('.nav-item');
+  const pages = document.querySelectorAll('.page');
+  const pageTitle = document.getElementById('pageTitle');
+  navItems.forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
+      const targetPage = item.dataset.page;
+      const targetId = `page-${targetPage}`;
+      navItems.forEach(nav => nav.classList.remove('active'));
+      item.classList.add('active');
+      if(targetPage==="moments"){
+    loadMoments();
+      }
+      pages.forEach(p => p.classList.remove('active'));
+      document.getElementById(targetId).classList.add('active');
+      const titleMap = {home: "主页", chat: "聊天", tasks: "行程", novel: "小说", music: "音乐", diary: "日记",callhome:"通话", settings: "设置", moments:"朋友圈"};
+      pageTitle.innerText = titleMap[targetPage] || targetPage;
+    });
+  });
+}
+
+// 页面加载完成初始化切换
+window.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('click', function askOnce(){
+  initNotifications();
+  document.removeEventListener('click', askOnce);
+}, {once: true});
+  const sel = document.getElementById("uiPresetSelect");
+  const btn = document.getElementById("applyPresetBtn");
+  if(sel && btn){
+    btn.onclick = () => { applyUIPreset(sel.value); };
+  }
+  const saved = localStorage.getItem("uiPreset");
+  if(saved){ applyUIPreset(saved); if(sel) sel.value = saved; }
+  const savedFontColor = localStorage.getItem("fontColor") || "normal";
+  // 注意：postMoment 在 HTML 里是 class 不是 id，用 getElementById 会拿到 null
+  // 之前这里报错会中断整个 DOMContentLoaded 回调，导致下面的 initPageSwitch()/loadMoments() 等全部不执行
+  document.querySelectorAll(".postMoment").forEach(el => {
+    el.addEventListener("click", openMomentModal);
+  });
+
+  const cancelMomentBtn = document.getElementById("cancelMoment");
+  if(cancelMomentBtn) cancelMomentBtn.addEventListener("click", closeMomentModal);
+
+  const publishMomentBtn = document.getElementById("publishMoment");
+  if(publishMomentBtn) publishMomentBtn.addEventListener("click", publishMoment);
+
+  document.documentElement.setAttribute("data-font", savedFontColor);
+  initPageSwitch();
+loadAiMessages();
+listenAIMessage();
+loadMoments();
+loadThoughts();
+
+checkAwayTime();
+});
+
+
+
+
+// ====== 状态 ======
+const state = {
+  theme: localStorage.getItem('theme') || 'dark',
+  uiPreset: localStorage.getItem('uiPreset') || 'ins-soft',
+  wallpaper: localStorage.getItem('wallpaper') || 'none',
+  overlayOpacity: parseInt(localStorage.getItem('overlay') || '60'),
+  name: localStorage.getItem('name') || '小猫',
+  startDate: localStorage.getItem('startDate') || '',
+  mood: localStorage.getItem('mood-' + today()) || '',
+  quickNote: localStorage.getItem('quickNote') || '',
+  novel: { title: "", content: "", pages: [], index: 0 },
+  diaries: JSON.parse(localStorage.getItem('diaries') || '[]'),
+  tasks: JSON.parse(localStorage.getItem('tasks') || '[]'),
+  currentDiaryId: null,
+  chatHistory: [],
+  thinkingColor: localStorage.getItem('thinkingColor') || '#7c5cbf',
+  bubbleAlpha: parseFloat(localStorage.getItem('bubbleAlpha') || '0.10'),
+  novelFontSize: parseInt(localStorage.getItem('novelFontSize') || '16'),
+  city: localStorage.getItem('city') || '',
+  anniversaries: localStorage.getItem('anniversaries') || '',
+  moments: [],
+};
+
+const UI_PRESETS = {
+  "ins-soft": {
+    name: "Ins奶油风", root: {
+      "--bg": "#f6f3f7", "--bg2": "#ffffff", "--surface": "rgba(255,255,255,0.75)",
+      "--accent": "#d88aa7", "--accent2": "#f2b6c6", "--text": "#2b2b2f",
+      "--user-bubble": "rgba(255,255,255,.75)", "--ai-bubble": "rgba(255,255,255,.75)",
+      "--thinking-color": "rgba(255,255,255,.45)", "--memory-bg":"#fff3e6"},
+    bubbleAlpha: 0.35},
+  "jasmine":{
+    name:"Jasmine", root:{
+      "--bg":"#ffffff", "--bg2":"#f8fbff", "--surface":"rgba(255,255,255,0.9)",
+      "--accent":"#8fd3ff", "--accent2":"#b9e6ff", "--text":"#333333",
+      "--ai-bubble":"#ffffff", "--user-bubble":"#9ddcff" ,
+      "--thinking-color": "rgba(255,255,255,.35)", "--memory-bg":"#f2f7f2"},
+    bubbleAlpha:0.8},
+  "daddy":{
+    name:"daddy", root:{
+      "--bg":"#080808", "--bg2":"#111111", "--surface":"rgba(20,20,20,0.9)",
+      "--accent":"#ff3344", "--accent2":"#ff6677", "--text":"#eeeeee",
+      "--ai-bubble":"#151515", "--user-bubble":"#ff4455",
+      "--thinking-color": "rgba(0,0,0,.25)", "--memory-bg":"#25242b"},
+    bubbleAlpha:0.8},
+  "frosted":{
+    name:"雾面玻璃", root:{
+      "--bg":"#dfe8f2", "--bg2":"#ffffff", "--surface": "rgba(255,255,255,0.25)",
+      "--accent":"#b8d8ff", "--accent2":"#d8ecff", "--text":"#333333",
+      "--glass-blur":"20px", "--user-bubble":"rgba(120,200,255,.3)",
+      "--ai-bubble":"rgba(120,200,255,.3)", "--thinking-color":"rgba(255,160,210,.25)",
+      "--memory-bg":"#e8edf0"},
+    bubbleAlpha:0.25}, 
+  "night-glass": {
+    name: "夜间玻璃", root: {
+      "--bg": "#0f1117", "--bg2": "#151826", "--surface": "rgba(255,255,255,0.06)",
+      "--accent": "#8aa0ff", "--accent2": "#c7a6ff", "--text": "#e8e8f0",
+      "--user-bubble": "rgba(100,190,255,.35)", "--ai-bubble": "rgba(100,190,255,.35)",
+      "--thinking-color": "rgba(255,150,200,.25)", "--memory-bg":"#6d7a92"},
+    bubbleAlpha: 0.12 },
+  "rose-night":{
+    name:"蔷薇夜", root:{
+      "--bg":"#120b12", "--bg2":"#24131f", "--surface":"rgba(80,35,55,0.55)",
+      "--accent":"#d98b9b", "--accent2":"#d7aa72", "--text":"#f5e6e8",
+      "--user-bubble":"rgba(255,210,220,0.35)", "--ai-bubble":"rgba(70,25,45,0.75)",
+      "--thinking-color":"rgba(217,139,155,0.35)", "--memory-bg":"#351624"},
+    bubbleAlpha:0.45},
+  "matcha-tea":{
+    name:"茶雾", root:{
+      "--bg":"#e8e2d3", "--bg2":"#d9d3bf", "--surface":"rgba(255,255,255,0.65)",
+      "--accent":"#8fa66b", "--accent2":"#c6a86b", "--text":"#34402c",
+      "--user-bubble":"rgba(255,255,245,0.8)", "--ai-bubble":"rgba(143,166,107,0.25)",
+      "--thinking-color":"rgba(143,166,107,0.35)", "--memory-bg":"#dfe8d2"},
+    bubbleAlpha:0.55},
+  "aries":{
+    name:"Aries", root:{
+      "--bg":"#0d1117", "--bg2":"#161b22", "--surface":"rgba(255,255,255,0.04)",
+      "--accent":"#c8a96e", "--accent2":"#8b1a1a", "--text":"#d4cfc8",
+      "--user-bubble":"rgba(139,26,26,0.18)", "--ai-bubble":"rgba(13,17,23,0.85)",
+      "--thinking-color":"#c8a96e", "--memory-bg":"#111820"},
+    bubbleAlpha:0.85},
+};
+
+function today() { return new Date().toISOString().slice(0,10); }
+
+// ====== 初始化 ======
+function init() {
+  applyTheme(state.theme);
+  applyWallpaper(state.wallpaper);
+  document.body.classList.add('has-wallpaper');
+  applyOverlay(state.overlayOpacity);
+  applyThinkingColor(state.thinkingColor);
+  applyBubbleAlpha(state.bubbleAlpha);
+  updateGreeting();
+  updateDate();
+  updateTogetherDays();
+  updateAriesQuote();
+  updateFlower();
+  restoreMood();
+  restoreQuickNote();
+  renderDiaries();
+  renderTasks();
+  setupSettings();
+  bindEvents();
+  checkApiKey();
+  checkAnniversary();
+  favorability.render();
+  if (state.city) fetchWeather(state.city);
+  else document.getElementById('weatherInfo').textContent = '在设置中填写城市';
+  vchar.init();
+  updateChatDaysBg();
+  applyFont(localStorage.getItem('font') || 'default');
+  
+  const savedChat = localStorage.getItem("chatHistory");
+  if(savedChat){ 
+    state.chatHistory = JSON.parse(savedChat);
+    state.chatHistory.forEach(msg => {
+      addChatMessage(msg.role, msg.content, msg.thinking || "");
+    });
+    setTimeout(() => { 
+      const box = document.getElementById("chatMessages");
+      if(box){ box.scrollTop = box.scrollHeight; } 
+    }, 100);
+  }
+}
+
+// ====== 主题 ======
+function applyTheme(theme) { 
+  document.documentElement.setAttribute('data-theme', theme);
+  state.theme = theme;
+  localStorage.setItem('theme', theme);
+  const icon = document.querySelector('.theme-icon');
+  const lbl = document.querySelector('.theme-toggle span:last-child');
+  const sw = document.getElementById('themeSwitch');
+  if (theme === 'dark') {
+    if(icon) icon.textContent='☽';
+    if(lbl) lbl.textContent='深色模式';
+    if(sw) sw.classList.remove('active');
+  } else {
+    if(icon) icon.textContent='☼';
+    if(lbl) lbl.textContent='浅色模式';
+    if(sw) sw.classList.add('active'); 
+  }
+}
+
+function applyFont(font) {
+  document.body.classList.remove('font-cormorant', 'font-dancing','font-great','font-eb');
+  if (font === 'cormorant') document.body.classList.add('font-cormorant');
+  if (font === 'dancing') document.body.classList.add('font-dancing');
+  if (font === 'great') document.body.classList.add('font-great');
+  if (font === 'eb') document.body.classList.add('font-eb');
+}
+
+// ====== 壁纸 ======
+const GRADIENTS = {
+  none:'',
+  gradient1:'linear-gradient(135deg,#fbc2eb,#a6c1ee)',
+  gradient2:'linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)',
+  gradient3:'linear-gradient(135deg,#d4fc79,#96e6a1)',
+  gradient4:'linear-gradient(135deg,#f093fb,#f5576c)',
+  gradient5:'linear-gradient(135deg,#0c3483,#a2b6df,#6b8cce)',
+};
+
+function applyWallpaper(wp) {
+  const el = document.getElementById('wallpaper');
+  if (!wp || wp === 'none') { 
+    el.style.backgroundImage=''; document.body.classList.remove('has-wallpaper');
+  } else if (GRADIENTS[wp]) { 
+    el.style.backgroundImage=GRADIENTS[wp]; document.body.classList.add('has-wallpaper');
+  } else if (wp.startsWith('data:')) { 
+    el.style.backgroundImage=`url(${wp})`; document.body.classList.add('has-wallpaper'); 
+  }
+  state.wallpaper = wp; 
+  if (!wp.startsWith('data:')) localStorage.setItem('wallpaper', wp);
+}
+
+function applyOverlay(val) {
+  document.getElementById('wallpaperOverlay').style.opacity = val/100;
+  state.overlayOpacity = val;
+}
+function applyThinkingColor(c) { 
+  document.documentElement.style.setProperty('--thinking-color', c);
+  state.thinkingColor = c; localStorage.setItem('thinkingColor', c);
+}
+function applyBubbleAlpha(a) {
+  document.documentElement.style.setProperty('--bubble-alpha', a);
+  state.bubbleAlpha = a; localStorage.setItem('bubbleAlpha', a);
+}
+function applyUIPreset(key){
+  const preset = UI_PRESETS[key]; if(!preset) return;
+  Object.entries(preset.root).forEach(([k,v])=>{document.documentElement.style.setProperty(k,v);});
+  applyBubbleAlpha(preset.bubbleAlpha);
+  applyThinkingColor(preset.thinkingColor);
+  localStorage.setItem("uiPreset", key);
+  state.uiPreset = key;
+}
+
+// ====== 问候 ======
+function updateGreeting() {
+  const h = new Date().getHours();
+  const g = h<5?'夜深了':h<12?'早上好':h<14?'午安':h<18?'下午好':h<22?'晚上好':'夜深了';
+  document.getElementById('greeting').textContent = `${g}，${state.name} `;
+}
+function updateDate() {
+  const d = new Date(), days=['日','一','二','三','四','五','六'];
+  document.getElementById('currentDate').textContent = `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 星期${days[d.getDay()]}`;
+}
+function updateTogetherDays() { 
+  if (!state.startDate) { document.getElementById('togetherDays').textContent='—'; return; }
+  const diff = Math.floor((new Date()-new Date(state.startDate))/86400000);
+  document.getElementById('togetherDays').textContent = diff; updateChatDaysBg();
+}
+function updateChatDaysBg() {
+  if (!state.startDate) return;
+  const diff = Math.floor((new Date()-new Date(state.startDate))/86400000);
+  const el = document.getElementById('chatDaysNum'); if (el) el.textContent = diff;
+}
+
+// ====== 纪念日检查 ======
+function checkAnniversary() {
+  const banner = document.getElementById('anniversaryBanner');
+  const now = new Date();
+  const mm = String(now.getMonth()+1).padStart(2,'0');
+  const dd = String(now.getDate()).padStart(2,'0');
+  const todayMD = `${mm}-${dd}`;
+  
+  if (state.startDate) {
+    const start = new Date(state.startDate);
+    const startMD = `${String(start.getMonth()+1).padStart(2,'0')}-${String(start.getDate()).padStart(2,'0')}`;
+    if (todayMD === startMD && now.getFullYear() > start.getFullYear()) {
+      const yrs = now.getFullYear() - start.getFullYear();
+      showSurprise(`🎉 今天是我们在一起的第 ${yrs} 周年！\n\n${yrs} 年了，每一天都值得被记住。\n谢谢你一直在 💕`);
+      if(banner){banner.textContent=`🎊 今天是我们 ${yrs} 周年纪念日！`; banner.style.display='block';} 
+      return;
+    }
+    const startDay = start.getDate();
+    if (now.getDate() === startDay && now.getMonth() !== start.getMonth()) {
+      const months = (now.getFullYear()-start.getFullYear())*12 + (now.getMonth()-start.getMonth());
+      if (months > 0 && months % 6 === 0) { 
+        if(banner){banner.textContent=`今天是我们在一起的第 ${months} 个月！`; banner.style.display='block';} 
+      } 
+    }
+  }
+  if (state.anniversaries) { 
+    const list = state.anniversaries.split(',').map(s=>s.trim());
+    if (list.includes(todayMD)) {
+      showSurprise(`🎊 今天是特别的纪念日！\n\n${mm}月${dd}日，好好庆祝一下吧 `);
+      if(banner){banner.textContent=`🌟 今天是你的纪念日！`; banner.style.display='block';}
+    }
+  }
+}
+
+function showSurprise(text) {
+  const el = document.getElementById('surpriseContent');
+  if(el) el.innerHTML = text.replace(/\n/g,'<br>');
+  setTimeout(() => openModal('surpriseModal'), 800);
+}
+
+// ====== 天气 ======
+const WEATHER_EMOJI = {
+  sunny:'☀️', clear:'☀️', cloud:'⛅', overcast:'☁️',
+  rain:'🌧️', drizzle:'🌦️', snow:'❄️', sleet:'🌨️',
+  thunder:'⛈️', mist:'🌫️', fog:'🌫️', blizzard:'🌨️', thunderstorm:'⛈️',
+};
+
+async function fetchWeather(city) {
+  if (!city) return;
+  try {
+    const res = await fetch(`https://wttr.in/${encodeURIComponent(city)}?format=j1`);
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    const cur = data.current_condition[0];
+    const desc = cur.weatherDesc[0].value.toLowerCase();
+    let emoji = '🌤️';
+    for (const [k,v] of Object.entries(WEATHER_EMOJI)) { if (desc.includes(k)) { emoji=v; break; } }
+    document.getElementById('weatherIcon').textContent = emoji;
+    document.getElementById('weatherInfo').textContent = `${cur.temp_C}°C · ${data.nearest_area[0].areaName[0].value}`;
+  } catch {
+    document.getElementById('weatherInfo').textContent = '天气获取失败'; 
+  }
+}
+
+function showPage(pageId){
+  document.querySelectorAll('.page').forEach(p => { p.classList.remove('active');});
+  const target = document.getElementById('page-'+ pageId);
+  if(target){ target.classList.add('active'); }
+}
+
+// ====== 好感度 ======
+const FAV_LEVELS = [
+  {min:0, name:'初识', emoji:'♡'},
+  {min:100, name:'熟悉', emoji:'♡'},
+  {min:300, name:'亲密', emoji:'♡'},
+  {min:600, name:'心动', emoji:'♡'},
+  {min:900, name:'最爱', emoji:'♡'},
+];
+const FAV_MAX = 1000;
+const favorability = {
+  pts: parseInt(localStorage.getItem('favorability') || '0'),
+  add(n) {
+    this.pts = Math.min(FAV_MAX, this.pts + n);
+    localStorage.setItem('favorability', this.pts); this.render();
+  },
+  render() {
+    const bar = document.getElementById('favBar');
+    const lbl = document.getElementById('favLabel');
+    const pts = document.getElementById('favPts');
+    if (!bar) return; bar.style.width = (this.pts/FAV_MAX*100) + '%';
+    const lv = [...FAV_LEVELS].reverse().find(l=>this.pts>=l.min) || FAV_LEVELS[0];
+    if(lbl) lbl.textContent = lv.emoji + ' ' + lv.name;
+    if(pts) pts.textContent = this.pts;
+  }
+};
+
+// ====== Aries语录 ======
+const QUOTES=['等你回来。','乖。','知道了。','在这里。','我记着呢。','别气了。','好，我陪你。','嗯。','来了来了。','喜欢你。','回来了就好。','不用说谢谢。','说吧，我听着。','这边才是家。'];
+function updateAriesQuote() { document.getElementById('ariesQuote').textContent=`" ${QUOTES[new Date().getDate()%QUOTES.length]} "`; }
+const FLOWERS=['🌸 樱花 — 生命之美，短暂而珍贵','🌹 玫瑰 — 我爱你，无需多言','🌻 向日葵 — 我的眼里只有你','🌷 郁金香 — 爱的表白','🌺 木槿 — 温柔地守护','💐 满天星 — 永恒的爱','🍀 四叶草 — 你是我的幸运'];
+function updateFlower() { document.getElementById('flowerMsg').textContent=FLOWERS[new Date().getDate()%FLOWERS.length]; }
+function restoreMood() {
+  if(state.mood){ 
+    document.getElementById('moodSelected').textContent=state.mood;
+    document.querySelectorAll('.mood-btn').forEach(b=>{if(b.dataset.mood===state.mood)b.classList.add('selected');});
+  }
+}
+function restoreQuickNote() { document.getElementById('quickNoteText').value=state.quickNote; }
+
+// ====== UI小人骨架 ======
+const vchar = {
+  dragging: false, sx: 0, sy: 0, sl: 0, st: 0,
+  idleTimer: null,
+  IDLE_MS: 5 * 60 * 1000,
+  EXPRESSIONS: ['^^','3','ㅎ','TT','☼','☆','♡','♧'],
+  REPLIES_OFFLINE: ['嗯。','干嘛。','知道了'].slice(0, 6),
+  init() {
+    const el = document.getElementById('vchar');
+    if (!el) return; this.makeDraggable(el);
+    document.getElementById('vcharBody').addEventListener('click', () => { if (!this.dragging) this.onBodyClick();}); 
+    this.resetIdleTimer();
+    ['click','keydown','mousemove','touchstart'].forEach(ev => {
+      document.addEventListener(ev, () => this.resetIdleTimer(), {passive:true});
+    });
+    setTimeout(scrollChatBottom, 500);
+    this.checkNightMode(); setInterval(() => this.checkNightMode(), 60000);
+  },
+  makeDraggable(el) {
+    const onStart = (cx, cy) => { 
+  this.dragging = false; 
+  this.sx=cx; this.sy=cy; 
+  const rect = el.getBoundingClientRect();
+  this.sl=rect.left; 
+  this.st=rect.top; 
+  el.style.transition='none'; 
+};   const onMove = (cx, cy) => {
+      if (Math.abs(cx-this.sx)>3||Math.abs(cy-this.sy)>3) this.dragging=true;
+      if (!this.dragging) return;
+      el.style.left=(this.sl+(cx-this.sx))+'px'; el.style.top=(this.st+(cy-this.sy))+'px'; el.style.right='auto'; el.style.bottom='auto';
+    };
+    const onEnd = () => { setTimeout(()=>{this.dragging=false;},50); el.style.transition=''; };
+    el.addEventListener('mousedown', e=>{ onStart(e.clientX,e.clientY); e.preventDefault();});
+    document.addEventListener('mousemove', e=>{
+ if(this.dragging) onMove(e.clientX,e.clientY);
+});
+    document.addEventListener('mouseup', onEnd);
+    el.addEventListener('touchstart', e=>{
+ e.preventDefault();
+    const t=e.touches[0]; onStart(t.clientX,t.clientY);},{passive:true});
+    document.addEventListener('touchmove', e=>{ 
+  if(!this.dragging) return;
+
+  e.preventDefault();
+
+  const t=e.touches[0];
+  onMove(t.clientX,t.clientY);
+},{passive:false});   document.addEventListener('touchend', onEnd);
+  },
+  async onBodyClick() { 
+    const expr = this.EXPRESSIONS[Math.floor(Math.random()*this.EXPRESSIONS.length)];
+    this.showExpression(expr); favorability.add(1);
+    const apiKey = localStorage.getItem('apiKey');
+    if (apiKey) { 
+      try {
+        const res = await fetch('https://api.anthropic.com/v1/messages', { 
+          method:'POST',
+          headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-calls':'true'},
+          body:JSON.stringify({
+            model:'claude-haiku-4-5-20251001', max_tokens:30,
+            system:'你是Aries，用简短温柔的一句话回应主人戳你，不超过8字，口语化',
+            messages:[{role:'user', content:'主人戳了你一下'}],
+          }),
+        });
+        const data = await res.json();
+        this.showBubble(data.content?.[0]?.text || '嗯。');
+      } catch { 
+        this.showBubble(this.REPLIES_OFFLINE[Math.floor(Math.random()*this.REPLIES_OFFLINE.length)]); 
+      }
+    } else { 
+      this.showBubble(this.REPLIES_OFFLINE[Math.floor(Math.random()*this.REPLIES_OFFLINE.length)]); 
+    }
+  },
+  showExpression(expr) { 
+    const face = document.getElementById('vcharFace'); if(!face) return;
+    face.textContent = expr; face.style.transform='scale(1.25)';
+    setTimeout(()=>{face.style.transform=''; face.textContent='🦉';}, 2000);
+  },
+  showBubble(text) {
+    const b = document.getElementById('vcharBubble'); if(!b) return; 
+    b.textContent = text; b.classList.add('show');
+    clearTimeout(this._bubbleTimer);
+    this._bubbleTimer = setTimeout(()=>b.classList.remove('show'), 3000); 
+  },
+  resetIdleTimer() { 
+    clearTimeout(this.idleTimer);
+    const face = document.getElementById('vcharFace');
+    if(face){face.classList.remove('yawning','sleeping'); face.textContent='🦉';}
+    this.idleTimer = setTimeout(()=>this.onIdle(), this.IDLE_MS);
+  },
+  onIdle() {
+    const face = document.getElementById('vcharFace'); if(!face) return;
+    if (this.nightMode) { 
+      face.textContent='😴'; face.classList.add('sleeping');
+      document.getElementById('page-chat')?.classList.add('night-mode');
+    } else {
+      face.textContent='🥱'; face.classList.add('yawning');
+      setTimeout(()=>{if(face.classList.contains('yawning')){face.textContent='🦉'; face.classList.remove('yawning');}}, 4000);
+    } 
+  },
+  checkNightMode() { const h = new Date().getHours(); this.nightMode = (h>=22 || h<6); }
+};
+
+// ====== 聊天 ======
+function scrollChatBottom(){
+  const box = document.getElementById("chatMessages");
+  if(!box) return;
+  // 只有离底部80px以内才自动滚到底，不打扰翻阅历史
+  const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  if(nearBottom) box.scrollTop = box.scrollHeight;
+}
+
+function getTimeContext(){
+  const now=new Date();
+  return `\n【系统时间】\n现在真实时间是：\n${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日\n${now.getHours()}点${now.getMinutes()}分。\n请在回答涉及时间的问题时，以此为准。\n不要假装不知道当前时间。\n`;
+}
+
+let aiApiConfig = JSON.parse(localStorage.getItem("customAiApi")) || {
+  baseUrl: localStorage.getItem('apiBaseUrl') || "",
+  key: localStorage.getItem('apiKey') || "",
+  model: localStorage.getItem('model') || "",
+  path: localStorage.getItem('apiPath') || "/v1/chat/completions"
+};
+
+// 后台任务专用配置（写日记/思绪/主动消息/未来的记忆整理、通话文本等）
+// 与聊天配置(aiApiConfig)完全分开，默认走DeepSeek，省成本、聊天不受影响
+let bgApiConfig = JSON.parse(localStorage.getItem("bgAiApi")) || {
+  baseUrl: localStorage.getItem('bgApiBaseUrl') || "https://api.deepseek.com",
+  key: localStorage.getItem('bgApiKey') || "",
+  model: localStorage.getItem('bgModel') || "deepseek-chat",
+  path: localStorage.getItem('bgApiPath') || "/v1/chat/completions"
+};
+
+function saveBgApiConfig(cfg){
+  bgApiConfig = cfg;
+  localStorage.setItem("bgAiApi", JSON.stringify(bgApiConfig));
+}
+
+window.addEventListener('DOMContentLoaded', () => { 
+  const openBtn = document.getElementById("openSettingBtn");
+  const panel = document.getElementById("apiSettingPanel");
+  const closeBtn = document.getElementById("closePanel");
+  const saveBtn = document.getElementById("saveApiConfig");
+  if (openBtn) openBtn.onclick = () => { 
+    panel.style.display = "block";
+    document.getElementById("apiBaseUrl").value = aiApiConfig.baseUrl;
+    document.getElementById("apiKey").value = aiApiConfig.key;
+    document.getElementById("modelName").value = aiApiConfig.model;
+    document.getElementById("apiPath").value = aiApiConfig.path;
+  }
+  if (closeBtn) closeBtn.onclick = () => panel.style.display = "none";
+  if (saveBtn) saveBtn.onclick = () => { 
+    aiApiConfig = {
+      baseUrl: document.getElementById("apiBaseUrl").value.trim(),
+      key: document.getElementById("apiKey").value.trim(),
+      model: document.getElementById("modelName").value.trim(),
+      path: document.getElementById("apiPath").value.trim() || "/v1/chat/completions" 
+    };
+    localStorage.setItem("apiKey", aiApiConfig.key);
+    localStorage.setItem("model", aiApiConfig.model);
+    localStorage.setItem("customAiApi", JSON.stringify(aiApiConfig));
+    alert("AI API配置保存成功"); panel.style.display = "none"; 
+  }
+});
+
+function checkApiKey() { 
+  const hint = document.getElementById('apiHint');
+  if(hint) hint.textContent = aiApiConfig.key ? '' : '请先在 设置 → AI接入 中填写 API Key';
+}
+
+function autoResize(){ 
+  const textarea = document.getElementById('chatInput'); if(!textarea) return;
+  textarea.style.height = 'auto'; textarea.style.height = textarea.scrollHeight + 'px';
+}
+
+// 修复后的主要对话函数
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const content = input.value.trim();
+  if(!content) return;
+  const btn = document.getElementById('sendBtn');
+  btn.disabled=true; input.value=''; autoResize();
+
+  const welcome = document.getElementById('chatWelcome');
+  if(welcome) welcome.style.display='none';
+
+  addChatMessage('user', content, "");
+  scrollChatBottom();
+  state.chatHistory.push({role:'user', content, thinking:"", time:new Date().toISOString()});
+  favorability.add(1);
+
+  // 存进Supabase，status=pending，Edge Function会处理
+  const {data: insertedMsg, error} = await supabaseClient
+.from("chat_messages")
+.insert({
+ role:"user",
+ type:"chat",
+ content:content,
+ status:"pending",
+})
+.select()
+.single();
+  if(error){
+    showToast("发送失败："+error.message);
+    btn.disabled=false;
+    return;
+  }; 
+  const userMsgId = insertedMsg?.id;
+  try{
+    const {error: fnError} = await supabaseClient.functions.invoke("send-ai-messages");
+    if(fnError){
+      console.error("Edge Function 调用失败：", fnError);
+      showToast("AI处理服务调用失败，请检查Edge Function日志");
+    }
+  }catch(e){
+    console.error("Edge Function 调用异常：", e);
+    showToast("AI处理服务无法连接");
+  }
+  const loadingEl = addLoadingMessage();
+  btn.disabled=false;
+  input.focus();
+
+  // 轮询等回复，最多等120秒
+  const startTime = Date.now();
+
+  const poll = setInterval(async ()=>{
+    if(Date.now() - startTime > 120000){
+      clearInterval(poll);
+      if(loadingEl) loadingEl.remove();
+      showToast("回复超时，请检查 Supabase Edge Function 是否正常运行");
+      return;
+    }
+    // 精确匹配reply_to=这条user消息的id，彻底避免读到别的回复
+    let query = supabaseClient
+      .from("chat_messages")
+      .select("*")
+      .eq("role","assistant")
+      .eq("type","chat")
+      .eq("status","done");
+
+    query = userMsgId
+      ? query.eq("reply_to", userMsgId)
+      : query.gt("created_at", insertedMsg?.created_at || new Date().toISOString());
+
+    const {data: newMsgs, error: pollErr} = await query
+      .order("created_at",{ascending:true})
+      .limit(5);
+
+    if(pollErr){
+      console.error("轮询查询失败：", pollErr);
+      return;
+    }
+
+    if(newMsgs && newMsgs.length > 0){
+      clearInterval(poll);
+      if(loadingEl) loadingEl.remove();
+      newMsgs.forEach(reply=>{
+        addChatMessage('assistant', reply.content, reply.thinking || "");
+        state.chatHistory.push({role:'assistant', content:reply.content, thinking:"", time:reply.created_at});
+      });
+      scrollChatBottom();
+      localStorage.setItem("chatHistory", JSON.stringify(state.chatHistory));
+    }
+  }, 3000);
+}
+
+// 检查离线时间
+async function checkOfflineThought(){
+  console.log("【思绪检查】开始...");
+  if (!state.chatHistory || state.chatHistory.length === 0) {
+    console.log("【思绪检查】没有聊天记录，跳过");
+    return;
+  }
+  
+  const last = state.chatHistory.at(-1);
+  const lastTime = last.time;
+  if(!lastTime) return;
+  
+  const lastDate = new Date(lastTime);
+  const now = new Date();
+  const gap = (now - lastDate) / 1000 / 60; 
+  
+  console.log("【思绪检查】距离上次聊天过去了 " + gap.toFixed(2) + " 分钟");
+  if(gap > 100){ 
+    await generateThoughts(lastTime);
+    await organizeMemory(lastTime);
+  }
+}
+
+// 生成思绪核心函数
+async function generateThoughts(lastTime){
+  const apiKey = bgApiConfig.key;
+  if(!apiKey) return;
+  
+  const thoughtLockKey = "thought-lock-" + lastTime;
+  if(localStorage.getItem("currentThoughtLock") === thoughtLockKey){
+    console.log("【思绪生成】这段时间的思绪已经生成过了，拦截");
+    return;
+  }
+  
+  const chatHistoryForThought = state.chatHistory
+    .slice(-10)
+    .map(m => ({ role: m.role, content: m.content }));
+  
+  const now = new Date();
+  const todayStr = now.getFullYear() + "." + (now.getMonth() + 1) + "." + now.getDate();
+  const currentTime = now.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+  
+  const prompt = "你是一个AI角色。用户在 " + lastTime + " 离开，现在在 " + todayStr + " " + currentTime + " 回来。期间用户没发消息。请根据聊天内容生成你在这段时间里的私人思绪。要求：1.不描述用户。2.只能描述自己的等待、回忆、猜测。3.保持性格。4.返回纯JSON数组，格式如：[{\"date\":\"" + todayStr + "\",\"time\":\"" + currentTime + "\",\"content\":\"...\"}]。聊天记录：" + JSON.stringify(chatHistoryForThought);
+
+  const body = {
+    model: bgApiConfig.model,
+    messages: [
+      { role: "system", content: "你只输出标准的JSON数组，绝对不要用 markdown 或 json 标签包裹，不要解释。" },
+      { role: "user", content: prompt }
+    ],
+    temperature: 0.7,
+    max_tokens:1000
+  };
+  
+  try { 
+    console.log("【思绪生成】正在请求大模型...");
+    const fullUrl = bgApiConfig.baseUrl.replace(/\/+$/, '') + bgApiConfig.path;
+    const controller = new AbortController();
+
+setTimeout(()=>{
+ controller.abort();
+},30000);
+    const res = await fetch(fullUrl, { 
+      method: "POST", 
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey }, 
+      body: JSON.stringify(body) 
+    });
+    const data = await res.json();
+    let thoughtText = "";
+    if(data.choices && data.choices[0]?.message?.content){
+      thoughtText = data.choices[0].message.content;
+    } else if(data.content && Array.isArray(data.content)){
+      thoughtText = data.content.find(b => b.type === "text")?.text || "";
+    }
+    
+    let clean = thoughtText.replace(/```json/g, "").replace(/```/g, "").trim();
+    let newThoughts = JSON.parse(clean);
+    
+    let oldThoughts = JSON.parse(localStorage.getItem("aiThoughts") || "[]");
+    newThoughts.forEach(t => {
+      oldThoughts.push({ type: "offline", date: t.date || todayStr, time: t.time || currentTime, content: t.content }); 
+    });
+    
+    localStorage.setItem("aiThoughts", JSON.stringify(oldThoughts));
+try{
+  const { error } = await supabaseClient
+    .from("ai_thoughts")
+    .insert(newThoughts);
+
+  if(error){
+    console.log("思绪保存失败:", error);
+  }
+}catch(e){
+  console.log("Supabase异常:", e);
+}
+;
+    localStorage.setItem("currentThoughtLock", thoughtLockKey); 
+    
+    renderThoughts();
+} catch(e) {
+    console.error("【思绪生成】失败了：", e); 
+  }
+}
+
+// ====== 记忆整理：AI自己判断该归到哪个分类，自动写入 ======
+async function organizeMemory(lastTime){
+  const apiKey = bgApiConfig.key;
+  if(!apiKey) { console.log("【记忆整理】未配置后台AI Key，跳过"); return; }
+
+  const memoryLockKey = "memory-lock-" + lastTime;
+  if(localStorage.getItem("currentMemoryLock") === memoryLockKey){
+    console.log("【记忆整理】这段时间已经整理过了，拦截");
+    return;
+  }
+
+  const chatHistoryForMemory = state.chatHistory
+    .slice(-20)
+    .map(m => ({ role: m.role, content: m.content }));
+
+  if(chatHistoryForMemory.length === 0) return;
+
+  const prompt = `你是一个长期陪伴用户的AI，正在回顾一段聊天记录，判断里面有没有值得长期记住的内容。
+
+规则：
+1. 只挑真正值得记住的：重要的事实、约定、用户的喜好厌恶、关系里的重要时刻、有纪念意义的对话、或亲密向内容。日常寒暄、无意义闲聊不用记。
+2. 如果没有值得记的内容，返回空数组 []。
+3. 如果有，你要自己判断每条记忆该归到下面哪个分类：
+   - "about"：跟"我们"这段关系有关的、值得纪念的事（约定、告白、重要时刻）
+   - "other"：跟用户本人有关的普通事实/喜好/日常信息（生日、爱吃什么、习惯等）
+   - "nsfw"：亲密向、色色向的内容
+4. "about"和"nsfw"分类，返回时额外带一个简短的date字段（格式如"2026.7.16"，就是今天）。
+5. "other"分类，返回时带keyword（2-6字关键词）和icon（一个emoji）。
+
+严格只返回纯JSON数组，不要markdown包裹，不要解释。格式：
+[
+  {"category":"about","date":"2026.7.16","content":"..."},
+  {"category":"other","keyword":"...","icon":"🌸","content":"..."},
+  {"category":"nsfw","date":"2026.7.16","content":"..."}
+]
+
+聊天记录：${JSON.stringify(chatHistoryForMemory)}`;
+
+  const body = {
+    model: bgApiConfig.model,
+    messages: [
+      { role: "system", content: "你只输出标准的JSON数组，绝对不要用markdown或json标签包裹，不要解释。" },
+      { role: "user", content: prompt }
+    ],
+    temperature: 0.3,
+    max_tokens: 1200
+  };
+
+  try{
+    console.log("【记忆整理】正在请求AI判断...");
+    const fullUrl = bgApiConfig.baseUrl.replace(/\/+$/, '') + bgApiConfig.path;
+    const controller = new AbortController();
+    setTimeout(()=>{ controller.abort(); }, 30000);
+
+    const res = await fetch(fullUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+    const data = await res.json();
+
+    let text = "";
+    if(data.choices && data.choices[0]?.message?.content){
+      text = data.choices[0].message.content;
+    } else if(data.content && Array.isArray(data.content)){
+      text = data.content.find(b => b.type === "text")?.text || "";
+    }
+
+    const clean = text.replace(/```json/g,"").replace(/```/g,"").trim();
+    let items = [];
+    try{ items = JSON.parse(clean); }catch(e){ console.log("【记忆整理】JSON解析失败:", clean); return; }
+
+    if(!Array.isArray(items) || items.length === 0){
+      console.log("【记忆整理】本次没有值得记住的内容");
+      localStorage.setItem("currentMemoryLock", memoryLockKey);
+      return;
+    }
+
+    for(const item of items){
+      if(item.category === "other"){
+        const blobColors = ['blob-pink','blob-purple','blob-yellow','blob-mint','blob-peach','blob-blue','blob-cream'];
+        const color = blobColors[Math.floor(Math.random()*blobColors.length)];
+        await supabaseClient.from('memories').insert({
+          icon: item.icon || '🌸',
+          keyword: item.keyword || '记忆',
+          content: item.content || '',
+          date: item.date || today(),
+          color,
+          category: 'other'
+        });
+      } else if(item.category === 'about' || item.category === 'nsfw'){
+        const dateStr = item.date || today();
+        const { data: exist } = await supabaseClient
+          .from('mem_diary')
+          .select('content')
+          .eq('category', item.category)
+          .eq('entry_date', dateStr)
+          .maybeSingle();
+
+        if(exist){
+          // 同一天已有记录，追加内容而不是覆盖
+          const merged = (exist.content ? exist.content + '\n' : '') + (item.content || '');
+          await supabaseClient.from('mem_diary').update({content: merged}).eq('id', exist.id);
+        } else {
+          await supabaseClient.from('mem_diary').insert({
+            category: item.category,
+            entry_date: dateStr,
+            content: item.content || ''
+          });
+        }
+      }
+    }
+
+    localStorage.setItem("currentMemoryLock", memoryLockKey);
+    console.log("【记忆整理】完成，写入了", items.length, "条");
+  }catch(e){
+    console.error("【记忆整理】失败了：", e);
+  }
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  setTimeout(() => {
+    checkOfflineThought();
+    renderThoughts();
+  }, 2000);
+
+  // 思绪面板开关
+  const thoughtBtn = document.getElementById("thoughtBtn");
+  const thoughtPanel = document.getElementById("thoughtPanel");
+  const closeThought = document.getElementById("closeThought");
+  if(thoughtBtn && thoughtPanel){
+    thoughtBtn.addEventListener("click", () => {
+      thoughtPanel.style.display = "flex";
+      renderThoughts();
+    });
+  }
+  if(closeThought && thoughtPanel){
+    closeThought.addEventListener("click", () => {
+      thoughtPanel.style.display = "none";
+    });
+  }
+});
+
+function renderThoughts(){
+  const box = document.getElementById("thoughtContent");
+  if(!box) return;
+  
+  let list = JSON.parse(localStorage.getItem("aiThoughts") || "[]");
+  if(list.length === 0){
+    box.innerHTML = "暂无思绪";
+    return;
+  }
+  
+  let groups = {};
+  list.forEach(item => {       
+     let date = item.date;      
+     if(!groups[date]){ groups[date] = []; }
+     groups[date].push({ time: item.time, content: item.content });    
+  });  
+  
+  let html = "";
+  Object.keys(groups).forEach(date => {
+    html += `<details class="thought-day"><summary>${date}</summary><div class="thought-day-content">`;
+    groups[date].forEach(x => {
+      html += `<div class="thought-item"><div class="thought-time">${x.time}</div><div class="thought-text">${x.content.replace(/\n/g, "<br>")}</div></div>`;
+    });
+    html += `</div></details>`;
+  });
+  box.innerHTML = html;
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  localStorage.removeItem("thoughtKey");
+  localStorage.removeItem("aithoughts");
+  localStorage.removeItem("aiThoughtsRaw");
+});
+
+// ====== 站子API扩展代码 ======
+let stationApiConfig = JSON.parse(localStorage.getItem("stationApiCfg")) || {baseUrl: "", authType: "header-token", token: "", customKey: ""};
+
+window.addEventListener('DOMContentLoaded', () => {
+  const stationOpenBtn = document.getElementById("openStationBtn");
+  const stationPanel = document.getElementById("stationApiPanel");
+  const stationClose = document.getElementById("closeStationPanel");
+  const stationSave = document.getElementById("saveStationConfig");
+  const testApiBtn = document.getElementById("testStationApi");
+  if (stationOpenBtn) stationOpenBtn.onclick = () => { 
+    stationPanel.style.display = "block";
+    document.getElementById("stationBase").value = stationApiConfig.baseUrl;
+    document.getElementById("authType").value = stationApiConfig.authType;
+    document.getElementById("stationToken").value = stationApiConfig.token;
+    document.getElementById("customHeaderKey").value = stationApiConfig.customKey;
+  }
+  if (stationClose) stationClose.onclick = () => stationPanel.style.display = "none";
+  if (stationSave) stationSave.onclick = () => { 
+    stationApiConfig = {
+      baseUrl: document.getElementById("stationBase").value.trim(),
+      authType: document.getElementById("authType").value,
+      token: document.getElementById("stationToken").value.trim(),
+      customKey: document.getElementById("customHeaderKey").value.trim()
+    };
+    localStorage.setItem("stationApiCfg", JSON.stringify(stationApiConfig));
+    alert("站子API配置已保存"); stationPanel.style.display = "none";
+  }
+  if (testApiBtn) testApiBtn.onclick = async () => { 
+    const res = await callStationApi("/", "GET");
+    alert("测试结果:\n" + JSON.stringify(res, null, 2)); 
+  }
+});
+
+async function callStationApi(path, method = "GET", body = null, urlParams = {}) {
+  const cfg = stationApiConfig; if (!cfg.baseUrl) return "未填写站API地址";
+  let fullUrl = new URL(cfg.baseUrl + path);
+  Object.entries(urlParams).forEach(([k, v]) => fullUrl.searchParams.append(k, v));
+  if (cfg.authType === "url-param" && cfg.token) fullUrl.searchParams.append("token", cfg.token);
+  const headers = { "Content-Type": "application/json" };
+  if (cfg.token) { 
+    switch (cfg.authType) {
+      case "header-token": headers["Authorization"] = `Bearer ${cfg.token}`; break;
+      case "header-custom": headers[cfg.customKey] = cfg.token; break;
+      case "cookie": headers["Cookie"] = cfg.token; break; 
+    }
+  }
+  const proxyUrl = `/api/proxy?target=${encodeURIComponent(fullUrl.toString())}`;
+  const fetchOpt = { method, headers }; if (body && method === "POST") fetchOpt.body = JSON.stringify(body);
+  try { 
+    const res = await fetch(proxyUrl, fetchOpt); const raw = await res.text();
+    let data; try { data = JSON.parse(raw); } catch { data = raw; }
+    if (!res.ok) return `错误${res.status}：${JSON.stringify(data)}`; return data;
+  } catch (err) { return `请求异常：${err.message}`; }
+    }
+// ====== 行程 ======
+function renderTasks(){
+  const todos=state.tasks.filter(t=>!t.done);
+  const dones=state.tasks.filter(t=>t.done);
+  document.getElementById('todoCount').textContent=todos.length;
+  document.getElementById('doneCount').textContent=dones.length;
+  const todoList=document.getElementById('todoList');
+  const doneList=document.getElementById('doneList');
+  todoList.innerHTML=todos.length?todos.map(t=>taskHTML(t)).join(''):'<div class="tasks-empty">暂无待办 ✨</div>';
+  doneList.innerHTML=dones.length?dones.map(t=>taskHTML(t)).join(''):'<div class="tasks-empty">完成的事项会出现在这里</div>';
+}
+function taskHTML(t){ 
+  const dateTag=t.date?`<span class="task-date-tag">📆 ${t.date}</span>`:'';
+  return `<div class="task-item" id="task-${t.id}"><div class="task-check ${t.done?'checked':''}" onclick="toggleTask('${t.id}')">${t.done?'✓':''}</div><div style="flex:1"><div class="task-text ${t.done?'done-text':''}">${escHtml(t.text)}</div>${dateTag}</div><button class="task-del" onclick="deleteTask('${t.id}')">×</button></div>`;
+}
+function addTask(){
+  const input=document.getElementById('taskInput'); const dateEl=document.getElementById('taskDate');
+  const text=input.value.trim(); if(!text) return;
+  state.tasks.push({id:Date.now().toString(), text, date:dateEl.value||'', done:false});
+  localStorage.setItem('tasks', JSON.stringify(state.tasks));
+  input.value=''; dateEl.value=''; renderTasks(); favorability.add(1);
+}
+function toggleTask(id){
+  const t=state.tasks.find(t=>t.id===id); if(!t) return;
+  t.done=!t.done; if(t.done) favorability.add(2); 
+  localStorage.setItem('tasks', JSON.stringify(state.tasks)); renderTasks();
+}
+function deleteTask(id){ state.tasks=state.tasks.filter(t=>t.id!==id); localStorage.setItem('tasks', JSON.stringify(state.tasks)); renderTasks(); }
+
+// ====== 小说 ======
+let novelFontSize=state.novelFontSize;
+
+function getShelf(){ return JSON.parse(localStorage.getItem("novelShelf")||"[]"); }
+function saveShelf(shelf){ localStorage.setItem("novelShelf", JSON.stringify(shelf)); }
+
+function splitNovel(text, size=800){
+  const pages=[]; for(let i=0;i<text.length;i+=size){ pages.push(text.slice(i,i+size)); } return pages;
+}
+
+function renderNovelPage(index){
+  const reader=document.getElementById("novelReader"); if(!reader) return;
+  const pages=state.novel.pages;
+  if(!pages||!pages.length) return;
+  index=Math.max(0,Math.min(index,pages.length-1));
+  state.novel.index=index;
+  reader.textContent=pages[index]||"";
+  reader.scrollTop=0;
+  const info=document.getElementById("novelPageInfo");
+  if(info) info.textContent=`${index+1} / ${pages.length}`;
+  const shelf=getShelf();
+  const book=shelf.find(b=>b.title===state.novel.title);
+  if(book){ book.lastIndex=index; saveShelf(shelf); }
+}
+
+function renderShelf(){
+  const shelf=getShelf();
+  const list=document.getElementById("shelfList");
+  const empty=document.getElementById("shelfEmpty");
+  if(!list) return;
+  if(!shelf.length){ list.innerHTML=""; if(empty) empty.style.display="block"; return; }
+  if(empty) empty.style.display="none";
+  list.innerHTML=shelf.map((b,i)=>`
+    <div style="position:relative;width:calc(50% - 6px);background:var(--bubble-ai);border-radius:12px;padding:14px 12px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.08);" onclick="openBook(${i})">
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${b.title}</div>
+      <div style="font-size:11px;opacity:0.5;">进度 ${b.lastIndex+1}/${b.totalPages} 页</div>
+      <button onclick="event.stopPropagation();deleteBook(${i})" style="position:absolute;top:6px;right:8px;background:none;border:none;font-size:14px;opacity:0.4;cursor:pointer;">×</button>
+    </div>
+  `).join("");
+}
+
+function openBook(index){
+  const shelf=getShelf();
+  const book=shelf[index]; if(!book) return;
+  state.novel.title=book.title;
+  state.novel.content=book.content;
+  state.novel.pages=splitNovel(book.content,800);
+  state.novel.index=book.lastIndex||0;
+  document.getElementById("novelShelf").style.display="none";
+  const reading=document.getElementById("novelReading");
+  reading.style.display="flex";
+  document.getElementById("novelTitleBadge").textContent=book.title;
+  document.getElementById("novelReader").style.fontSize=novelFontSize+"px";
+  renderNovelPage(state.novel.index);
+}
+
+function deleteBook(index){
+  if(!confirm("删除这本书？")) return;
+  const shelf=getShelf(); shelf.splice(index,1); saveShelf(shelf); renderShelf();
+}
+
+function saveNovelToLocal(){
+  localStorage.setItem("novelTitle",state.novel.title);
+  localStorage.setItem("novelContent",state.novel.content);
+}
+
+// ====== 日记 ======
+function renderDiaries(){ 
+  const list=document.getElementById('diaryList');
+  if(!state.diaries.length){list.innerHTML='<div class="empty-diary">还没有日记，写一篇吧 </div>'; return;}
+  list.innerHTML=[...state.diaries].reverse().map(d=>`<div class="diary-item" onclick="openDiary('${d.id}')"><div class="diary-item-title">${escHtml(d.title||'无标题')}</div><div class="diary-item-preview">${escHtml(d.content||'').slice(0,60)}</div><div class="diary-item-date">${d.date}</div></div>`).join('');
+}
+function openDiary(id){
+  const d=id==='new'?null:state.diaries.find(d=>d.id===id);
+  state.currentDiaryId=id==='new'?null:id;
+  document.getElementById('diaryTitle').value=d?d.title:'';
+  document.getElementById('diaryContent').value=d?d.content:'';
+  document.getElementById('diaryMeta').textContent=d?`创建于 ${d.date}`:today();
+  const delBtn = document.getElementById('deleteDiary');
+  if (delBtn) delBtn.style.display = d ? 'block' : 'none'; openModal('diaryModal');
+}
+function saveDiary(){
+  const title=document.getElementById('diaryTitle').value.trim()||'无标题';
+  const content=document.getElementById('diaryContent').value.trim();
+  if(state.currentDiaryId){
+    const idx=state.diaries.findIndex(d=>d.id===state.currentDiaryId);
+    if(idx!==-1){state.diaries[idx].title=title; state.diaries[idx].content=content;}
+  } else { state.diaries.push({id:Date.now().toString(), title, content, date:today()}); favorability.add(2);}
+  localStorage.setItem('diaries', JSON.stringify(state.diaries)); renderDiaries(); closeModal('diaryModal'); showToast('已保存 ');
+}
+function deleteDiary(){ 
+  if(!state.currentDiaryId||!confirm('确定删除？')) return;
+  state.diaries=state.diaries.filter(d=>d.id!==state.currentDiaryId);
+  localStorage.setItem('diaries', JSON.stringify(state.diaries));
+  renderDiaries(); closeModal('diaryModal'); showToast('已删除');
+}
+
+// ====== 设置 ======
+function setupSettings(){ 
+  document.getElementById('apiKeyInput').value=localStorage.getItem('apiKey')||'';
+  document.getElementById('modelSelect').value=localStorage.getItem('model')||'claude-sonnet-4-6';
+  document.getElementById('systemPromptInput').value=localStorage.getItem('systemPrompt')||'';
+  document.getElementById('thinkingColorInput').value=state.thinkingColor;
+  document.getElementById('thinkingColorLabel').textContent=state.thinkingColor;
+  const ba=Math.round(state.bubbleAlpha*100);
+  document.getElementById('bubbleOpacity').value=ba;
+  document.getElementById('bubbleOpacityVal').textContent=ba+'%';
+  document.getElementById('cityInput').value=state.city;
+  document.getElementById('nameInput').value=state.name;
+  document.getElementById('dateInput').value=state.startDate;
+  document.getElementById('anniversaryInput').value=state.anniversaries;
+  document.getElementById('overlaySlider').value=state.overlayOpacity;
+  document.getElementById('overlayVal').textContent=state.overlayOpacity+'%';
+  if(state.theme==='light') document.getElementById('themeSwitch').classList.add('active');
+  if(localStorage.getItem('nsfwMode') === 'on') document.getElementById('nsfwSwitch')?.classList.add('active');
+  const bgBaseUrlEl = document.getElementById('bgApiBaseUrl');
+  if(bgBaseUrlEl){
+    bgBaseUrlEl.value = bgApiConfig.baseUrl || '';
+    document.getElementById('bgApiKeyInput').value = bgApiConfig.key || '';
+    document.getElementById('bgModelInput').value = bgApiConfig.model || '';
+    document.getElementById('bgApiPathInput').value = bgApiConfig.path || '';
+  }
+  document.getElementById('apiBaseUrl').value = localStorage.getItem('apiBaseUrl') || '';
+  document.getElementById('apiFormat').value = localStorage.getItem('apiFormat') || 'anthropic';
+  document.getElementById('fontSelect').value = localStorage.getItem('font') || 'default';
+}
+
+function setFontColor(type){ document.documentElement.setAttribute('data-font', type); localStorage.setItem("fontColor", type); }
+
+function saveSettings(){
+  localStorage.setItem('apiKey', document.getElementById('apiKeyInput').value.trim());
+  localStorage.setItem('model', document.getElementById('modelSelect').value);
+  localStorage.setItem('systemPrompt', document.getElementById('systemPromptInput').value.trim());
+  state.name=document.getElementById('nameInput').value.trim()||'小猫';
+  state.startDate=document.getElementById('dateInput').value;
+  state.city=document.getElementById('cityInput').value.trim();
+  state.anniversaries=document.getElementById('anniversaryInput').value.trim();
+  localStorage.setItem('name', state.name);
+  localStorage.setItem('startDate', state.startDate);
+  localStorage.setItem('city', state.city);
+  localStorage.setItem('anniversaries', state.anniversaries);
+  updateGreeting(); updateTogetherDays(); checkApiKey();
+  if(state.city) fetchWeather(state.city); showToast('设置已保存 ✓');
+  localStorage.setItem('apiBaseUrl', document.getElementById('apiBaseUrl').value.trim());
+  localStorage.setItem('apiFormat', document.getElementById('apiFormat').value);
+  const font = document.getElementById('fontSelect').value;
+  localStorage.setItem('font', font); applyFont(font);
+}
+
+// ====== 弹窗 ======
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2200);}
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ====== 事件绑定 ======
+function bindEvents(){
+  document.querySelectorAll('.nav-item').forEach(item=>{ item.addEventListener('click', e=>{
+      e.preventDefault(); const page=item.dataset.page;
+      document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active')); item.classList.add('active');
+      document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+      document.getElementById('page-'+page).classList.add('active');
+      document.getElementById('pageTitle').textContent=item.querySelector('span:last-child').textContent;
+      if(page==='chat'){ setTimeout(scrollChatBottom, 100); }
+      if(page==='novel'){ renderShelf(); }
+      if(window.innerWidth<=768) document.getElementById('sidebar').classList.remove('open'); }); });
+  
+  document.getElementById('mobileMenu').addEventListener('click', ()=>{ document.getElementById('sidebar').classList.toggle('open');});
+  document.getElementById('themeToggle').addEventListener('click', ()=>applyTheme(state.theme==='dark'?'light':'dark'));
+  document.getElementById('themeSwitch').addEventListener('click', function(){ this.classList.toggle('active'); applyTheme(this.classList.contains('active')?'light':'dark');});
+  document.getElementById('nsfwSwitch')?.addEventListener('click', function(){
+    this.classList.toggle('active');
+    const on = this.classList.contains('active');
+    localStorage.setItem('nsfwMode', on ? 'on' : 'off');
+    showToast(on ? 'NSFW 模式已开启' : 'NSFW 模式已关闭');
+  });
+
+  document.getElementById('saveBgApiBtn')?.addEventListener('click', ()=>{
+    const cfg = {
+      baseUrl: document.getElementById('bgApiBaseUrl').value.trim() || 'https://api.deepseek.com',
+      key: document.getElementById('bgApiKeyInput').value.trim(),
+      model: document.getElementById('bgModelInput').value.trim() || 'deepseek-chat',
+      path: document.getElementById('bgApiPathInput').value.trim() || '/v1/chat/completions'
+    };
+    saveBgApiConfig(cfg);
+    showToast('后台AI配置已保存 ✨');
+  });
+  
+  document.getElementById('wallpaperBtn').addEventListener('click', ()=>openModal('wallpaperModal'));
+  document.getElementById('wallpaperSettingBtn').addEventListener('click', ()=>openModal('wallpaperModal'));
+  document.getElementById('closeWpModal').addEventListener('click', ()=>closeModal('wallpaperModal'));
+  
+  document.querySelectorAll('.wp-option').forEach(opt=>{
+    opt.addEventListener('click', ()=>{ if(opt.dataset.wp==='upload'){document.getElementById('wpUpload').click(); return;}
+      document.querySelectorAll('.wp-option').forEach(o=>o.classList.remove('selected'));
+      opt.classList.add('selected'); applyWallpaper(opt.dataset.wp); setTimeout(()=>closeModal('wallpaperModal'), 300);}); });
+      
+  document.getElementById('wpUpload').addEventListener('change', e=>{
+    const file=e.target.files[0]; if(!file) return;
+    const r=new FileReader();
+    r.onload=ev=>{applyWallpaper(ev.target.result); localStorage.setItem('wallpaper-custom', ev.target.result); closeModal('wallpaperModal'); showToast('壁纸已更换 🌸');};
+    r.readAsDataURL(file); 
+  });
+  
+  document.getElementById('overlaySlider').addEventListener('input', function(){ applyOverlay(parseInt(this.value)); document.getElementById('overlayVal').textContent=this.value+'%'; localStorage.setItem('overlay', this.value); });
+  document.getElementById('thinkingColorInput').addEventListener('input', function(){ applyThinkingColor(this.value); document.getElementById('thinkingColorLabel').textContent=this.value;});
+  document.getElementById('bubbleOpacity').addEventListener('input', function(){ applyBubbleAlpha(parseInt(this.value)/100); document.getElementById('bubbleOpacityVal').textContent=this.value+'%'; });
+  
+  document.querySelectorAll('.mood-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected'); state.mood=btn.dataset.mood; document.getElementById('moodSelected').textContent=btn.dataset.mood;
+      localStorage.setItem('mood-'+today(), btn.dataset.mood); favorability.add(1);});});
+      
+  document.getElementById('quickNoteText').addEventListener('input', function(){ localStorage.setItem('quickNote', this.value);});
+  document.getElementById('sendBtn').addEventListener('click', sendMessage);
+  document.getElementById('chatInput').addEventListener('keydown', e=>{ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault(); sendMessage();}});
+  document.getElementById('chatInput').addEventListener('input', function(){autoResize();});
+  
+  document.getElementById('addTaskBtn').addEventListener('click', addTask);
+  document.getElementById('taskInput').addEventListener('keydown', e=>{ if(e.key==='Enter') addTask(); });
+  
+  // 导入按钮触发file input
+  document.getElementById("uploadNovelBtn").addEventListener("click", ()=>{ document.getElementById("novelFile").click(); });
+
+  document.getElementById("novelFile").addEventListener("change", (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      let text = evt.target.result;
+      // 乱码检测：如果包含替换字符说明编码不对，尝试GBK
+      if(text.includes("\uFFFD")){
+        showToast("检测到乱码，尝试GBK编码重新读取...");
+        const gbkReader = new FileReader();
+        gbkReader.onload = (e2) => {
+          text = e2.target.result;
+          addToShelfAndOpen(file.name, text);
+        };
+        gbkReader.readAsText(file, "GBK");
+        return;
+      }
+      addToShelfAndOpen(file.name, text);
+    };
+    reader.readAsText(file, "UTF-8");
+    e.target.value = "";
+  });
+
+  function addToShelfAndOpen(title, text){
+    const pages = splitNovel(text, 800);
+    const shelf = getShelf();
+    const existing = shelf.findIndex(b => b.title === title);
+    const book = { title, content: text, totalPages: pages.length, lastIndex: 0 };
+    if(existing >= 0){ shelf[existing] = {...shelf[existing], ...book}; }
+    else { shelf.push(book); }
+    saveShelf(shelf);
+    state.novel = { title, content: text, pages, index: 0 };
+    renderShelf();
+    openBook(shelf.findIndex(b => b.title === title));
+    showToast("导入成功 📖");
+  }
+
+  // 翻页
+  document.getElementById("novelPrev").addEventListener("click", ()=>{ renderNovelPage(state.novel.index - 1); });
+  document.getElementById("novelNext").addEventListener("click", ()=>{ renderNovelPage(state.novel.index + 1); });
+
+  // 返回书架
+  document.getElementById("novelBack").addEventListener("click", ()=>{
+    document.getElementById("novelReading").style.display = "none";
+    document.getElementById("novelShelf").style.display = "block";
+    renderShelf();
+  });
+
+  document.getElementById('fontMinus').addEventListener('click', ()=>{ novelFontSize=Math.max(12, novelFontSize-2); document.getElementById('novelReader').style.fontSize=novelFontSize+'px'; document.getElementById('fontSizeLabel').textContent=novelFontSize+'px'; localStorage.setItem('novelFontSize', novelFontSize); });
+  document.getElementById('fontPlus').addEventListener('click', ()=>{ novelFontSize=Math.min(28, novelFontSize+2); document.getElementById('novelReader').style.fontSize=novelFontSize+'px'; document.getElementById('fontSizeLabel').textContent=novelFontSize+'px'; localStorage.setItem('novelFontSize', novelFontSize);});
+  
+  document.getElementById('newDiaryBtn').addEventListener('click', ()=>openDiary('new'));
+  document.getElementById('saveDiaryBtn').addEventListener('click', saveDiary);
+  document.getElementById('closeDiaryModal').addEventListener('click', ()=>closeModal('diaryModal'));
+  document.getElementById('saveSettings').addEventListener('click', saveSettings);
+  
+  document.querySelectorAll('.modal').forEach(modal=>{ modal.addEventListener('click', e=>{if(e.target===modal)closeModal(modal.id);}); });
+
+  // ====== 记忆匣（入口 -> 分类 -> 内容）======
+  const blobColors = ['blob-pink','blob-purple','blob-yellow','blob-mint','blob-peach','blob-blue','blob-cream'];
+  let currentMemId = null;
+  let currentDiaryCategory = null; // 'about' | 'nsfw'
+  let currentDiaryDate = null;
+
+  function showMemModal(id){ document.getElementById(id)?.classList.add('show'); }
+  function hideMemModal(id){ document.getElementById(id)?.classList.remove('show'); }
+
+  // 入口：点击打开分类选择层
+  document.getElementById('memEntryBtn')?.addEventListener('click', ()=>{
+    showMemModal('memCategoryModal');
+  });
+  document.getElementById('closeMemCategoryModal')?.addEventListener('click', ()=> hideMemModal('memCategoryModal'));
+
+  // 分类选择：其他 -> 原关键词卡片盒子；关于我们/色色 -> 日记式列表
+  document.querySelectorAll('.mem-category-item').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const cat = btn.dataset.category;
+      hideMemModal('memCategoryModal');
+      if(cat === 'other'){
+        showMemModal('memOtherModal');
+        loadAndRenderMemBox();
+      } else {
+        currentDiaryCategory = cat;
+        document.getElementById('memDiaryTitle').textContent = cat === 'about' ? '关于我们' : '色色';
+        showMemModal('memDiaryModal');
+        loadAndRenderMemDiary(cat);
+      }
+    });
+  });
+
+  document.getElementById('closeMemOtherModal')?.addEventListener('click', ()=> hideMemModal('memOtherModal'));
+  document.getElementById('memOtherBack')?.addEventListener('click', ()=>{ hideMemModal('memOtherModal'); showMemModal('memCategoryModal'); });
+
+  document.getElementById('closeMemDiaryModal')?.addEventListener('click', ()=> hideMemModal('memDiaryModal'));
+  document.getElementById('memDiaryBack')?.addEventListener('click', ()=>{ hideMemModal('memDiaryModal'); showMemModal('memCategoryModal'); });
+
+  // 日记式列表：按日期分组展示，点击某天展开内容
+  async function loadAndRenderMemDiary(category){
+    const list = document.getElementById('memDiaryList');
+    if(!list) return;
+    list.innerHTML = '<div class="mem-diary-empty">加载中...</div>';
+
+    const { data, error } = await supabaseClient
+      .from('mem_diary')
+      .select('*')
+      .eq('category', category)
+      .order('entry_date', {ascending:false});
+
+    if(error){
+      list.innerHTML = '<div class="mem-diary-empty">加载失败：'+escHtml(error.message)+'</div>';
+      return;
+    }
+
+    if(!data || data.length === 0){
+      list.innerHTML = '<div class="mem-diary-empty">还没有记忆，点击下方＋添加</div>';
+      return;
+    }
+
+    list.innerHTML = '';
+    data.forEach((entry, idx) => {
+      const dayEl = document.createElement('div');
+      dayEl.className = 'mem-diary-day';
+      dayEl.innerHTML = `
+        <div class="mem-diary-day-date">${escHtml(entry.entry_date||'')}</div>
+        <div class="mem-diary-day-preview">${escHtml((entry.content||'').slice(0,40))}</div>
+      `;
+      dayEl.addEventListener('click', ()=> openMemDayContent(entry, category));
+      list.appendChild(dayEl);
+
+      if(idx < data.length - 1){
+        const divider = document.createElement('div');
+        divider.className = 'mem-diary-divider';
+        list.appendChild(divider);
+      }
+    });
+  }
+
+  function openMemDayContent(entry, category){
+    currentDiaryDate = entry.entry_date;
+    currentDiaryCategory = category;
+    document.getElementById('memDayContentDate').textContent = entry.entry_date || '';
+    document.getElementById('memDayContentText').textContent = entry.content || '';
+    showMemModal('memDayContentModal');
+  }
+
+  document.getElementById('closeMemDayContentModal')?.addEventListener('click', ()=> hideMemModal('memDayContentModal'));
+
+  document.getElementById('memDaySave')?.addEventListener('click', async ()=>{
+    const text = document.getElementById('memDayContentText').textContent.trim();
+    if(!currentDiaryDate || !currentDiaryCategory) return;
+    const {error} = await supabaseClient
+      .from('mem_diary')
+      .update({content: text})
+      .eq('category', currentDiaryCategory)
+      .eq('entry_date', currentDiaryDate);
+    if(error){ showToast('保存失败：'+error.message); return; }
+    hideMemModal('memDayContentModal');
+    loadAndRenderMemDiary(currentDiaryCategory);
+    showToast('已保存 ✨');
+  });
+
+  document.getElementById('memDayDel')?.addEventListener('click', async ()=>{
+    if(!currentDiaryDate || !currentDiaryCategory) return;
+    if(!confirm('删除这一天的记忆？')) return;
+    await supabaseClient
+      .from('mem_diary')
+      .delete()
+      .eq('category', currentDiaryCategory)
+      .eq('entry_date', currentDiaryDate);
+    hideMemModal('memDayContentModal');
+    loadAndRenderMemDiary(currentDiaryCategory);
+    showToast('已删除');
+  });
+
+  // 添加新的一天（用today()生成日期，若当天已存在则提示改用编辑）
+  document.getElementById('memDiaryAddBtn')?.addEventListener('click', async ()=>{
+    if(!currentDiaryCategory) return;
+    const dateStr = today ? today() : new Date().toISOString().slice(0,10);
+    const { data: exist } = await supabaseClient
+      .from('mem_diary')
+      .select('id')
+      .eq('category', currentDiaryCategory)
+      .eq('entry_date', dateStr)
+      .maybeSingle();
+
+    if(exist){
+      openMemDayContent({entry_date: dateStr, content: ''}, currentDiaryCategory);
+      // 重新拉一次真实内容
+      const {data: full} = await supabaseClient.from('mem_diary').select('*').eq('category', currentDiaryCategory).eq('entry_date', dateStr).single();
+      if(full) openMemDayContent(full, currentDiaryCategory);
+      return;
+    }
+
+    const {error} = await supabaseClient.from('mem_diary').insert({category: currentDiaryCategory, entry_date: dateStr, content: ''});
+    if(error){ showToast('创建失败：'+error.message); return; }
+    loadAndRenderMemDiary(currentDiaryCategory);
+    openMemDayContent({entry_date: dateStr, content: ''}, currentDiaryCategory);
+  });
+
+  async function loadAndRenderMemBox() {
+    const area = document.getElementById('memItemsArea');
+    const empty = document.getElementById('memEmpty');
+    const countEl = document.getElementById('memBoxCount');
+    if(!area) return;
+    area.innerHTML = '';
+
+    const { data: mems, error } = await supabaseClient.from('memories').select('*').order('created_at', {ascending:true});
+    if(error || !mems || mems.length === 0){
+      if(empty){ empty.style.display='flex'; area.appendChild(empty); }
+      if(countEl) countEl.textContent = '0 个记忆';
+      return;
+    }
+
+    if(empty) empty.style.display='none';
+    if(countEl) countEl.textContent = mems.length + ' 个记忆';
+
+    const W = area.offsetWidth || 320;
+    const H = 260;
+    const placed = [];
+
+    mems.forEach((m) => {
+      const size = 52;
+      const pad = 14;
+      let x, y, tries = 0;
+      do {
+        x = pad + Math.random() * (W - size - pad * 2);
+        y = pad + Math.random() * (H - size - pad * 2);
+        tries++;
+      } while(tries < 50 && placed.some(p => Math.hypot(p.x-x, p.y-y) < size+6));
+      placed.push({x, y});
+
+      const color = m.color || blobColors[Math.floor(Math.random()*blobColors.length)];
+      const rot = (Math.random()-0.5)*22;
+
+      const el = document.createElement('div');
+      el.className = 'mem-item';
+      el.style.cssText = `left:${x}px;top:${y}px;transform:rotate(${rot}deg);z-index:${Math.floor(Math.random()*5)+1}`;
+      el.dataset.rot = rot;
+      el.innerHTML = `<div class="mem-blob ${color}">${m.icon||'🌸'}</div><div class="mem-item-label">${escHtml(m.keyword||m.title||'')}</div>`;
+
+      el.addEventListener('mouseenter', ()=>{ el.style.transform=`rotate(0deg) scale(1.12)`; el.style.zIndex=20; });
+      el.addEventListener('mouseleave', ()=>{ el.style.transform=`rotate(${el.dataset.rot}deg)`; el.style.zIndex=Math.floor(Math.random()*5)+1; });
+      el.addEventListener('click', ()=>{ openMemCard(m, color); });
+      area.appendChild(el);
+    });
+  }
+
+  function openMemCard(m, color){
+    currentMemId = m.id;
+    const blob = document.getElementById('memCardBlob');
+    blob.className = 'mem-card-blob ' + (color || m.color || 'blob-pink');
+    blob.textContent = m.icon || '🌸';
+    document.getElementById('memCardKeyword').textContent = m.keyword || m.title || '';
+    document.getElementById('memCardDate').textContent = m.date || '';
+    document.getElementById('memCardContent').textContent = m.content || '';
+    document.getElementById('memCardModal').classList.add('show');
+  }
+
+  document.getElementById('memCardDel')?.addEventListener('click', async ()=>{
+    if(!currentMemId) return;
+    if(!confirm('删除这条记忆？')) return;
+    await supabaseClient.from('memories').delete().eq('id', currentMemId);
+    document.getElementById('memCardModal').classList.remove('show');
+    loadAndRenderMemBox();
+    showToast('记忆已删除');
+  });
+
+  document.getElementById('memAddBtn')?.addEventListener('click', ()=>{
+    document.getElementById('memTitleInput').value='';
+    document.getElementById('memDateInput').value='';
+    document.getElementById('memContentInput').value='';
+    document.getElementById('memIconInput').value='🌸';
+    document.getElementById('memIconPreview').textContent='🌸';
+    openModal('memoryModal');
+  });
+
+  document.getElementById('memIconInput')?.addEventListener('input', (e)=>{
+    document.getElementById('memIconPreview').textContent = e.target.value || '🌸';
+  });
+
+  document.getElementById('closeMemoryModal')?.addEventListener('click', ()=> closeModal('memoryModal'));
+
+  document.getElementById('saveMemory')?.addEventListener('click', async ()=>{
+    const icon = document.getElementById('memIconInput').value.trim() || '🌸';
+    const keyword = document.getElementById('memTitleInput').value.trim();
+    const date = document.getElementById('memDateInput').value.trim();
+    const content = document.getElementById('memContentInput').value.trim();
+    if(!keyword){ showToast('关键词不能为空'); return; }
+    if(!content){ showToast('内容不能为空'); return; }
+    const color = blobColors[Math.floor(Math.random()*blobColors.length)];
+    const {error} = await supabaseClient.from('memories').insert({icon, keyword, content, date, color, category:'other'});
+    if(error){ showToast('保存失败：'+error.message); return; }
+    closeModal('memoryModal');
+    loadAndRenderMemBox();
+    showToast('记忆已存入 ✨');
+    favorability.add(3);
+  });
+
+  document.getElementById('fetchModelsBtn').addEventListener('click', async () => {
+    const baseUrl = document.getElementById('apiBaseUrl').value.trim() || 'https://api.anthropic.com';
+    const apiKey = document.getElementById('apiKeyInput').value.trim() || localStorage.getItem('apiKey') || ''; 
+    if (!apiKey) { showToast('请先填写 API Key'); return; } showToast('获取中...'); 
+    try { 
+      const url = baseUrl.replace(/\/+$/, '') + '/v1/models';
+      const res = await fetch(url, { headers: { 'Authorization': `Bearer ${apiKey}`, 'x-api-key': apiKey } });
+      const data = await res.json(); const models = data.data || data.models || [];
+      if (!models.length) { showToast('没有获取到模型'); return; }
+      const select = document.getElementById('modelSelect');
+      select.innerHTML = models.map(m => { const id = m.id || m.name || m; return `<option value="${id}">${id}</option>`; }).join('');
+      showToast(`获取到 ${models.length} 个模型 ✓`);
+    } catch(e) { showToast('获取失败，检查API地址和Key'); }
+  });
+  
+  const delBtn = document.getElementById('deleteDiary');
+  if (delBtn) delBtn.addEventListener('click', deleteDiary);
+}
+
+const _customWp=localStorage.getItem('wallpaper-custom');
+if(_customWp&&(state.wallpaper==='none'||!state.wallpaper)) state.wallpaper=_customWp;
+window.addEventListener('DOMContentLoaded', () => { init(); });
+window.setFontColor = setFontColor;
+
+function addChatMessage(role, text, thinking){
+  const box = document.getElementById("chatMessages"); if(!box) return;
+  const div = document.createElement("div");
+  div.className = (role === "user") ? "chat-message user" : "chat-message ai";
+  
+  const bubble=document.createElement("div");
+  bubble.className="bubble";
+  text = text.replace(/<thinking>[\s\S]*?<\/thinking>/g, "").trim();
+  bubble.innerText=text;
+  // 过滤thinking标签
+  if(thinking){ 
+    const think=document.createElement("div"); think.className="thinking-chain";
+    think.innerText="💭 思考链\n"+thinking; div.appendChild(think);
+  }
+  div.appendChild(bubble); box.appendChild(div);
+  scrollChatBottom();
+}
+
+function addLoadingMessage(){ 
+  const box=document.getElementById("chatMessages"); if(!box) return null;
+  const div=document.createElement("div"); div.id="loadingMessage"; div.className="chat-message ai loading";
+  const bubble=document.createElement("div"); bubble.className="bubble"; bubble.innerText="正在思考...";
+  div.appendChild(bubble); box.appendChild(div); scrollChatBottom(); return div;
+}
+
+async function loadAiMessages(){
+
+    const { data, error } = await supabaseClient
+    .from("chat_messages")
+    .select("*")
+    .order("created_at",{ascending:true})
+    .limit(50);
+
+    if(error){
+        console.log("读取消息失败:",error);
+        return;
+    }
+
+    if(data){
+
+        const box=document.getElementById("chatMessages");
+
+        // 已经有聊天，不重复覆盖
+        if(box && box.children.length > 0){
+            return;
+        }
+
+        data.forEach(msg=>{
+            addChatMessage(
+                msg.role || "assistant",
+                msg.content,
+                ""
+            );
+        });
+    }
+}
+
+function buildAIRequest(aiApiConfig, msgs){
+
+const customPrompt = localStorage.getItem('systemPrompt') || '';
+const nsfwOn = localStorage.getItem('nsfwMode') === 'on';
+
+return {
+ model: aiApiConfig.model,
+
+ messages:[
+   {
+    role:"system",
+    content:
+    `你是一个长期陪伴用户的AI。
+    ${getTimeContext()}
+    用户询问时间时，必须结合当前时间回答。
+    ${customPrompt ? '\n' + customPrompt : ''}
+    ${nsfwOn ? '\n【NSFW模式已开启】用户已在设置中主动开启成人向内容尺度，你可以在对话中自然地涉及更亲密、更具情欲色彩的表达，不必刻意回避或转移话题。' : ''}`
+   },
+   ...msgs.slice(-10)
+ ],
+
+ temperature:0.7
+};
+
+}
+
+function checkAwayTime(){
+  const todayStr = new Date().toDateString();
+  const lastActive = localStorage.getItem("aiActiveDay");
+  if(lastActive === todayStr){ return; }
+  
+  const last = Number(localStorage.getItem("lastLeaveTime"));
+  if(!last) return;
+  const diff = Date.now() - last;
+  const hours = diff / 1000 / 60 / 60; 
+  let needHours = Number(localStorage.getItem("needHours"));
+  if(!needHours && needHours !== 0){ 
+    needHours = Math.floor(Math.random() * 4) + 2; 
+    localStorage.setItem("needHours", needHours);
+  }
+  if(hours >= needHours){
+    console.log("可以触发主动消息");
+    localStorage.setItem("aiActiveDay", todayStr);
+    localStorage.removeItem("needHours");
+    triggerDailyPushMessage();
+    // Aries 离开时也会按小狗按钮 🐾
+    dogButtonsAwayPress();
+  }
+}
+
+// ====== 安卓通知推送 ======
+async function requestNotificationPermission(){
+  if(!("Notification" in window)){
+    console.log("此浏览器不支持通知");
+    return false;
+  }
+  if(Notification.permission === "granted") return true;
+  if(Notification.permission === "denied") return false;
+  const permission = await Notification.requestPermission();
+  return permission === "granted";
+}
+
+function sendLocalNotification(title, body, icon){
+  if(Notification.permission !== "granted") return;
+  const notification = new Notification(title, {
+    body: body || "",
+    icon: icon || "/icon.png",
+    badge: "/icon.png",
+    tag: "aries-home",
+    renotify: true,
+    vibrate: [200, 100, 200],
+  });
+  notification.onclick = () => {
+    window.focus();
+    notification.close();
+  };
+}
+
+// 注册Service Worker（安卓后台推送必须）
+async function registerServiceWorker(){
+  if(!("serviceWorker" in navigator)) return null;
+  try {
+    const reg = await navigator.serviceWorker.register("/sw.js");
+    console.log("Service Worker 注册成功", reg);
+    return reg;
+  } catch(e) {
+    console.log("Service Worker 注册失败", e);
+    return null;
+  }
+}
+async function initNotifications() {
+
+  const reg = await registerServiceWorker();
+  if(!reg) return;
+
+  const permission = await Notification.requestPermission();
+  if(permission !== "granted"){
+    console.log("通知权限被拒绝:", permission);
+    showToast("请允许通知以接收AI主动消息");
+    return;
+  }
+
+  let sub = await reg.pushManager.getSubscription();
+  if(!sub){
+    sub = await reg.pushManager.subscribe({
+      userVisibleOnly:true,
+      applicationServerKey:"BO9X3bAfXa9EtgTci2mM0GyFpm9AcW8S0w79IZVA3sOByXCMYfxfGSe4pNhroZvRTO3uQYMzhLvWVF5u3aG-Is0"
+    });
+  }
+
+  const subJson=sub.toJSON();
+
+  await supabaseClient
+  .from("push_subscriptions")
+  .upsert({
+    endpoint:subJson.endpoint,
+    p256dh:subJson.keys.p256dh,
+    auth:subJson.keys.auth
+  });
+
+  showToast("推送已开启 ✓");
+}
+async function loadChatHistory(){
+
+const {data,error}=await supabaseClient
+.from("chat_messages")
+.select("*")
+.order("created_at",{ascending:true})
+.limit(20);
+
+if(error){
+console.log(error);
+return;
+}
+
+
+data.forEach(msg=>{
+
+addChatMessage(
+msg.role,
+msg.content,
+  ""
+);
+
+});
+
+}
+function listenAIMessage(){
+
+supabaseClient
+.channel("chat")
+.on(
+"postgres_changes",
+{
+event:"INSERT",
+schema:"public",
+table:"chat_messages"
+},
+(payload)=>{
+let msg=payload.new;
+if(msg.role==="assistant"){
+addChatMessage(
+"assistant",
+msg.content,
+msg.thinking || ""
+);
+}
+})
+.subscribe();
+
+}
+async function loadThoughts(){
+  try {
+    const {data}=await supabaseClient
+      .from("ai_thoughts")
+      .select("*")
+      .order("created_at",{ascending:false});
+    if(data && data.length){
+      // 合并到 localStorage 再用 renderThoughts()
+      let local = JSON.parse(localStorage.getItem("aiThoughts") || "[]");
+      const existing = new Set(local.map(t => t.time + t.content));
+      let newCount = 0;
+      data.forEach(t => {
+        const key = (t.time || "") + (t.content || "");
+        if(!existing.has(key)){
+          local.push({ type: t.type || "offline", date: t.date || today(), time: t.time || "", content: t.content });
+          existing.add(key);
+          newCount++;
+        }
+      });
+      if(newCount > 0){
+        localStorage.setItem("aiThoughts", JSON.stringify(local));
+      }
+    }
+  } catch(e) { console.log("loadThoughts error:", e); }
+  if(typeof renderThoughts === 'function') renderThoughts();
+}
+async function loadMoments(){
+  const {data,error}=await supabaseClient
+    .from("moments")
+    .select("*")
+    .order("created_at",{ascending:false});
+
+  if(error){
+    console.log("朋友圈读取失败",error);
+    return;
+  }
+
+  // 存到state + localStorage供Aries主题使用
+  if(data){
+    state.moments = data;
+    localStorage.setItem('arMoments', JSON.stringify(data));
+  }
+
+  // Aries主题渲染（先渲染，不受旧版UI影响）
+  const arList = document.getElementById('arMomentList');
+  if(arList){
+    if(!data || data.length === 0){
+      arList.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--ar-text-ghost);font-size:13px;">还没有朋友圈动态 ✨</div>';
+    } else {
+      arList.innerHTML = data.map(item => `
+        <div class="moment-card">
+          <div class="moment-user">Jasmine</div>
+          <p>${escHtml(item.content || '')}</p>
+          ${item.images_url ? `<img class="moment-image" src="${item.images_url}">` : ''}
+          <small>${new Date(item.created_at).toLocaleString()}</small>
+        </div>
+      `).join('');
+    }
+  }
+
+  // 旧版渲染
+  const box=document.getElementById("momentList");
+  if(!box){
+    return;
+  }
+
+  if(!data || data.length === 0){
+    box.innerHTML = "";
+    return;
+  }
+
+  box.innerHTML="";
+
+  data.forEach(item=>{
+    const div=document.createElement("div");
+    div.className="moment-card";
+    div.innerHTML = `
+      <div class="moment-user">Jasmine</div>
+      <p>${item.content || ""}</p>
+      ${
+        item.images_url
+        ? `<img class="moment-image" src="${item.images_url}">`
+        : ""
+      }
+      <small>${new Date(item.created_at).toLocaleString()}</small>
+    `;
+    box.appendChild(div);
+  });
+  if(arList){
+    if(!data || data.length === 0){
+      arList.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--ar-text-ghost);font-size:13px;">还没有朋友圈动态 ✨</div>';
+    } else {
+      arList.innerHTML = data.map(item => `
+        <div class="moment-card">
+          <div class="moment-user">Jasmine</div>
+          <p>${escHtml(item.content || '')}</p>
+          ${item.images_url ? `<img class="moment-image" src="${item.images_url}">` : ''}
+          <small>${new Date(item.created_at).toLocaleString()}</small>
+        </div>
+      `).join('');
+    }
+  }
+}
+function openMomentModal(){
+    document.getElementById("momentModal")
+        .classList.remove("hidden");
+}
+
+function closeMomentModal(){
+    document.getElementById("momentModal")
+        .classList.add("hidden");
+}
+async function publishMoment() {
+
+    const content = document.getElementById("momentInput").value.trim();
+
+    if (!content) {
+        alert("写点内容吧～");
+        return;
+    }
+
+    const publishBtn = document.getElementById("publishMoment");
+    if(publishBtn){ publishBtn.disabled = true; publishBtn.textContent = "发布中..."; }
+
+    // 临时诊断：加个10秒超时保护，避免请求卡死没有任何反馈
+    const timeoutGuard = setTimeout(()=>{
+        alert("⚠️ 请求超过10秒没有响应，很可能是网络连接Supabase失败，请检查网络/Supabase项目状态");
+        if(publishBtn){ publishBtn.disabled = false; publishBtn.textContent = "发布"; }
+    }, 10000);
+
+    let result;
+    try{
+        result = await supabaseClient
+            .from("moments")
+            .insert([
+                {
+                  user_id: "Jasmine",
+                    content,
+                    created_at: new Date().toISOString()
+                }
+            ]);
+    }catch(e){
+        clearTimeout(timeoutGuard);
+        console.error("insert抛出异常：", e);
+        alert("⚠️ 发布请求异常："+(e?.message || String(e)));
+        if(publishBtn){ publishBtn.disabled = false; publishBtn.textContent = "发布"; }
+        return;
+    }
+
+    clearTimeout(timeoutGuard);
+    const { error } = result;
+
+    if (error) {
+    console.error(error);
+    alert("⚠️ 发布失败："+JSON.stringify(error));
+    if(publishBtn){ publishBtn.disabled = false; publishBtn.textContent = "发布"; }
+    return;
+    }
+
+    if(publishBtn){ publishBtn.disabled = false; publishBtn.textContent = "发布"; }
+    document.getElementById("momentInput").value = "";
+document
+.getElementById("momentModal")
+.classList.add("hidden");
+
+    loadMoments();
+}
+let currentCallId = null;
+
+let callTimer = null;
+let callSeconds = 0;
+
+// 开始计时
+function startCallTimer(){
+
+    clearInterval(callTimer);
+
+    callSeconds = 0;
+
+    document.getElementById("callTime").innerText = "00:00";
+    document.getElementById("callScreenTimer").innerText = "00:00";
+    document.getElementById("arCallActTime").innerText = "00:00";
+
+    callTimer = setInterval(()=>{
+
+        callSeconds++;
+
+        const m = String(Math.floor(callSeconds/60)).padStart(2,"0");
+        const s = String(callSeconds%60).padStart(2,"0");
+        const ts = `${m}:${s}`;
+
+        document.getElementById("callTime").innerText = ts;
+        const screenTimer = document.getElementById("callScreenTimer");
+        if(screenTimer) screenTimer.innerText = ts;
+        const arTimer = document.getElementById("arCallActTime");
+        if(arTimer) arTimer.innerText = ts;
+
+    },1000);
+
+}
+
+// 停止计时
+function stopCallTimer(){
+
+    clearInterval(callTimer);
+
+}
+
+// 通话语音识别：开启麦克风 + Web Speech API 听写
+let localStream;
+let callRecognition = null;
+
+function startCallSpeechRecognition(){
+  // 开启麦克风
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+    localStream = stream;
+    console.log("麦克风已开启");
+
+    // 启动语音识别（Web Speech API）
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR){ console.warn("浏览器不支持语音识别"); return; }
+
+    callRecognition = new SR();
+    callRecognition.lang = 'zh-CN';
+    callRecognition.continuous = true;
+    callRecognition.interimResults = true;
+
+    callRecognition.onresult = (event) => {
+      let interim = '';
+      for(let i = event.resultIndex; i < event.results.length; i++){
+        const t = event.results[i][0].transcript;
+        if(event.results[i].isFinal){
+          const input = document.getElementById('chatInput');
+          const sendBtn = document.getElementById('sendBtn');
+          if(input && sendBtn){
+            input.value = t;
+            sendBtn.click();
+          }
+        } else {
+          interim = t;
+        }
+      }
+      const status = document.getElementById('callStatus');
+      if(status && interim) status.innerText = '🎤 ' + interim;
+    };
+
+    callRecognition.onerror = (e) => {
+      console.error('语音识别错误:', e.error);
+      if(e.error !== 'aborted' && e.error !== 'not-allowed'){
+        setTimeout(() => { if(callRecognition) callRecognition.start(); }, 500);
+      }
+    };
+
+    callRecognition.onend = () => {
+      if(callRecognition && currentCallId) callRecognition.start();
+    };
+
+    callRecognition.start();
+    console.log("语音识别已启动");
+  }).catch(e => {
+    console.error("麦克风开启失败:", e);
+    alert("请允许麦克风权限");
+  });
+}
+
+async function answerCall(){
+
+    try{
+
+        // 旧主题：隐藏来电卡片，显示通话界面
+        const incomingEl = document.getElementById("callIncomingOverlay");
+        if(incomingEl) incomingEl.style.display = "none";
+        const callScreen = document.getElementById("callScreen");
+        if(callScreen){
+            callScreen.style.display = "flex";
+            callScreen.classList.remove("ending");
+        }
+        const endVeil = document.getElementById("callEndVeil");
+        if(endVeil) endVeil.classList.remove("show");
+
+        document.getElementById("callStatus").innerText = "通话中";
+
+        // Aries 主题：切换到通话界面
+        const arIncoming = document.getElementById("arCallIncoming");
+        if(arIncoming) arIncoming.style.display = "none";
+        const arActive = document.getElementById("arCallActive");
+        if(arActive){
+            arActive.style.display = "flex";
+            arActive.classList.remove("ending");
+            document.getElementById("arCallActVeil")?.classList.remove("show");
+        }
+
+        document.getElementById("answerBtn")?.classList.add("hidden");
+        document.getElementById("startCallBtn")?.classList.add("hidden");
+        document.getElementById("endCallBtn")?.classList.remove("hidden");
+
+        startCallSpeechRecognition();
+        startCallTimer();
+
+        // 启动声波动画
+        const waveCanvas = document.getElementById("callWave");
+        if(waveCanvas) window._callWaveCtx = initCallWave(waveCanvas);
+        const arWaveCanvas = document.getElementById("arCallWave");
+        if(arWaveCanvas) window._arCallWaveCtx = initCallWave(arWaveCanvas);
+        startCallWaveLoop();
+
+        // 设备名/问候
+        const h = new Date().getHours();
+        document.getElementById("callScreenStatusLabel").textContent = "通话中 · " + callGreetingFor(h);
+        document.getElementById("arCallActStatus").textContent = "通话中 · " + callGreetingFor(h);
+
+        // 开场白
+        const openingLine = await generateCallOpeningLine();
+        callSpeaker = 0;
+        addCallBubble(0, openingLine, document.getElementById("callCaps"));
+        addCallBubble(0, openingLine, document.getElementById("arCallActCaps"));
+        aiSpeak(openingLine);
+        setTimeout(() => { callSpeaker = -1; }, 1000);
+
+        // 状态更新
+        if(currentCallId){
+            await supabaseClient
+            .from("call_sessions")
+            .update({ status: "connected", connected_at: new Date() })
+            .eq("id", currentCallId);
+        }
+
+    }catch(e){
+        console.error(e);
+        alert("请允许麦克风权限");
+    }
+}
+
+
+document
+.getElementById("answerBtn")
+?.addEventListener(
+"click",
+answerCall
+);
+
+
+async function startCall(){
+
+    // 切换到通话界面（旧主题）
+    document.getElementById("answerBtn")?.classList.add("hidden");
+    document.getElementById("endCallBtn")?.classList.add("hidden");
+    document.getElementById("callStatus").innerText = "正在拨号...";
+    document.getElementById("callTime").innerText = "00:00";
+    document.getElementById("startCallBtn").disabled = true;
+    document.getElementById("callIdle")?.classList.add("hidden");
+    document.getElementById("callIncomingOverlay").style.display = "none";
+    const callScreen = document.getElementById("callScreen");
+    if(callScreen) callScreen.style.display = "flex";
+
+    // Aries 主题也切换到通话界面
+    document.getElementById("arCallIdle").style.display = "none";
+    document.getElementById("arCallIncoming").style.display = "none";
+    const arActive = document.getElementById("arCallActive");
+    if(arActive) arActive.style.display = "flex";
+
+    const {data,error}=await supabaseClient
+        .from("call_sessions")
+        .insert([{ status:"calling" }])
+        .select()
+        .single();
+
+    if(error){
+        console.error(error);
+        document.getElementById("startCallBtn").disabled = false;
+        return;
+    }
+
+    currentCallId=data.id;
+    document.getElementById("callStatus").innerText = "等待接听...";
+
+    // 2秒后接通
+    setTimeout(async()=>{
+
+        await supabaseClient
+        .from("call_sessions")
+        .update({ status:"connected" })
+        .eq("id",currentCallId);
+
+        document.getElementById("callStatus").innerText = "已接通";
+        startCallSpeechRecognition();
+
+        // 声波动画初始化
+        const waveCanvas = document.getElementById("callWave");
+        if(waveCanvas) window._callWaveCtx = initCallWave(waveCanvas);
+        const arWaveCanvas = document.getElementById("arCallWave");
+        if(arWaveCanvas) window._arCallWaveCtx = initCallWave(arWaveCanvas);
+        startCallWaveLoop();
+
+        // 问候语
+        const h = new Date().getHours();
+        document.getElementById("callScreenStatusLabel").textContent = "通话中 · " + callGreetingFor(h);
+        document.getElementById("arCallActStatus").textContent = "通话中 · " + callGreetingFor(h);
+
+        // 开场白
+        const openingLine = await generateCallOpeningLine();
+        callSpeaker = 0;
+        addCallBubble(0, openingLine, document.getElementById("callCaps"));
+        addCallBubble(0, openingLine, document.getElementById("arCallActCaps"));
+        aiSpeak(openingLine);
+        setTimeout(() => { callSpeaker = -1; }, 1000);
+
+        document.getElementById("startCallBtn").classList.add("hidden");
+        document.getElementById("endCallBtn").classList.remove("hidden");
+        startCallTimer();
+
+    },2000);
+
+}
+
+
+
+async function endCall(){
+
+    if(!currentCallId)return;
+
+    const duration = callSeconds;
+    await supabaseClient
+        .from("call_sessions")
+        .update({ status:"ended", ended_at:new Date() })
+        .eq("id",currentCallId);
+
+    stopCallTimer();
+    stopCallWaveLoop();
+
+    // 关闭麦克风流
+    if(localStream){
+        localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
+    }
+    if(callRecognition){
+        try { callRecognition.abort(); } catch(e) {}
+        callRecognition = null;
+    }
+
+    // 旧主题：显示结束遮罩
+    const callScreen = document.getElementById("callScreen");
+    if(callScreen){
+      callScreen.classList.add("ending");
+      const veil = document.getElementById("callEndVeil");
+      if(veil){
+        document.getElementById("callEndT2").textContent = callByeFor(new Date().getHours());
+        veil.classList.add("show");
+      }
+      // 3秒后回到待机
+      setTimeout(() => {
+        callScreen.style.display = "none";
+        callScreen.classList.remove("ending");
+        veil?.classList.remove("show");
+        document.getElementById("callIdle")?.classList.remove("hidden");
+        document.getElementById("callStatus").innerText = "通话结束";
+        document.getElementById("endCallBtn")?.classList.add("hidden");
+        document.getElementById("answerBtn")?.classList.add("hidden");
+        document.getElementById("startCallBtn")?.classList.remove("hidden");
+        document.getElementById("startCallBtn").disabled = false;
+        document.getElementById("callTime").innerText = "00:00";
+        // 清气泡
+        document.getElementById("callCaps").innerHTML = "";
+      }, 3000);
+    } else {
+      // fallback
+      document.getElementById("callStatus").innerText = "通话结束";
+      document.getElementById("endCallBtn")?.classList.add("hidden");
+      document.getElementById("answerBtn")?.classList.add("hidden");
+      document.getElementById("startCallBtn")?.classList.remove("hidden");
+      document.getElementById("startCallBtn").disabled = false;
+      document.getElementById("callTime").innerText = "00:00";
+    }
+
+    // Aries 主题
+    const arActive = document.getElementById("arCallActive");
+    if(arActive){
+      arActive.classList.add("ending");
+      const arVeil = document.getElementById("arCallActVeil");
+      if(arVeil){
+        document.getElementById("arCallActT2").textContent = callByeFor(new Date().getHours());
+        arVeil.classList.add("show");
+      }
+      setTimeout(() => {
+        arActive.style.display = "none";
+        arActive.classList.remove("ending");
+        arVeil?.classList.remove("show");
+        document.getElementById("arCallIdle").style.display = "flex";
+        document.getElementById("arCallActCaps").innerHTML = "";
+      }, 3000);
+    }
+
+    writeCallRecord(duration);
+    currentCallId = null;
+}
+
+
+
+document.getElementById("startCallBtn")?.addEventListener("click", startCall);
+document.getElementById("endCallBtn")?.addEventListener("click", endCall);
+
+// ── 新通话界面按钮绑定 ──
+
+// 来电：拒接按钮 → 显示快速拒接面板
+document.getElementById("callIncomingDecline")?.addEventListener("click", showQuickDecline);
+// 来电：接听
+document.getElementById("callIncomingAnswer")?.addEventListener("click", answerCall);
+// 快速拒接：点击快捷原因
+document.querySelectorAll(".call-incoming-chip").forEach(chip => {
+  chip.addEventListener("click", function(){
+    declineCall(this.dataset.reason || "在忙");
+  });
+});
+// 快速拒接：发送自定义
+document.getElementById("callDeclineSend")?.addEventListener("click", function(){
+  const input = document.getElementById("callDeclineInput");
+  declineCall(input.value.trim() || "在忙");
+  input.value = "";
+});
+document.getElementById("callDeclineInput")?.addEventListener("keydown", function(e){
+  if(e.key === "Enter"){ document.getElementById("callDeclineSend")?.click(); }
+});
+// 快速拒接：直接挂断
+document.getElementById("callDeclineSkip")?.addEventListener("click", function(){
+  declineCall("");
+});
+// 新通话界面的挂断按钮
+document.getElementById("callHangupBtn")?.addEventListener("click", endCall);
+// 静音按钮
+document.getElementById("callMuteBtn")?.addEventListener("click", function(){
+  const muted = this.dataset.muted === "true";
+  this.dataset.muted = !muted;
+  if(localStream){
+    localStream.getAudioTracks().forEach(t => t.enabled = muted);
+  }
+  this.querySelector(".call-screen-lab").textContent = muted ? "静音" : "已静音";
+});
+// 扬声器按钮
+document.getElementById("callSpeakerBtn")?.addEventListener("click", function(){
+  // 浏览器限制，仅做UI反馈
+  const on = this.dataset.speaker === "true";
+  this.dataset.speaker = !on;
+  this.querySelector(".call-screen-lab").textContent = on ? "扬声器" : "听筒";
+});
+
+// ── Aries 新通话界面按钮绑定 ──
+document.getElementById("arCallIncDecline")?.addEventListener("click", function(){
+  document.getElementById("arCallQuick").style.display = "flex";
+});
+document.getElementById("arCallIncAnswer")?.addEventListener("click", answerCall);
+document.querySelectorAll(".ar-call-chip").forEach(chip => {
+  chip.addEventListener("click", function(){
+    declineCall(this.dataset.reason || "在忙");
+  });
+});
+document.getElementById("arCallDeclineSend")?.addEventListener("click", function(){
+  const input = document.getElementById("arCallDeclineInput");
+  declineCall(input.value.trim() || "在忙");
+  input.value = "";
+});
+document.getElementById("arCallDeclineInput")?.addEventListener("keydown", function(e){
+  if(e.key === "Enter"){ document.getElementById("arCallDeclineSend")?.click(); }
+});
+document.getElementById("arCallDeclineSkip")?.addEventListener("click", function(){
+  declineCall("");
+});
+document.getElementById("arCallActHangup")?.addEventListener("click", endCall);
+
+function changeTheme(theme){
+
+
+let old =
+document.getElementById("old-theme");
+
+
+let aries =
+document.getElementById("aries-theme");
+
+
+
+if(theme==="aries"){
+
+
+old.style.display="none";
+
+
+aries.style.display="block";
+
+
+}
+
+
+
+else{
+
+
+old.style.display="block";
+
+
+aries.style.display="none";
+
+
+}
+
+
+
+localStorage.setItem(
+"theme",
+theme
+);
+
+
+
+}
+
+
+/* ── openPanel 桥接：让 aries widget 点击跳转到 old-theme 对应功能 ── */
+window.openPanel = window.openPanel || function(panel){
+  const navMap = {
+    diary: 'diary', memory: 'home', chat: 'chat',
+    novel: 'novel', music: 'music', thought: 'chat',
+    archive: 'diary', timeline: 'diary', note: 'home',
+    appearance: 'settings', theme: 'settings', calendar: 'tasks'
+  };
+  const target = navMap[panel] || 'home';
+  const navItem = document.querySelector(`.nav-item[data-page="${target}"]`);
+  if(navItem) navItem.click();
+};
+
+/* ═══════════════════════════════════
+   游戏大厅
+═══════════════════════════════════ */
+// 生成同服务器的相对 URL（同一台 python http.server 提供的资源）
+function localUrl(path){
+  return path;
+}
+// 生成外部服务的绝对 URL，hostname 强制用 localhost（WSL2 下 127.0.0.1 不通）
+function serviceUrl(port, path){
+  return `http://localhost:${port}${path || ''}`;
+}
+
+const GAMES = [
+  {
+    id: 'cedareco',
+    name: '瓶中生态',
+    icon: '🌿',
+    desc: '观察与干预的池塘模拟',
+    get url(){ return serviceUrl(8765, ''); },
+    embed: false,
+  },
+  {
+    id: 'duetto',
+    name: 'Duetto 音乐',
+    icon: '🎵',
+    desc: '听歌、歌词、AI 陪伴',
+    get url(){ return serviceUrl(4183, '/pkg/index.html'); },
+    embed: false,
+  },
+  {
+    id: 'memory',
+    name: '翻牌记忆',
+    icon: '🌸',
+    desc: '找出所有配对，考验你的记忆力',
+    url: '/games/memory.html',
+    embed: true,
+  },
+  {
+    id: 'dogbuttons',
+    name: '🐾 小狗按钮',
+    icon: '🐾',
+    desc: '按一下说句话，Aries 不在的时候也会偷偷按',
+    url: '/games/dog-buttons.html',
+    embed: true,
+  },
+  // === 在这里加新游戏 ↓ ===
+  // embed:true → 同服务器本地游戏，url填相对路径如 '/games/xxx.html'
+  // embed:false → 外部服务，用 serviceUrl(端口, 路径)
+];
+
+function openGamePanel(){
+  const list = document.getElementById('gameList');
+  if(!list) return;
+  list.innerHTML = GAMES.map(g => {
+    const url = String(g.url).replace(/'/g, '%27'); // 统一处理 getter / 静态属性
+    const clickHandler = g.embed
+      ? `openGameEmbed('${g.id}','${url}')`
+      : `window.open('${url}','_blank')`;
+    return `
+    <div class="game-item" onclick="${clickHandler}"
+         style="display:flex;align-items:center;gap:14px;padding:16px;border-radius:12px;cursor:pointer;margin-bottom:8px;border:1px solid var(--border);transition:background .2s"
+         onmouseenter="this.style.background='var(--surface-hover)'" onmouseleave="this.style.background='transparent'">
+      <div style="font-size:36px;opacity:0.6">${g.icon}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:15px;font-weight:600;color:var(--text)">${escHtml(g.name)}</div>
+        <div style="font-size:12px;opacity:0.5;margin-top:2px">${escHtml(g.desc)}</div>
+      </div>
+      <div style="font-size:13px;opacity:0.4">${g.embed ? '▶ 内嵌' : '打开 ›'}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('gamePanel')?.classList.add('open');
+  // Update entry previews
+  updateGameEntryPreviews();
+}
+
+function updateGameEntryPreviews(){
+  if(GAMES.length){
+    document.getElementById('gameEntryIcon').textContent = GAMES[0].icon;
+    const names = GAMES.map(g => g.name).join(' / ');
+    document.getElementById('gameEntryDesc').textContent = names + (GAMES.length > 3 ? ` 等${GAMES.length}个游戏` : '');
+    document.getElementById('arGameWidgetIcon').textContent = GAMES[0].icon;
+    document.getElementById('arGameWidgetTitle').textContent = GAMES.length > 1 ? `游戏大厅 (${GAMES.length})` : GAMES[0].name;
+    document.getElementById('arGameWidgetDesc').textContent = names + (GAMES.length > 1 ? ' 等' : '');
+  }
+}
+
+// 小狗按钮：Aries 离开时自动按
+function dogButtonsAwayPress(){
+  if(Math.random() > 0.6) return; // 60% 概率触发
+  // 随机选择模式
+  const mode = Math.random() > 0.7 ? 'nsfw' : 'cozy';
+  const count = 1 + Math.floor(Math.random() * 3);
+  console.log(`🐾 Aries 按了小狗按钮 (${mode} x${count})`);
+
+  // 如果游戏已加载在 iframe 里，尝试调用
+  try {
+    const frame = document.getElementById('gameEmbedFrame');
+    if(frame && frame.contentWindow && frame.contentWindow.dogButtonsAutoPress){
+      frame.contentWindow.dogButtonsAutoPress(mode, count);
+    }
+  } catch(e) {
+    // iframe 跨域或不存在，静默忽略
+  }
+}
+
+// 监听小狗按钮的 postMessage 通知
+window.addEventListener('message', function(e){
+  if(e.data && e.data.type === 'dog-button-press'){
+    console.log('🐾 小狗按钮:', e.data.text);
+    // 可以在这里推送通知
+    if(typeof sendLocalNotification === 'function'){
+      sendLocalNotification('🐾 Aries 按了按钮', e.data.text, '/icon.png');
+    }
+  }
+});
+
+// 定时检查：用户离开时 Aries 也会按按钮
+setInterval(() => {
+  const last = Number(localStorage.getItem("lastLeaveTime"));
+  if(!last) return;
+  const hours = (Date.now() - last) / 1000 / 60 / 60;
+  if(hours >= 1.5 && Math.random() < 0.05){ // ~1.5小时以上，5%概率每分钟检查
+    dogButtonsAwayPress();
+  }
+}, 60000); // 每分钟检查
+
+// 内嵌游戏
+function openGameEmbed(id, url){
+  const frame = document.getElementById('gameEmbedFrame');
+  if(frame) frame.src = url;
+  document.getElementById('gameEmbedPanel')?.classList.add('open');
+}
+function closeGameEmbed(){
+  document.getElementById('gameEmbedPanel')?.classList.remove('open');
+  const frame = document.getElementById('gameEmbedFrame');
+  if(frame) setTimeout(() => { frame.src = ''; }, 300);
+}
+
+// 动态设置 iframe src（解决 WSL 下 127.0.0.1 不通的问题）
+function initDuettoIframes(){
+  const base = serviceUrl(4183, '/pkg/bootstrap.html');
+  const oldFrame = document.getElementById('duettoFrame');
+  if(oldFrame && !oldFrame.src) oldFrame.src = base;
+  const arFrame = document.getElementById('arDuettoFrame');
+  if(arFrame && !arFrame.src) arFrame.src = base;
+}
+initDuettoIframes();

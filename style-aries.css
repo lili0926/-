@@ -1,0 +1,1724 @@
+/* ═══════════════════════════════════════════════════
+   ARIES THEME — 完整独立皮肤 v3 (polished)
+   三 Tab：聊天 / 朋友圈(三页滑动) / 设置
+   背景透明，由外层壁纸系统提供
+   ═══════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+
+/* ── 设计令牌 ── */
+:root {
+  --ar-bg:           #faf3ee;
+  --ar-glass:        rgba(255, 248, 244, 0.72);
+  --ar-glass-deep:   rgba(255, 245, 238, 0.92);
+  --ar-glass-border: rgba(220, 190, 175, 0.40);
+  --ar-glass-shadow: 0 4px 24px rgba(180, 120, 100, 0.10);
+  --ar-glass-shadow-lg: 0 8px 40px rgba(180, 120, 100, 0.12);
+  --ar-blur:         blur(18px) saturate(1.4);
+
+  --ar-text:         rgba(80, 55, 45, 0.90);
+  --ar-text-soft:    rgba(130, 100, 88, 0.65);
+  --ar-text-ghost:   rgba(160, 130, 118, 0.40);
+
+  --ar-accent:       #c9907a;
+  --ar-accent-hover: #da9e88;
+  --ar-accent-light: rgba(210, 170, 155, 0.22);
+  --ar-accent-border:rgba(210, 160, 140, 0.32);
+  --ar-red:          #c0675a;
+  --ar-red-soft:     rgba(200, 100, 80, 0.12);
+  --ar-green:        #8ab87a;
+
+  --ar-radius-lg: 22px;
+  --ar-radius-md: 16px;
+  --ar-radius-sm: 10px;
+  --ar-radius-xs: 6px;
+
+  --ar-font-serif: 'Noto Serif SC', serif;
+  --ar-font-sans:  'Noto Sans SC', system-ui, -apple-system, sans-serif;
+
+  --ar-transition: 0.2s cubic-bezier(.4,0,.2,1);
+  --ar-transition-slow: 0.35s cubic-bezier(.4,0,.2,1);
+}
+
+/* ── 根容器 ── */
+#aries-theme {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  font-family: var(--ar-font-sans);
+  color: var(--ar-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--ar-bg);
+  transition: background 0.5s ease;
+}
+
+/* ── 手机壳 ── */
+.ar-phone {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ══════════════════════════════════════
+   顶栏
+══════════════════════════════════════ */
+.ar-topbar {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: rgba(250, 243, 238, 0.82);
+  backdrop-filter: blur(22px) saturate(1.3);
+  -webkit-backdrop-filter: blur(22px) saturate(1.3);
+  border-bottom: 1px solid var(--ar-glass-border);
+  flex-shrink: 0;
+  z-index: 10;
+  user-select: none;
+}
+.ar-topbar-title {
+  font-family: var(--ar-font-serif);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ar-text);
+  letter-spacing: 0.04em;
+}
+.ar-topbar-btn {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 1px solid var(--ar-glass-border);
+  background: var(--ar-glass);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--ar-text-soft);
+  transition: transform var(--ar-transition), background var(--ar-transition);
+  flex-shrink: 0;
+}
+.ar-topbar-btn:hover { background: var(--ar-glass-deep); }
+.ar-topbar-btn:active { transform: scale(0.88); }
+
+/* ══════════════════════════════════════
+   内容区（tab 切换）
+══════════════════════════════════════ */
+.ar-content {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── tab 面板 ── */
+.ar-tab-panel {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  animation: arPanelIn 0.25s ease;
+}
+.ar-tab-panel.active {
+  display: flex;
+}
+@keyframes arPanelIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ══════════════════════════════════════
+   底部导航
+══════════════════════════════════════ */
+.ar-navbar {
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 8px 8px;
+  background: rgba(250, 244, 240, 0.85);
+  backdrop-filter: blur(24px) saturate(1.3);
+  -webkit-backdrop-filter: blur(24px) saturate(1.3);
+  border-top: 1px solid var(--ar-glass-border);
+  flex-shrink: 0;
+  z-index: 10;
+}
+.ar-nav-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 14px;
+  color: var(--ar-text-soft);
+  font-size: 11px;
+  font-family: var(--ar-font-sans);
+  letter-spacing: 0.03em;
+  transition: color var(--ar-transition), background var(--ar-transition), transform var(--ar-transition);
+  position: relative;
+}
+.ar-nav-btn .ar-nav-icon { font-size: 22px; line-height: 1; }
+.ar-nav-btn.active { color: var(--ar-accent); }
+.ar-nav-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--ar-accent);
+}
+.ar-nav-btn:active { transform: scale(0.92); }
+
+/* ══════════════════════════════════════
+   ① 聊天 TAB
+══════════════════════════════════════ */
+.ar-chat-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+}
+
+/* 天数水印 */
+.ar-chat-days-bg {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.055;
+  user-select: none;
+}
+.ar-chat-days-num {
+  font-family: var(--ar-font-serif);
+  font-size: 120px;
+  font-weight: 700;
+  color: var(--ar-accent);
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+}
+.ar-chat-days-txt {
+  font-size: 22px;
+  color: var(--ar-accent);
+  margin-top: -6px;
+  font-weight: 500;
+}
+
+/* 消息列表 */
+.ar-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  z-index: 1;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(200, 160, 140, 0.25) transparent;
+}
+.ar-chat-messages::-webkit-scrollbar { width: 3px; }
+.ar-chat-messages::-webkit-scrollbar-thumb {
+  background: rgba(200, 160, 140, 0.25);
+  border-radius: 3px;
+}
+.ar-chat-messages::-webkit-scrollbar-track { background: transparent; }
+
+.ar-chat-welcome {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--ar-text-ghost);
+  font-size: 13px;
+  font-family: var(--ar-font-serif);
+  line-height: 1.8;
+  user-select: none;
+}
+
+/* 气泡 */
+.ar-msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 80%;
+  animation: arMsgIn 0.25s ease;
+}
+.ar-msg.user { align-self: flex-end; align-items: flex-end; }
+.ar-msg.ai   { align-self: flex-start; align-items: flex-start; }
+
+@keyframes arMsgIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.ar-bubble {
+  padding: 11px 16px;
+  border-radius: 18px;
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+  position: relative;
+}
+.ar-msg.user .ar-bubble {
+  background: var(--ar-accent);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 2px 8px rgba(200, 140, 120, 0.25);
+}
+.ar-msg.ai .ar-bubble {
+  background: var(--ar-glass);
+  backdrop-filter: var(--ar-blur);
+  -webkit-backdrop-filter: var(--ar-blur);
+  border: 1px solid var(--ar-glass-border);
+  color: var(--ar-text);
+  border-bottom-left-radius: 4px;
+  box-shadow: var(--ar-glass-shadow);
+}
+.ar-msg.ai .ar-bubble::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(145deg, rgba(255,255,255,0.25) 0%, transparent 60%);
+  pointer-events: none;
+}
+.ar-msg.loading .ar-bubble { opacity: 0.5; }
+
+.ar-thinking {
+  font-size: 11.5px;
+  color: var(--ar-text-soft);
+  background: rgba(210, 170, 155, 0.10);
+  border: 1px solid var(--ar-accent-border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  max-width: 100%;
+}
+
+/* 输入区 */
+.ar-chat-bottom {
+  padding: 8px 12px max(10px, env(safe-area-inset-bottom, 10px));
+  background: rgba(250, 244, 240, 0.82);
+  backdrop-filter: blur(18px) saturate(1.3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  border-top: 1px solid var(--ar-glass-border);
+  flex-shrink: 0;
+}
+.ar-chat-opts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+.ar-chat-opt-btn {
+  display: flex; align-items: center; gap: 4px;
+  background: var(--ar-accent-light);
+  border: 1px solid var(--ar-accent-border);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 11px;
+  color: var(--ar-text-soft);
+  cursor: pointer;
+  font-family: var(--ar-font-sans);
+  transition: background var(--ar-transition), color var(--ar-transition);
+}
+.ar-chat-opt-btn:hover { background: rgba(210, 160, 140, 0.2); color: var(--ar-text); }
+.ar-chat-opt-btn:active { transform: scale(0.94); }
+
+.ar-thinking-chip {
+  font-size: 11px;
+  color: var(--ar-text-soft);
+  background: var(--ar-accent-light);
+  border: 1px solid var(--ar-accent-border);
+  border-radius: 20px;
+  padding: 5px 12px;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 4px;
+  transition: background var(--ar-transition), color var(--ar-transition);
+  user-select: none;
+}
+.ar-thinking-chip:hover { background: rgba(210, 160, 140, 0.2); }
+.ar-thinking-chip.on { background: rgba(200, 140, 120, 0.25); color: var(--ar-accent); border-color: var(--ar-accent); }
+
+.ar-chat-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+.ar-chat-input {
+  flex: 1;
+  background: var(--ar-glass);
+  border: 1px solid var(--ar-glass-border);
+  border-radius: 22px;
+  padding: 11px 16px;
+  font-size: 14px;
+  color: var(--ar-text);
+  font-family: var(--ar-font-sans);
+  resize: none;
+  outline: none;
+  max-height: 100px;
+  line-height: 1.5;
+  backdrop-filter: var(--ar-blur);
+  -webkit-backdrop-filter: var(--ar-blur);
+  transition: border-color var(--ar-transition), box-shadow var(--ar-transition);
+}
+.ar-chat-input:focus {
+  border-color: var(--ar-accent);
+  box-shadow: 0 0 0 3px rgba(200, 140, 120, 0.12);
+}
+.ar-chat-input::placeholder { color: var(--ar-text-ghost); }
+.ar-send-btn {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  background: var(--ar-accent);
+  border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform var(--ar-transition), opacity var(--ar-transition), background var(--ar-transition);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(200, 140, 120, 0.25);
+}
+.ar-send-btn:hover { background: var(--ar-accent-hover); transform: scale(1.05); }
+.ar-send-btn:active { transform: scale(0.88); opacity: 0.9; }
+.ar-send-btn svg { width: 17px; height: 17px; stroke: white; display: block; }
+
+/* ══════════════════════════════════════
+   ② 朋友圈 TAB — feed 主视图
+══════════════════════════════════════ */
+.ar-moments-feed {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.ar-moments-feed #arMomentList {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* 封面区 */
+.ar-mfeed-cover {
+  position: relative;
+  height: 200px;
+  border-radius: 0 0 var(--ar-radius-lg) var(--ar-radius-lg);
+  overflow: hidden;
+  margin-bottom: 4px;
+  flex-shrink: 0;
+}
+.ar-mfeed-cover-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #c9907a 0%, #e8c9b8 50%, #f0d8c8 100%);
+}
+[data-theme="dark"] .ar-mfeed-cover-bg {
+  background: linear-gradient(135deg, #5a3a2a 0%, #8a6050 70%, #6a4a3a 100%);
+}
+.ar-mfeed-profile {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+}
+.ar-mfeed-avatar {
+  width: 62px; height: 62px;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.85);
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px;
+  background: var(--ar-accent-light);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+}
+.ar-mfeed-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.ar-mfeed-name {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
+  margin-top: 6px;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.3);
+}
+.ar-mfeed-bio {
+  color: rgba(255,255,255,0.85);
+  font-size: 12px;
+  margin-top: 2px;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+.ar-mfeed-dash-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 20px;
+  padding: 6px 14px;
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background var(--ar-transition);
+  font-family: var(--ar-font-sans);
+}
+.ar-mfeed-dash-btn:hover { background: rgba(255,255,255,0.3); }
+.ar-mfeed-dash-btn:active { transform: scale(0.95); }
+
+/* 朋友圈 post 卡片（复用旧版风格） */
+#arMomentList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 14px;
+}
+#arMomentList .moment-card {
+  background: var(--ar-glass);
+  backdrop-filter: var(--ar-blur);
+  -webkit-backdrop-filter: var(--ar-blur);
+  border: 1px solid var(--ar-glass-border);
+  border-radius: var(--ar-radius-md);
+  padding: 14px 16px;
+  box-shadow: var(--ar-glass-shadow);
+  transition: box-shadow var(--ar-transition);
+}
+#arMomentList .moment-user {
+  font-weight: 600;
+  color: var(--ar-text);
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+#arMomentList .moment-card p {
+  color: var(--ar-text);
+  line-height: 1.65;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0 0 6px;
+  font-size: 13.5px;
+}
+#arMomentList .moment-card .moment-image {
+  width: 100%;
+  border-radius: 12px;
+  display: block;
+  margin-bottom: 8px;
+}
+#arMomentList .moment-card small {
+  color: var(--ar-text-ghost);
+  font-size: 11px;
+}
+
+/* 发布按钮 */
+.ar-post-btn {
+  position: fixed;
+  right: 16px;
+  bottom: 80px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  background: var(--ar-accent);
+  color: white;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(200, 140, 120, 0.3);
+  cursor: pointer;
+  z-index: 20;
+  transition: transform var(--ar-transition), background var(--ar-transition);
+}
+.ar-post-btn:hover { background: var(--ar-accent-hover); transform: scale(1.05); }
+.ar-post-btn:active { transform: scale(0.92); }
+
+/* 仪表盘顶栏 */
+.ar-widgets-topbar {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--ar-glass-border);
+  background: rgba(250, 244, 240, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+[data-theme="dark"] .ar-widgets-topbar {
+  background: rgba(25, 18, 12, 0.7);
+}
+.ar-widgets-back {
+  background: none;
+  border: none;
+  color: var(--ar-accent);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 6px 8px;
+  font-family: var(--ar-font-sans);
+  transition: opacity var(--ar-transition);
+}
+.ar-widgets-back:active { opacity: 0.6; }
+.ar-widgets-title {
+  flex: 1;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ar-text-soft);
+  font-weight: 500;
+}
+
+/* ── 情侣头像区 ── */
+.ar-couple-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 18px 0 14px;
+  gap: 12px;
+  animation: arWidgetIn 0.35s ease both;
+}
+.ar-couple-avatars {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.ar-couple-avatar {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2.5px solid rgba(220, 190, 175, 0.6);
+  box-shadow: 0 4px 16px rgba(180, 120, 100, 0.15);
+  flex-shrink: 0;
+}
+.ar-couple-avatar-inner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  background: var(--ar-accent-light);
+}
+.ar-couple-avatar-inner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.ar-couple-avatar-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.3);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 11px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.ar-couple-avatar:hover .ar-couple-avatar-overlay { opacity: 1; }
+.ar-couple-heart {
+  font-size: 22px;
+  opacity: 0.7;
+  animation: arHeartBeat 1.5s ease-in-out infinite;
+}
+@keyframes arHeartBeat {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.25); }
+  30% { transform: scale(1); }
+  45% { transform: scale(1.15); }
+  60% { transform: scale(1); }
+}
+
+/* 在一起天数 — 重叠设计 */
+.ar-together-display {
+  text-align: center;
+  position: relative;
+  padding: 4px 0;
+}
+.ar-together-label {
+  font-size: 13px;
+  color: var(--ar-text-soft);
+  letter-spacing: 0.15em;
+  display: block;
+  font-weight: 400;
+}
+.ar-together-number {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  margin-top: -6px;
+}
+.ar-together-num {
+  font-family: var(--ar-font-serif);
+  font-size: 64px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--ar-accent), #e8b4a0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  text-shadow: none;
+  position: relative;
+  z-index: 1;
+}
+.ar-together-unit {
+  font-size: 16px;
+  color: var(--ar-text-soft);
+  font-weight: 400;
+  align-self: flex-end;
+  margin-bottom: 8px;
+}
+
+/* ── 月度日历 ── */
+.ar-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-top: 8px;
+}
+.ar-cal-header {
+  text-align: center;
+  font-size: 10px;
+  color: var(--ar-text-ghost);
+  font-weight: 500;
+  padding: 4px 0;
+}
+.ar-cal-day {
+  text-align: center;
+  padding: 5px 0;
+  font-size: 12px;
+  color: var(--ar-text-soft);
+  border-radius: 6px;
+  transition: background var(--ar-transition);
+}
+.ar-cal-day.other-month { color: var(--ar-text-ghost); opacity: 0.4; }
+.ar-cal-day.today {
+  background: var(--ar-accent);
+  color: #fff;
+  font-weight: 600;
+}
+.ar-cal-day:hover:not(.today) { background: var(--ar-accent-light); }
+
+/* ── 设置页用的小按钮 ── */
+.ar-btn-secondary {
+  padding: 10px 16px;
+  border: 1px solid var(--ar-glass-border);
+  border-radius: var(--ar-radius-sm);
+  background: var(--ar-glass);
+  color: var(--ar-text);
+  font-size: 13px;
+  cursor: pointer;
+  font-family: var(--ar-font-sans);
+  transition: background var(--ar-transition);
+}
+.ar-btn-secondary:hover { background: var(--ar-glass-deep); }
+.ar-btn-secondary:active { opacity: 0.7; }
+
+/* ══════════════════════════════════════
+   ②（续）朋友圈 TAB — 三页横滑
+══════════════════════════════════════ */
+.ar-moments-panel {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* 三页容器 */
+.ar-pages {
+  display: flex;
+  width: 300%;
+  height: 100%;
+  transition: transform var(--ar-transition-slow);
+  will-change: transform;
+}
+.ar-page {
+  width: 33.333%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 14px 14px 80px;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(200, 160, 140, 0.2) transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  -webkit-overflow-scrolling: touch;
+}
+.ar-page::-webkit-scrollbar { width: 3px; }
+.ar-page::-webkit-scrollbar-thumb { background: rgba(200, 160, 140, 0.2); border-radius: 3px; }
+.ar-page::-webkit-scrollbar-track { background: transparent; }
+
+/* 页面指示点 */
+.ar-page-dots {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 5;
+}
+.ar-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: rgba(200, 150, 130, 0.25);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+.ar-dot.active {
+  background: var(--ar-accent);
+  width: 18px;
+  border-radius: 3px;
+}
+
+/* ── Widget 基础样式 ── */
+.ar-widget {
+  background: var(--ar-glass);
+  backdrop-filter: var(--ar-blur);
+  -webkit-backdrop-filter: var(--ar-blur);
+  border: 1px solid var(--ar-glass-border);
+  border-radius: var(--ar-radius-md);
+  box-shadow: var(--ar-glass-shadow), inset 0 1px 0 rgba(255,255,255,0.50);
+  padding: 15px 16px 14px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  animation: arWidgetIn 0.35s ease both;
+  transition: transform var(--ar-transition), box-shadow var(--ar-transition);
+}
+.ar-widget:hover {
+  box-shadow: var(--ar-glass-shadow-lg), inset 0 1px 0 rgba(255,255,255,0.50);
+}
+.ar-widget::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(145deg, rgba(255,255,255,0.28) 0%, transparent 60%);
+  pointer-events: none;
+}
+.ar-widget:active { transform: scale(0.96); }
+
+@keyframes arWidgetIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.ar-widget > * { position: relative; z-index: 1; }
+
+.ar-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+.ar-full { grid-column: 1 / -1; }
+
+.ar-w-label {
+  font-size: 11.5px;
+  color: var(--ar-text-soft);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  margin-bottom: 5px;
+  display: flex; align-items: center; gap: 4px;
+}
+.ar-w-big {
+  font-family: var(--ar-font-serif);
+  font-size: 38px;
+  font-weight: 600;
+  color: var(--ar-text);
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+.ar-w-sub {
+  font-size: 11.5px;
+  color: var(--ar-text-soft);
+  line-height: 1.65;
+  margin-top: 3px;
+}
+.ar-w-content {
+  font-size: 12.5px;
+  color: var(--ar-text);
+  line-height: 1.75;
+  font-family: var(--ar-font-serif);
+  margin-top: 5px;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  opacity: 0.82;
+}
+.ar-w-tag {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: var(--ar-accent-light);
+  border: 1px solid var(--ar-accent-border);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 10px;
+  color: var(--ar-accent);
+  margin-top: 7px;
+  width: fit-content;
+  font-weight: 500;
+}
+.ar-w-badge {
+  display: inline-block;
+  background: var(--ar-accent-light);
+  border: 1px solid var(--ar-accent-border);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 10px;
+  color: var(--ar-accent);
+  margin-top: 6px;
+  font-weight: 500;
+}
+
+/* 日期 widget */
+.ar-date-widget .ar-w-big { font-size: 46px; }
+.ar-mini-cal { display: flex; gap: 2px; margin-top: 8px; flex-wrap: wrap; }
+.ar-mini-cal-day {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px;
+  color: var(--ar-text-soft);
+}
+.ar-mini-cal-day.today {
+  background: var(--ar-accent);
+  color: #fff;
+  font-weight: 600;
+  font-size: 10px;
+}
+
+/* 天气 widget */
+.ar-weather-icon { font-size: 28px; margin-bottom: 2px; line-height: 1; }
+
+/* 在一起天数 */
+.ar-days-big {
+  font-family: var(--ar-font-serif);
+  font-size: 50px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #c98970, #e8b4a0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+}
+
+/* 播客波形 */
+.ar-podcast-widget { flex-direction: row !important; align-items: center; gap: 14px; min-height: 90px; }
+.ar-podcast-text { flex: 1; min-width: 0; }
+.ar-podcast-title { font-size: 15px; font-weight: 600; color: var(--ar-text); font-family: var(--ar-font-serif); }
+.ar-podcast-sub { font-size: 11.5px; color: var(--ar-text-soft); margin-top: 2px; }
+.ar-podcast-img { width: 64px; height: 64px; border-radius: 14px; background: var(--ar-accent-light); border: 1px solid var(--ar-accent-border); display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0; }
+.ar-wave { display: flex; align-items: flex-end; gap: 2px; height: 18px; margin-top: 8px; }
+.ar-wave span { width: 3px; border-radius: 2px; background: var(--ar-accent); animation: arWave 1.2s ease-in-out infinite; opacity: 0.6; }
+.ar-wave span:nth-child(1){height:7px;animation-delay:0s}
+.ar-wave span:nth-child(2){height:14px;animation-delay:.15s}
+.ar-wave span:nth-child(3){height:9px;animation-delay:.3s}
+.ar-wave span:nth-child(4){height:16px;animation-delay:.45s}
+.ar-wave span:nth-child(5){height:7px;animation-delay:.6s}
+.ar-wave span:nth-child(6){height:12px;animation-delay:.75s}
+.ar-wave span:nth-child(7){height:5px;animation-delay:.9s}
+@keyframes arWave {
+  0%,100%{transform:scaleY(.5);opacity:.4}
+  50%{transform:scaleY(1.2);opacity:.9}
+}
+
+/* 音乐播放器 widget */
+.ar-music-widget { flex-direction: row !important; align-items: center; gap: 12px; }
+.ar-music-cover {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: var(--ar-accent-light);
+  border: 2px solid var(--ar-accent-border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; flex-shrink: 0;
+  animation: arSpin 12s linear infinite paused;
+}
+.ar-music-cover.playing { animation-play-state: running; }
+@keyframes arSpin { to { transform: rotate(360deg); } }
+.ar-music-info { flex: 1; min-width: 0; }
+.ar-music-title { font-size: 14px; font-weight: 500; color: var(--ar-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ar-music-artist { font-size: 11px; color: var(--ar-text-soft); margin-top: 2px; }
+.ar-music-bar-bg { height: 2px; background: rgba(210, 160, 140, 0.2); border-radius: 2px; margin-top: 7px; overflow: hidden; }
+.ar-music-bar { height: 100%; width: 12%; background: var(--ar-accent); border-radius: 2px; transition: width 0.5s ease; }
+.ar-music-play {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: var(--ar-glass-deep);
+  border: 1px solid var(--ar-glass-border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; cursor: pointer; flex-shrink: 0;
+  color: var(--ar-text-soft);
+  transition: transform var(--ar-transition), background var(--ar-transition);
+}
+.ar-music-play:hover { background: var(--ar-glass); color: var(--ar-accent); }
+.ar-music-play:active { transform: scale(0.88); }
+
+/* 朋友圈 Hero */
+.ar-hero { display: flex; align-items: center; gap: 12px; padding: 6px 2px 10px; }
+.ar-hero-avatar {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--ar-accent-light);
+  border: 2px solid rgba(220, 190, 175, 0.7);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; flex-shrink: 0; overflow: hidden;
+  box-shadow: 0 2px 8px rgba(180, 120, 100, 0.12);
+}
+.ar-hero-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.ar-hero-name { font-family: var(--ar-font-serif); font-size: 17px; font-weight: 600; color: var(--ar-text); }
+.ar-hero-days { font-size: 11.5px; color: var(--ar-text-soft); margin-top: 2px; }
+.ar-hero-quote { font-size: 10.5px; color: var(--ar-text-ghost); font-style: italic; margin-top: 3px; font-family: var(--ar-font-serif); }
+
+/* ══════════════════════════════════════
+   ③ 设置 TAB
+══════════════════════════════════════ */
+.ar-settings-panel {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(200, 160, 140, 0.2) transparent;
+  padding: 14px 14px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  min-height: 0;
+}
+.ar-settings-panel::-webkit-scrollbar { width: 3px; }
+.ar-settings-panel::-webkit-scrollbar-thumb { background: rgba(200, 160, 140, 0.2); border-radius: 3px; }
+.ar-settings-panel::-webkit-scrollbar-track { background: transparent; }
+
+/* 个人资料头 */
+.ar-profile-head { display: flex; align-items: center; gap: 14px; padding: 4px 2px 10px; }
+.ar-profile-avatar {
+  width: 62px; height: 62px;
+  border-radius: 50%;
+  background: var(--ar-accent-light);
+  border: 2px solid rgba(220, 190, 175, 0.7);
+  overflow: hidden; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px;
+  box-shadow: 0 2px 8px rgba(180, 120, 100, 0.12);
+}
+.ar-profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.ar-profile-name { font-family: var(--ar-font-serif); font-size: 18px; font-weight: 600; color: var(--ar-text); }
+.ar-profile-id { font-size: 11.5px; color: var(--ar-text-soft); margin-top: 2px; }
+.ar-profile-bio { font-size: 11px; color: var(--ar-text-ghost); font-style: italic; margin-top: 4px; font-family: var(--ar-font-serif); }
+
+/* 设置组 */
+.ar-settings-group {
+  background: var(--ar-glass);
+  backdrop-filter: var(--ar-blur);
+  -webkit-backdrop-filter: var(--ar-blur);
+  border: 1px solid var(--ar-glass-border);
+  border-radius: var(--ar-radius-md);
+  box-shadow: var(--ar-glass-shadow);
+  overflow: hidden;
+  transition: box-shadow var(--ar-transition);
+}
+.ar-settings-group-title {
+  font-size: 11px;
+  color: var(--ar-text-ghost);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 12px 16px 6px;
+  text-transform: uppercase;
+}
+.ar-settings-row {
+  display: flex;
+  align-items: center;
+  padding: 13px 16px;
+  gap: 12px;
+  border-bottom: 1px solid rgba(220, 190, 175, 0.12);
+  cursor: pointer;
+  transition: background var(--ar-transition);
+}
+.ar-settings-row:last-child { border-bottom: none; }
+.ar-settings-row:hover { background: rgba(210, 160, 140, 0.05); }
+.ar-settings-row:active { background: rgba(210, 160, 140, 0.10); }
+.ar-settings-icon {
+  width: 30px; height: 30px;
+  border-radius: 9px;
+  background: var(--ar-accent-light);
+  border: 1px solid var(--ar-accent-border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; flex-shrink: 0;
+}
+.ar-settings-label { flex: 1; font-size: 14px; color: var(--ar-text); }
+.ar-settings-value { font-size: 12px; color: var(--ar-text-soft); }
+.ar-settings-arrow { font-size: 16px; color: var(--ar-text-ghost); margin-left: 2px; }
+
+/* 设置输入框 */
+.ar-settings-input, .ar-settings-select, .ar-settings-textarea {
+  width: 100%;
+  background: rgba(255, 248, 244, 0.65);
+  border: 1px solid var(--ar-glass-border);
+  border-radius: var(--ar-radius-sm);
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--ar-text);
+  font-family: var(--ar-font-sans);
+  outline: none;
+  box-sizing: border-box;
+  margin-top: 5px;
+  transition: border-color var(--ar-transition), box-shadow var(--ar-transition);
+}
+.ar-settings-input:focus, .ar-settings-select:focus, .ar-settings-textarea:focus {
+  border-color: var(--ar-accent);
+  box-shadow: 0 0 0 3px rgba(200, 140, 120, 0.10);
+}
+.ar-settings-select {
+  appearance: auto;
+  cursor: pointer;
+}
+.ar-settings-textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
+.ar-settings-input::placeholder, .ar-settings-textarea::placeholder { color: var(--ar-text-ghost); }
+
+/* 设置组带输入 */
+.ar-settings-field {
+  padding: 10px 16px 14px;
+  border-bottom: 1px solid rgba(220, 190, 175, 0.12);
+}
+.ar-settings-field:last-child { border-bottom: none; }
+.ar-settings-field-label {
+  font-size: 12px;
+  color: var(--ar-text-soft);
+  margin-bottom: 2px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.ar-settings-field-label small { color: var(--ar-text-ghost); font-size: 10px; font-weight: 400; }
+
+/* toggle */
+.ar-toggle {
+  width: 44px; height: 24px;
+  border-radius: 12px;
+  background: rgba(200, 180, 170, 0.30);
+  border: 1px solid var(--ar-glass-border);
+  cursor: pointer;
+  position: relative;
+  transition: background var(--ar-transition);
+  flex-shrink: 0;
+}
+.ar-toggle.on { background: var(--ar-accent); border-color: var(--ar-accent); }
+.ar-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+  transition: left 0.25s ease;
+}
+.ar-toggle.on::after { left: 22px; }
+
+/* 保存按钮 */
+.ar-save-btn {
+  width: 100%;
+  padding: 14px;
+  background: var(--ar-accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--ar-radius-md);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--ar-font-sans);
+  transition: opacity var(--ar-transition), transform var(--ar-transition), background var(--ar-transition);
+  letter-spacing: 0.03em;
+}
+.ar-save-btn:hover { background: var(--ar-accent-hover); }
+.ar-save-btn:active { opacity: 0.85; transform: scale(0.98); }
+
+/* 退出按钮 */
+.ar-logout-btn {
+  width: 100%;
+  padding: 14px;
+  text-align: center;
+  background: var(--ar-glass);
+  backdrop-filter: var(--ar-blur);
+  -webkit-backdrop-filter: var(--ar-blur);
+  border: 1px solid var(--ar-glass-border);
+  border-radius: var(--ar-radius-md);
+  box-shadow: var(--ar-glass-shadow);
+  color: var(--ar-red);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--ar-font-sans);
+  transition: opacity var(--ar-transition), background var(--ar-transition);
+}
+.ar-logout-btn:hover { background: var(--ar-red-soft); }
+.ar-logout-btn:active { opacity: 0.7; }
+
+/* 编辑资料行 */
+.ar-edit-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 13px 16px;
+  background: var(--ar-glass);
+  backdrop-filter: var(--ar-blur);
+  -webkit-backdrop-filter: var(--ar-blur);
+  border: 1px solid var(--ar-glass-border);
+  border-radius: var(--ar-radius-md);
+  box-shadow: var(--ar-glass-shadow);
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--ar-text);
+  transition: background var(--ar-transition);
+}
+.ar-edit-row:hover { background: var(--ar-glass-deep); }
+.ar-edit-row:active { opacity: 0.8; }
+
+/* ══════════════════════════════════════
+   日记页（第三页 of 朋友圈三页滑动）
+══════════════════════════════════════ */
+.ar-diary-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 2px 10px;
+}
+.ar-diary-header h3 { font-family: var(--ar-font-serif); font-size: 16px; font-weight: 600; color: var(--ar-text); margin: 0; }
+.ar-diary-new-btn {
+  background: var(--ar-accent);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--ar-font-sans);
+  transition: opacity var(--ar-transition), transform var(--ar-transition), background var(--ar-transition);
+}
+.ar-diary-new-btn:hover { background: var(--ar-accent-hover); }
+.ar-diary-new-btn:active { opacity: 0.85; transform: scale(0.96); }
+.ar-diary-item {
+  background: var(--ar-glass);
+  backdrop-filter: var(--ar-blur);
+  -webkit-backdrop-filter: var(--ar-blur);
+  border: 1px solid var(--ar-glass-border);
+  border-radius: var(--ar-radius-md);
+  padding: 14px 15px;
+  cursor: pointer;
+  box-shadow: var(--ar-glass-shadow);
+  transition: transform var(--ar-transition), box-shadow var(--ar-transition);
+  animation: arFadeUp 0.25s ease both;
+}
+.ar-diary-item:hover {
+  box-shadow: var(--ar-glass-shadow-lg);
+}
+.ar-diary-item:active { transform: scale(0.97); }
+.ar-diary-item-title { font-family: var(--ar-font-serif); font-size: 14px; font-weight: 600; color: var(--ar-text); }
+.ar-diary-item-preview { font-size: 12px; color: var(--ar-text-soft); margin-top: 4px; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ar-diary-item-date { font-size: 10.5px; color: var(--ar-text-ghost); margin-top: 6px; }
+.ar-diary-empty { text-align: center; padding: 50px 20px; color: var(--ar-text-ghost); font-size: 13px; font-family: var(--ar-font-serif); line-height: 1.8; }
+
+/* ══════════════════════════════════════
+   壁纸选择弹层
+══════════════════════════════════════ */
+.ar-wp-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: rgba(240, 230, 222, 0.45);
+  backdrop-filter: blur(18px) saturate(1.3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 30px;
+  animation: arFadeIn 0.2s ease;
+}
+.ar-wp-modal.show { display: flex; }
+@keyframes arFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.ar-wp-sheet {
+  background: var(--ar-glass-deep);
+  border: 1px solid var(--ar-glass-border);
+  border-radius: 24px 24px 16px 16px;
+  padding: 24px 20px 20px;
+  width: calc(100% - 28px);
+  max-width: 400px;
+  box-shadow: 0 -8px 48px rgba(180, 120, 100, 0.15);
+  animation: arSheetUp 0.3s cubic-bezier(.4,0,.2,1);
+}
+@keyframes arSheetUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.ar-wp-title { font-family: var(--ar-font-serif); font-size: 15px; font-weight: 600; color: var(--ar-text); text-align: center; margin-bottom: 18px; }
+.ar-wp-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.ar-wp-swatch {
+  width: 100%; aspect-ratio: 1;
+  border-radius: 12px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: transform var(--ar-transition), border-color var(--ar-transition);
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-family: var(--ar-font-sans);
+}
+.ar-wp-swatch:hover { transform: scale(1.04); }
+.ar-wp-swatch:active { transform: scale(0.92); }
+.ar-wp-swatch.selected { border-color: var(--ar-accent); box-shadow: 0 0 0 3px rgba(200, 140, 120, 0.2); }
+.ar-wp-close {
+  width: 100%;
+  margin-top: 16px;
+  padding: 11px;
+  background: rgba(200, 180, 170, 0.15);
+  border: 1px solid var(--ar-accent-border);
+  border-radius: 12px;
+  color: var(--ar-text-soft);
+  font-size: 13px;
+  cursor: pointer;
+  font-family: var(--ar-font-sans);
+  transition: background var(--ar-transition), color var(--ar-transition);
+}
+.ar-wp-close:hover { background: rgba(200, 180, 170, 0.25); color: var(--ar-text); }
+.ar-wp-close:active { transform: scale(0.97); }
+
+/* ══════════════════════════════════════
+   Toast
+══════════════════════════════════════ */
+.ar-toast {
+  position: fixed;
+  bottom: 90px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: rgba(80, 55, 45, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 22px;
+  font-size: 13px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  z-index: 2000;
+  white-space: nowrap;
+  font-family: var(--ar-font-sans);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+.ar-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ══════════════════════════════════════
+   动画
+══════════════════════════════════════ */
+@keyframes arFadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ══════════════════════════════════════
+   深色模式 — 完整覆盖
+══════════════════════════════════════ */
+[data-theme="dark"] #aries-theme {
+  --ar-bg:           #1e1610;
+  --ar-glass:        rgba(35, 25, 18, 0.72);
+  --ar-glass-deep:   rgba(45, 32, 22, 0.90);
+  --ar-glass-border: rgba(100, 70, 55, 0.35);
+  --ar-glass-shadow: 0 4px 24px rgba(0,0,0,0.35);
+  --ar-glass-shadow-lg: 0 8px 40px rgba(0,0,0,0.40);
+
+  --ar-text:         rgba(240, 220, 208, 0.90);
+  --ar-text-soft:    rgba(200, 170, 150, 0.60);
+  --ar-text-ghost:   rgba(180, 150, 130, 0.35);
+
+  --ar-accent:       #c07860;
+  --ar-accent-hover: #d08870;
+  --ar-accent-light: rgba(120, 70, 50, 0.25);
+  --ar-accent-border:rgba(150, 100, 75, 0.30);
+  --ar-red:          #e07060;
+  --ar-red-soft:     rgba(220, 100, 80, 0.12);
+}
+
+[data-theme="dark"] .ar-topbar {
+  background: rgba(25, 18, 12, 0.80);
+}
+
+[data-theme="dark"] .ar-navbar {
+  background: rgba(25, 18, 12, 0.82);
+}
+
+[data-theme="dark"] .ar-chat-bottom {
+  background: rgba(25, 18, 12, 0.80);
+}
+
+[data-theme="dark"] .ar-chat-input {
+  background: rgba(45, 32, 22, 0.60);
+}
+
+[data-theme="dark"] .ar-settings-input,
+[data-theme="dark"] .ar-settings-select,
+[data-theme="dark"] .ar-settings-textarea {
+  background: rgba(35, 25, 18, 0.60);
+}
+
+[data-theme="dark"] .ar-topbar-btn:hover {
+  background: rgba(45, 32, 22, 0.80);
+}
+
+[data-theme="dark"] .ar-wp-modal {
+  background: rgba(20, 14, 10, 0.55);
+}
+
+[data-theme="dark"] .ar-msg.ai .ar-bubble::before {
+  background: linear-gradient(145deg, rgba(255,255,255,0.06) 0%, transparent 60%);
+}
+
+[data-theme="dark"] .ar-call-card { background: var(--ar-glass-deep); }
+[data-theme="dark"] .ar-tasks-card { background: var(--ar-glass-deep); }
+[data-theme="dark"] .ar-tasks-input,
+[data-theme="dark"] .ar-tasks-date { background: rgba(45,32,22,0.6); }
+
+/* ══════════════════════════════════════
+   Aries 通话弹层
+══════════════════════════════════════ */
+.ar-call-overlay {
+  position: fixed; inset: 0; z-index: 1200;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.ar-call-card {
+  background: var(--ar-glass-deep); border: 1px solid var(--ar-glass-border);
+  border-radius: 28px; padding: 32px 24px 24px;
+  width: 100%; max-width: 280px; text-align: center;
+  box-shadow: var(--ar-glass-shadow-lg); animation: arFadeUp 0.3s ease;
+}
+.ar-call-avatar { font-size: 56px; margin-bottom: 8px; }
+.ar-call-name { font-family: var(--ar-font-serif); font-size: 20px; font-weight: 600; color: var(--ar-text); margin-bottom: 4px; }
+.ar-call-status { font-size: 14px; color: var(--ar-text-soft); margin-bottom: 6px; }
+.ar-call-time { font-size: 24px; color: var(--ar-text); font-weight: 300; letter-spacing: 2px; margin-bottom: 20px; font-family: var(--ar-font-serif); }
+.ar-call-buttons { display: flex; gap: 12px; justify-content: center; }
+.ar-call-btn {
+  padding: 12px 24px; border: none; border-radius: 24px;
+  font-size: 14px; font-weight: 500; cursor: pointer;
+  font-family: var(--ar-font-sans);
+  transition: transform var(--ar-transition);
+}
+.ar-call-btn:active { transform: scale(0.92); }
+.ar-call-start { background: #34C759; color: #fff; }
+.ar-call-end { background: #FF3B30; color: #fff; }
+.ar-call-answer { background: var(--ar-accent); color: #fff; }
+.ar-call-close { margin-top: 16px; background: none; border: none; color: var(--ar-text-ghost); font-size: 13px; cursor: pointer; font-family: var(--ar-font-sans); }
+
+/* ── Aries 来电卡片 ── */
+.ar-call-incoming{
+  display:flex; flex-direction:column; align-items:center; padding:28px 24px 26px; border-radius:28px;
+  background:linear-gradient(170deg,rgba(255,250,246,.72),rgba(248,238,234,.60));
+  border:1px solid rgba(255,255,255,.55); width:100%; max-width:300px;
+  box-shadow:0 22px 70px rgba(90,60,55,.28), inset 0 1px 0 rgba(255,255,255,.6);
+  animation:arCallCardIn .45s cubic-bezier(.2,.9,.3,1.1) both; color:#4a3f3a;
+}
+@keyframes arCallCardIn{ from{ opacity:0; transform:scale(.92); } to{ opacity:1; transform:none; } }
+.ar-call-kind{
+  display:inline-flex; align-items:center; gap:7px; font-size:13px; color:#a08a80; letter-spacing:1.5px;
+}
+.ar-call-kind i{
+  width:7px; height:7px; border-radius:50%; background:currentColor;
+  animation:arCallBlink 1.4s ease-in-out infinite;
+}
+@keyframes arCallBlink{ 50%{ opacity:.25; } }
+.ar-call-avwrap{ position:relative; width:100px; height:100px; margin-top:20px; }
+.ar-call-ripple{
+  position:absolute; inset:-8px; border-radius:50%;
+  border:1.5px solid rgba(201,138,128,.55);
+  animation:arCallRip 2.2s ease-out infinite;
+}
+.ar-call-ripple.r2{ animation-delay:.7s; }
+.ar-call-ripple.r3{ animation-delay:1.4s; }
+@keyframes arCallRip{
+  from{ transform:scale(1); opacity:.9; }
+  to{ transform:scale(1.55); opacity:0; }
+}
+.ar-call-av-inner{
+  width:100px; height:100px; border-radius:50%; position:relative; z-index:2;
+  background:linear-gradient(160deg,#e8ded8,#d8cbc4);
+  box-shadow:0 0 40px 8px rgba(217,160,143,.4);
+  display:flex; align-items:center; justify-content:center; font-size:48px;
+}
+.ar-call-name{ font-size:20px; font-weight:600; margin-top:18px; color:#4a3f3a; }
+.ar-call-reason{ font-size:14px; color:#8a766e; margin-top:8px; text-align:center; line-height:1.5; }
+.ar-call-inc-dock{ margin-top:24px; display:flex; gap:50px; }
+.ar-call-inc-btn{ display:flex; flex-direction:column; align-items:center; gap:7px; cursor:pointer; }
+.ar-call-inc-ico{
+  width:58px; height:58px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  transition:transform .15s;
+}
+.ar-call-inc-btn:active .ar-call-inc-ico{ transform:scale(.92); }
+.ar-call-inc-ico svg{ width:24px; height:24px; }
+.ar-call-inc-ico.acc{
+  background:linear-gradient(160deg,#d9a08f,#c98a80); color:#fff;
+}
+.ar-call-inc-ico.dec{
+  background:rgba(120,95,88,.12); border:1px solid rgba(120,95,88,.22); color:#7a655c;
+}
+.ar-call-inc-lab{ font-size:12px; color:#8a766e; }
+.ar-call-quick{
+  margin-top:14px; width:100%; display:flex; flex-direction:column; gap:8px;
+  animation:arCallFade .25s ease both;
+}
+@keyframes arCallFade{ from{ opacity:0; } to{ opacity:1; } }
+.ar-call-chips{ display:flex; gap:7px; justify-content:center; flex-wrap:wrap; }
+.ar-call-chip{
+  padding:7px 13px; border-radius:999px; background:rgba(120,95,88,.10);
+  border:1px solid rgba(120,95,88,.22); color:#7a655c; font-size:13px; cursor:pointer;
+}
+.ar-call-chip:active{ transform:scale(.95); }
+.ar-call-inrow{ display:flex; gap:7px; }
+.ar-call-inrow input{
+  flex:1; padding:9px 13px; border-radius:999px; border:1px solid rgba(120,95,88,.22);
+  background:rgba(255,255,255,.55); color:#4a3f3a; font-size:13px; outline:none;
+}
+.ar-call-send{
+  padding:9px 15px; border-radius:999px; background:linear-gradient(160deg,#d9a08f,#c98a80);
+  color:#fff; font-size:13px; cursor:pointer;
+}
+.ar-call-skip{ text-align:center; font-size:12px; color:#a08a80; padding:8px 2px 2px; cursor:pointer; }
+
+/* ── Aries 通话中界面 ── */
+.ar-call-active{
+  position:relative; width:100%; max-width:360px; border-radius:28px; overflow:hidden;
+  display:flex; flex-direction:column; color:#f3efe9;
+  animation:arCallFadeIn .7s ease both;
+}
+@keyframes arCallFadeIn{ from{ opacity:0; } to{ opacity:1; } }
+.ar-call-active-bg{
+  position:absolute; inset:0; z-index:0;
+  background:linear-gradient(165deg, #2b2723, #141110 72%);
+}
+.ar-call-active-bg::before{
+  content:''; position:absolute; width:300px; height:300px; border-radius:50%;
+  background:rgba(216,208,196,.16); filter:blur(60px); top:-40px; left:-40px;
+  animation:arCallDrift1 15s ease-in-out infinite alternate;
+}
+.ar-call-active-bg::after{
+  content:''; position:absolute; width:320px; height:200px; border-radius:50%;
+  background:rgba(170,160,148,.14); filter:blur(60px); bottom:20px; left:50%; transform:translateX(-50%);
+  animation:arCallDrift2 18s ease-in-out infinite alternate;
+}
+@keyframes arCallDrift1{ from{ transform:translate(0,0); } to{ transform:translate(34px,22px); } }
+@keyframes arCallDrift2{ from{ transform:translateX(-50%); } to{ transform:translate(calc(-50% + 26px),-16px); } }
+
+.ar-call-act-meta{ text-align:center; padding:20px 16px 0; position:relative; z-index:1; }
+.ar-call-act-kind{
+  display:inline-flex; align-items:center; gap:7px; font-size:13px; color:#ccc4b8; letter-spacing:1.5px;
+}
+.ar-call-act-dot{
+  width:7px; height:7px; border-radius:50%; background:currentColor;
+  animation:arCallPulse 1.4s ease-in-out infinite;
+}
+@keyframes arCallPulse{ 0%,100%{ opacity:.3; transform:scale(.8); } 50%{ opacity:1; transform:scale(1.1); } }
+.ar-call-act-time{ font-size:21px; font-weight:600; margin:6px 0 2px; }
+
+.ar-call-act-mid{
+  position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:8px; padding:14px 16px 4px;
+}
+.ar-call-act-pair{ display:flex; align-items:center; }
+.ar-call-act-av{
+  width:80px; height:80px; border-radius:50%; overflow:hidden; transition:box-shadow .3s, transform .3s;
+  background:linear-gradient(160deg,#423d36,#262220); flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+}
+.ar-call-act-emoji{ font-size:36px; }
+.ar-call-act-pair .ar-call-act-av + .ar-call-act-av{ margin-left:-16px; }
+.ar-call-act-names{ display:flex; gap:26px; }
+.ar-call-act-names span{ font-size:13px; font-weight:500; opacity:.55; transition:opacity .2s; }
+#arCallWave{ width:180px; height:40px; display:block; }
+
+.ar-call-act-caps{
+  flex:1; overflow-y:auto; scrollbar-width:none; position:relative; z-index:1;
+  display:flex; flex-direction:column; gap:8px; padding:8px 16px 10px; min-height:120px; max-height:200px;
+}
+.ar-call-act-caps::-webkit-scrollbar{ display:none; }
+
+.ar-call-act-dock{
+  position:relative; z-index:1; display:flex; justify-content:center; gap:20px; padding:12px 14px 18px;
+}
+.ar-call-act-btn{ display:flex; flex-direction:column; align-items:center; gap:5px; cursor:pointer; }
+.ar-call-act-ico{
+  width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  background:rgba(255,252,246,.13); border:1px solid rgba(255,250,242,.20);
+  backdrop-filter:blur(18px) saturate(160%); -webkit-backdrop-filter:blur(18px) saturate(160%);
+  transition:transform .12s; color:#f3efe9;
+}
+.ar-call-act-btn:active .ar-call-act-ico{ transform:scale(.93); }
+.ar-call-act-ico svg{ width:22px; height:22px; }
+.ar-call-act-ico.end{ background:#f2ede4; border-color:#f2ede4; color:#1a1714; }
+.ar-call-act-lab{ font-size:11px; color:#ccc4b8; }
+
+.ar-call-act-veil{
+  position:absolute; inset:0; z-index:8; background:#100e0c; opacity:0; pointer-events:none;
+  transition:opacity .8s ease; display:flex; align-items:center; justify-content:center; border-radius:28px;
+}
+.ar-call-act-veil.show{ opacity:.94; pointer-events:auto; }
+.ar-call-active.ending .ar-call-act-meta,
+.ar-call-active.ending .ar-call-act-mid,
+.ar-call-active.ending .ar-call-act-caps,
+.ar-call-active.ending .ar-call-act-dock{
+  opacity:0; transform:scale(.96); transition:opacity .8s ease, transform .8s ease;
+}
+.ar-call-act-bye{ text-align:center; opacity:0; transform:translateY(6px); transition:opacity .6s ease .35s, transform .6s ease .35s; }
+.ar-call-act-veil.show .ar-call-act-bye{ opacity:1; transform:none; }
+.ar-call-act-t1{ font-size:19px; font-weight:500; color:#e9e4db; }
+.ar-call-act-t2{ font-size:13px; color:#9a9188; margin-top:8px; }
+
+/* ══════════════════════════════════════
+   Aries 行程弹层
+══════════════════════════════════════ */
+.ar-tasks-overlay {
+  position: fixed; inset: 0; z-index: 1200;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.ar-tasks-card {
+  background: var(--ar-glass-deep);
+  border: 1px solid var(--ar-glass-border);
+  border-radius: 22px; padding: 20px;
+  width: 100%; max-width: 360px; max-height: 80vh; overflow-y: auto;
+  box-shadow: var(--ar-glass-shadow-lg);
+  animation: arFadeUp 0.3s ease;
+}
+.ar-tasks-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; font-size: 15px; font-weight: 600; color: var(--ar-text); }
+.ar-tasks-close { background: none; border: none; color: var(--ar-text-ghost); font-size: 18px; cursor: pointer; padding: 4px; }
+.ar-tasks-add-row { display: flex; gap: 6px; margin-bottom: 14px; }
+.ar-tasks-input { flex: 1; background: rgba(255,248,244,0.6); border: 1px solid var(--ar-glass-border); border-radius: var(--ar-radius-sm); padding: 8px 10px; font-size: 13px; color: var(--ar-text); font-family: var(--ar-font-sans); outline: none; }
+.ar-tasks-date { width: 100px; background: rgba(255,248,244,0.6); border: 1px solid var(--ar-glass-border); border-radius: var(--ar-radius-sm); padding: 8px 10px; font-size: 12px; color: var(--ar-text); font-family: var(--ar-font-sans); outline: none; }
+.ar-tasks-add-btn { padding: 8px 14px; border: none; border-radius: var(--ar-radius-sm); background: var(--ar-accent); color: #fff; font-size: 13px; cursor: pointer; white-space: nowrap; font-family: var(--ar-font-sans); }
+.ar-tasks-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ar-tasks-col-title { font-size: 12px; font-weight: 500; padding: 6px 10px; border-radius: var(--ar-radius-sm); margin-bottom: 6px; display: flex; justify-content: space-between; }
+.ar-tasks-col-title.todo { background: var(--ar-accent-light); color: var(--ar-accent); }
+.ar-tasks-col-title.done { background: rgba(140,190,130,0.15); color: #8ab87a; }
+#arTodoList, #arDoneList { display: flex; flex-direction: column; gap: 4px; }
+.ar-task-item { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: var(--ar-radius-xs); font-size: 12px; color: var(--ar-text); cursor: pointer; transition: background var(--ar-transition); }
+.ar-task-item:hover { background: var(--ar-accent-light); }
+.ar-task-check { width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid var(--ar-glass-border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 9px; cursor: pointer; }
+.ar-task-check.done { background: #8ab87a; border-color: #8ab87a; color: #fff; }
+.ar-task-del { margin-left: auto; background: none; border: none; color: var(--ar-text-ghost); font-size: 12px; cursor: pointer; padding: 2px; }
+
+/* ══════════════════════════════════════
+   Aries 小说 / 时光 弹层
+══════════════════════════════════════ */
+.ar-novel-overlay, .ar-diary-overlay {
+  position: fixed; inset: 0; z-index: 2000;
+  background: rgba(0,0,0,0.35);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  animation: arFadeIn 0.2s ease;
+}
+.ar-novel-card, .ar-diary-card {
+  background: var(--ar-glass-deep);
+  backdrop-filter: blur(22px) saturate(1.3);
+  -webkit-backdrop-filter: blur(22px) saturate(1.3);
+  border: 1px solid var(--ar-glass-border);
+  border-radius: var(--ar-radius-lg);
+  box-shadow: var(--ar-glass-shadow-lg);
+  width: 100%; max-width: 420px;
+  max-height: 85vh;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  animation: arFadeUp 0.3s ease;
+}
+.ar-novel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--ar-glass-border);
+  font-size: 15px; font-weight: 600; color: var(--ar-text);
+  flex-shrink: 0;
+}
+.ar-novel-back { cursor: pointer; font-size: 14px; color: var(--ar-accent); }
+.ar-novel-close { background: none; border: none; font-size: 18px; color: var(--ar-text-ghost); cursor: pointer; padding: 4px 8px; }
+.ar-novel-shelf {
+  flex: 1; overflow-y: auto;
+  display: flex; flex-wrap: wrap; gap: 10px;
+  padding: 16px 20px;
+  align-content: flex-start;
+}
+.ar-novel-shelf .ar-book-item {
+  width: calc(50% - 5px);
+  background: rgba(255,248,244,0.6);
+  border-radius: var(--ar-radius-md);
+  padding: 14px 12px;
+  cursor: pointer;
+  box-sizing: border-box;
+  font-size: 13px;
+  color: var(--ar-text);
+  border: 1px solid transparent;
+  transition: all var(--ar-transition);
+}
+.ar-novel-shelf .ar-book-item:hover { border-color: var(--ar-accent-border); background: rgba(255,248,244,0.85); }
+.ar-novel-shelf .ar-book-title { font-weight: 600; margin-bottom: 4px; }
+.ar-novel-shelf .ar-book-meta { font-size: 11px; color: var(--ar-text-ghost); }
+.ar-novel-empty { width: 100%; text-align: center; padding: 40px 0; opacity: 0.4; font-size: 13px; }
+.ar-novel-reader { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.ar-novel-text {
+  flex: 1; overflow-y: auto; padding: 20px;
+  font-size: 15px; line-height: 2;
+  color: var(--ar-text); white-space: pre-wrap;
+  word-break: break-word;
+}
+.ar-novel-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 20px;
+  border-top: 1px solid var(--ar-glass-border);
+  flex-shrink: 0;
+}
+.ar-novel-nav button {
+  background: var(--ar-accent); border: none;
+  color: #fff; border-radius: var(--ar-radius-sm);
+  padding: 6px 14px; font-size: 12px;
+  cursor: pointer; transition: background var(--ar-transition);
+  font-family: var(--ar-font-sans);
+}
+.ar-novel-nav button:hover { background: var(--ar-accent-hover); }
+.ar-novel-nav span { font-size: 12px; color: var(--ar-text-soft); }
+
+.ar-diary-list {
+  flex: 1; overflow-y: auto; padding: 16px 20px;
+}
+.ar-diary-list .ar-diary-item {
+  padding: 14px 12px;
+  background: rgba(255,248,244,0.6);
+  border-radius: var(--ar-radius-md);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background var(--ar-transition);
+  border: 1px solid transparent;
+}
+.ar-diary-list .ar-diary-item:hover { border-color: var(--ar-accent-border); background: rgba(255,248,244,0.85); }
+.ar-diary-item-title { font-size: 14px; font-weight: 600; color: var(--ar-text); margin-bottom: 4px; }
+.ar-diary-item-preview { font-size: 12px; color: var(--ar-text-soft); line-height: 1.6; }
+.ar-diary-item-date { font-size: 11px; color: var(--ar-text-ghost); margin-top: 6px; }
+.ar-diary-empty { text-align: center; padding: 40px 0; color: var(--ar-text-ghost); font-size: 13px; }
+.ar-diary-new-btn {
+  width: 100%; padding: 14px;
+  background: var(--ar-accent); color: #fff;
+  border: none; font-size: 14px;
+  cursor: pointer; font-family: var(--ar-font-sans);
+  flex-shrink: 0;
+  transition: background var(--ar-transition);
+}
+.ar-diary-new-btn:hover { background: var(--ar-accent-hover); }
+@keyframes arFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes arFadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }

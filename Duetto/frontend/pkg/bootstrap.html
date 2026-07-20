@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head><meta charset="UTF-8"><title>加载中...</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#eceae6;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui,sans-serif;color:#5a5550}
+.loader{text-align:center}
+.spinner{width:32px;height:32px;border:3px solid #ddd8d0;border-top-color:#2f2b26;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+p{font-size:14px;opacity:.7}
+</style>
+</head>
+<body>
+<div class="loader"><div class="spinner"></div><p>正在进入 Duetto…</p></div>
+<script>
+// 自动设置 PIN 并获取 token，然后跳转
+var api = window.__LS_API || '/api';
+var PIN = '1234';
+
+fetch(api + '/auth/status')
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if (d && d.ok && d.configured) {
+      // 已配置 → 登录
+      return fetch(api + '/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: PIN })
+      }).then(function(r){ return r.json(); });
+    } else {
+      // 未配置 → 首次设置
+      return fetch(api + '/auth/setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: PIN })
+      }).then(function(r){ return r.json(); });
+    }
+  })
+  .then(function(j){
+    if (j && j.ok && j.token) {
+      try { localStorage.setItem('duetto-token', j.token); } catch(e) {}
+      // 跳转到真实 Duetto
+      window.location.href = './index.html';
+    } else {
+      document.querySelector('p').textContent = '验证失败，请重试';
+    }
+  })
+  .catch(function(e){
+    document.querySelector('p').textContent = '连接失败: ' + e.message;
+  });
+</script>
+</body>
+</html>
