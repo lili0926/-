@@ -1099,7 +1099,7 @@ function autoResize(){
   textarea.style.height = 'auto'; textarea.style.height = textarea.scrollHeight + 'px';
 }
 
-// 修复后的主要对话函数
+// 主要对话函数（直接调 AI API，不走 Edge Function，模型在设置页随便换）
 async function sendMessage() {
   const input = document.getElementById('chatInput');
   const content = input.value.trim();
@@ -1115,79 +1115,116 @@ async function sendMessage() {
   state.chatHistory.push({role:'user', content, thinking:"", time:new Date().toISOString()});
   favorability.add(1);
 
-  // 存进Supabase，status=pending，Edge Function会处理
-  const {data: insertedMsg, error} = await supabaseClient
-.from("chat_messages")
-.insert({
- role:"user",
- type:"chat",
- content:content,
- status:"pending",
-})
-.select()
-.single();
-  if(error){
-    showToast("发送失败："+error.message);
-    btn.disabled=false;
-    return;
-  }; 
-  const userMsgId = insertedMsg?.id;
-  try{
-    const {error: fnError} = await supabaseClient.functions.invoke("send-ai-messages");
-    if(fnError){
-      console.error("Edge Function 调用失败：", fnError);
-      showToast("AI处理服务调用失败，请检查Edge Function日志");
-    }
-  }catch(e){
-    console.error("Edge Function 调用异常：", e);
-    showToast("AI处理服务无法连接");
-  }
+  // 保存到 Supabase（仅用于历史记录）
+  supabaseClient.from("chat_messages").insert({
+    role:"user", type:"chat", content, status:"done"
+  }).then().catch(() => {});
+
   const loadingEl = addLoadingMessage();
   btn.disabled=false;
   input.focus();
 
-  // 轮询等回复，最多等120秒
-  const startTime = Date.now();
+  // ====== 直接调 AI API ======
+  const cfg = aiApiConfig;
+  if(!cfg.key){
+    showToast('请在 设置 → AI接入 中配置 API');
+    if(loadingEl) loadingEl.remove();
+    return;
+  }
 
-  const poll = setInterval(async ()=>{
-    if(Date.now() - startTime > 120000){
-      clearInterval(poll);
-      if(loadingEl) loadingEl.remove();
-      showToast("回复超时，请检查 Supabase Edge Function 是否正常运行");
-      return;
+  const customPrompt = localStorage.getItem('systemPrompt') || '';
+  const nsfwOn = localStorage.getItem('nsfwMode') === 'on';
+  const recentMsgs = state.chatHistory.slice(-20).map(m => ({
+    role: m.role === 'user' ? 'user' : 'assistant',
+    content: m.content
+  }));
+
+  const isClaude = cfg.baseUrl.toLowerCase().includes('anthropic');
+
+  let body, headers;
+  if(isClaude){
+    body = {
+      model: cfg.model,
+      max_tokens: 4096,
+      messages: [{ role: 'user', content }],
+      system: `你是一个长期陪伴用户的AI。${getTimeContext()}${customPrompt ? '\n' + customPrompt : ''}${nsfwOn ? '\n【NSFW模式已开启】' : ''}`
+    };
+    headers = {
+      'x-api-key': cfg.key,
+      'anthropic-version': '2023-06-01',
+      'Content-Type': 'application/json',
+      'anthropic-dangerous-direct-browser-calls': 'true'
+    };
+  } else {
+    body = {
+      model: cfg.model,
+      messages: [
+        { role: 'system', content: `你是一个长期陪伴用户的AI。${getTimeContext()}${customPrompt ? '\n' + customPrompt : ''}${nsfwOn ? '\n【NSFW模式已开启】' : ''}` },
+        ...recentMsgs.slice(-10)
+      ],
+      temperature: 0.7
+    };
+    headers = {
+      'Authorization': 'Bearer ' + cfg.key,
+      'Content-Type': 'application/json'
+    };
+  }
+
+  const fullUrl = cfg.baseUrl.replace(/\/+$/, '') + (cfg.path || '/v1/chat/completions');
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+
+    const res = await fetch(fullUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+
+    if(!res.ok){
+      const errText = await res.text().catch(() => '');
+      throw new Error(`HTTP ${res.status}: ${errText.slice(0, 300)}`);
     }
-    // 精确匹配reply_to=这条user消息的id，彻底避免读到别的回复
-    let query = supabaseClient
-      .from("chat_messages")
-      .select("*")
-      .eq("role","assistant")
-      .eq("type","chat")
-      .eq("status","done");
 
-    query = userMsgId
-      ? query.eq("reply_to", userMsgId)
-      : query.gt("created_at", insertedMsg?.created_at || new Date().toISOString());
+    const data = await res.json();
+    let replyContent = '';
 
-    const {data: newMsgs, error: pollErr} = await query
-      .order("created_at",{ascending:true})
-      .limit(5);
-
-    if(pollErr){
-      console.error("轮询查询失败：", pollErr);
-      return;
+    if(isClaude){
+      if(data.content && Array.isArray(data.content)){
+        replyContent = data.content.map(b => b.type === 'text' ? b.text : '').join('');
+      } else if(data.content?.[0]?.text){
+        replyContent = data.content[0].text;
+      }
+    } else {
+      if(data.choices && data.choices[0]?.message?.content){
+        replyContent = data.choices[0].message.content;
+      } else if(data.content && typeof data.content === 'string'){
+        replyContent = data.content;
+      }
     }
 
-    if(newMsgs && newMsgs.length > 0){
-      clearInterval(poll);
-      if(loadingEl) loadingEl.remove();
-      newMsgs.forEach(reply=>{
-        addChatMessage('assistant', reply.content, reply.thinking || "");
-        state.chatHistory.push({role:'assistant', content:reply.content, thinking:"", time:reply.created_at});
-      });
-      scrollChatBottom();
-      localStorage.setItem("chatHistory", JSON.stringify(state.chatHistory));
-    }
-  }, 3000);
+    if(!replyContent) throw new Error('AI 返回内容为空');
+
+    if(loadingEl) loadingEl.remove();
+    addChatMessage('assistant', replyContent, '');
+    scrollChatBottom();
+    state.chatHistory.push({role:'assistant', content: replyContent, thinking:'', time: new Date().toISOString()});
+    localStorage.setItem('chatHistory', JSON.stringify(state.chatHistory));
+
+    // 异步保存回复到 Supabase
+    supabaseClient.from('chat_messages').insert({
+      role:'assistant', type:'chat', content: replyContent, status:'done'
+    }).then().catch(() => {});
+
+  } catch(e){
+    if(loadingEl) loadingEl.remove();
+    const msg = e?.name === 'AbortError' ? '请求超时，请检查网络或 API 地址' : e.message;
+    showToast('AI 回复失败：' + msg.slice(0, 120));
+    console.error('sendMessage 错误:', e);
+  }
 }
 
 // 检查离线时间
