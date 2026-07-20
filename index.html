@@ -294,7 +294,7 @@
         <div class="moments-cover"><img class="moments-cover-img" src="assets/moments/cover.jpg"><div class="moments-profile"><img class="moments-avatar" src="assets/moments/avatar.jpg"><div class="moments-name">Jasmine</div><div class="moments-bio">🫧啵啵pupa</div></div></div>
         <div id="momentList"></div>
         <button class="postMoment" onclick="openMomentModal()"><span>✎</span></button>
-        <div id="momentModal" class="moment-modal hidden"><div class="moment-dialog"><textarea id="momentInput" placeholder="分享今天发生的事情..."></textarea><div class="moment-toolbar"><button id="chooseMomentImage">📷 图片</button></div><div class="moment-actions"><button id="cancelMoment">取消</button><button id="publishMoment">发布</button></div></div></div>
+        <div id="momentModal" class="moment-modal hidden"><div class="moment-dialog"><textarea id="momentInput" placeholder="分享今天发生的事情..."></textarea><div class="moment-toolbar"><button id="chooseMomentImage">📷 图片</button></div><div class="moment-image-preview" id="momentImagePreview" style="display:none;margin-top:8px;position:relative;"><img id="momentPreviewImg" style="width:100%;max-height:200px;object-fit:cover;border-radius:12px;"><span class="moment-img-remove" id="momentImgRemove" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.5);color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;">✕</span></div><div class="moment-actions"><button id="cancelMoment">取消</button><button id="publishMoment">发布</button></div></div></div>
       </section>
     </div>
   </main>
@@ -591,6 +591,7 @@
 
         <!-- 底部大按钮 -->
         <button class="ar-save-btn" id="arSaveBtn">保存设置</button>
+        <button class="ar-btn-secondary" style="width:100%;padding:14px;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px" id="arAIMomentBtn"><span>🦉</span> 让 Elliott 发一条朋友圈</button>
         <button class="ar-btn-secondary" style="width:100%;padding:14px;display:flex;align-items:center;justify-content:center;gap:8px" id="arSwitchThemeBtn"><span>🎨</span> 切换回经典主题</button>
       </div>
     </div>
@@ -752,6 +753,8 @@
 <div class="moment-modal hidden" id="arMomentModal">
   <div class="moment-dialog">
     <textarea id="arMomentInput" placeholder="分享今天发生的事情..."></textarea>
+    <div class="moment-toolbar"><button id="arChooseImage">📷 图片</button></div>
+    <div class="moment-image-preview" id="arMomentImagePreview" style="display:none;margin-top:8px;position:relative;"><img id="arMomentPreviewImg" style="width:100%;max-height:200px;object-fit:cover;border-radius:12px;"><span class="moment-img-remove" id="arMomentImgRemove" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.5);color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;">✕</span></div>
     <div class="moment-actions">
       <button id="arCancelMoment">取消</button>
       <button id="arPublishMoment">发布</button>

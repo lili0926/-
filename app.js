@@ -526,17 +526,63 @@ document.addEventListener('click', function askOnce(){
   const saved = localStorage.getItem("uiPreset");
   if(saved){ applyUIPreset(saved); if(sel) sel.value = saved; }
   const savedFontColor = localStorage.getItem("fontColor") || "normal";
-  // 注意：postMoment 在 HTML 里是 class 不是 id，用 getElementById 会拿到 null
-  // 之前这里报错会中断整个 DOMContentLoaded 回调，导致下面的 initPageSwitch()/loadMoments() 等全部不执行
+  // 旧版朋友圈：发布按钮
   document.querySelectorAll(".postMoment").forEach(el => {
     el.addEventListener("click", openMomentModal);
   });
-
   const cancelMomentBtn = document.getElementById("cancelMoment");
   if(cancelMomentBtn) cancelMomentBtn.addEventListener("click", closeMomentModal);
-
+  // 图片选择
+  const chooseImgBtn = document.getElementById("chooseMomentImage");
+  if(chooseImgBtn){
+    chooseImgBtn.addEventListener("click", () => {
+      let fi = document.getElementById('momentFileInput');
+      if(!fi){
+        fi = document.createElement('input');
+        fi.id = 'momentFileInput';
+        fi.type = 'file';
+        fi.accept = 'image/*';
+        fi.style.display = 'none';
+        document.body.appendChild(fi);
+        fi.addEventListener('change', function(){
+          if(this.files?.length){
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+              const previewImg = document.getElementById('momentPreviewImg');
+              if(previewImg) previewImg.src = ev.target.result;
+              const previewBox = document.getElementById('momentImagePreview');
+              if(previewBox) previewBox.style.display = 'block';
+            };
+            reader.readAsDataURL(this.files[0]);
+          }
+        });
+      }
+      fi.click();
+    });
+  }
+  // 移除旧版图片
+  const momentImgRemove = document.getElementById("momentImgRemove");
+  if(momentImgRemove){
+    momentImgRemove.addEventListener("click", () => {
+      const fi = document.getElementById('momentFileInput');
+      if(fi) fi.value = '';
+      const box = document.getElementById('momentImagePreview');
+      if(box) box.style.display = 'none';
+    });
+  }
+  // 带图发布
   const publishMomentBtn = document.getElementById("publishMoment");
-  if(publishMomentBtn) publishMomentBtn.addEventListener("click", publishMoment);
+  if(publishMomentBtn){
+    publishMomentBtn.addEventListener("click", async () => {
+      const fi = document.getElementById('momentFileInput');
+      let urls = [];
+      if(fi?.files?.length > 0){
+        try { urls.push(await uploadMomentImage(fi.files[0])); }
+        catch(e){ showToast('图片上传失败：'+e.message); return; }
+      }
+      await publishMoment(urls);
+    });
+  }
 
   document.documentElement.setAttribute("data-font", savedFontColor);
   initPageSwitch();
@@ -2309,8 +2355,28 @@ async function loadThoughts(){
   } catch(e) { console.log("loadThoughts error:", e); }
   if(typeof renderThoughts === 'function') renderThoughts();
 }
-async function loadMoments(){
-  const {data,error}=await supabaseClient
+// ====== 朋友圈核心函数 ======
+
+/** 上传图片到 Supabase Storage，返回公开 URL */
+async function uploadMomentImage(file){
+  const ext = file.name.split('.').pop() || 'jpg';
+  const filename = `moment_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+  const { error } = await supabaseClient.storage
+    .from('moments')
+    .upload(filename, file, { contentType: file.type || 'image/jpeg' });
+  if(error){ throw error; }
+  const { data: { publicUrl } } = supabaseClient.storage
+    .from('moments')
+    .getPublicUrl(filename);
+  return publicUrl;
+}
+
+/** 加载朋友圈（含惰性回复生成） */
+async function loadMoments(processDue = true){
+  // 先处理到期的待回复（不阻塞，后台生成）
+  if(processDue){ processDueMoments(); }
+
+  const {data,error} = await supabaseClient
     .from("moments")
     .select("*")
     .order("created_at",{ascending:false});
@@ -2320,136 +2386,530 @@ async function loadMoments(){
     return;
   }
 
-  // 存到state + localStorage供Aries主题使用
   if(data){
     state.moments = data;
     localStorage.setItem('arMoments', JSON.stringify(data));
   }
 
-  // Aries主题渲染（先渲染，不受旧版UI影响）
-  const arList = document.getElementById('arMomentList');
-  if(arList){
-    if(!data || data.length === 0){
-      arList.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--ar-text-ghost);font-size:13px;">还没有朋友圈动态 ✨</div>';
-    } else {
-      arList.innerHTML = data.map(item => `
-        <div class="moment-card">
-          <div class="moment-user">Jasmine</div>
-          <p>${escHtml(item.content || '')}</p>
-          ${item.images_url ? `<img class="moment-image" src="${item.images_url}">` : ''}
-          <small>${new Date(item.created_at).toLocaleString()}</small>
-        </div>
-      `).join('');
-    }
-  }
+  const emptyHtml = '<div style="text-align:center;padding:40px 20px;color:var(--ar-text-ghost, #999);font-size:13px;">还没有朋友圈动态 ✨</div>';
 
-  // 旧版渲染
-  const box=document.getElementById("momentList");
-  if(!box){
-    return;
-  }
+  // Aries 主题渲染
+  renderMomentList('arMomentList', data, emptyHtml, true);
+  // 旧版主题渲染
+  renderMomentList('momentList', data, '', false);
+}
+
+/** 渲染朋友圈列表 */
+function renderMomentList(containerId, data, emptyHtml, isAries){
+  const box = document.getElementById(containerId);
+  if(!box) return;
 
   if(!data || data.length === 0){
-    box.innerHTML = "";
+    box.innerHTML = emptyHtml;
     return;
   }
 
-  box.innerHTML="";
+  box.innerHTML = data.map(item => {
+    const isAI = item.author === 'elliott';
+    const avatar = isAI ? '🦉' : '👩';
+    const name = isAI ? 'Elliott' : 'Jasmine';
+    const timeStr = formatMomentTime(item.created_at);
+    const images = Array.isArray(item.images) ? item.images : [];
 
-  data.forEach(item=>{
-    const div=document.createElement("div");
-    div.className="moment-card";
-    div.innerHTML = `
-      <div class="moment-user">Jasmine</div>
-      <p>${item.content || ""}</p>
-      ${
-        item.images_url
-        ? `<img class="moment-image" src="${item.images_url}">`
-        : ""
-      }
-      <small>${new Date(item.created_at).toLocaleString()}</small>
-    `;
-    box.appendChild(div);
-  });
-  if(arList){
-    if(!data || data.length === 0){
-      arList.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--ar-text-ghost);font-size:13px;">还没有朋友圈动态 ✨</div>';
-    } else {
-      arList.innerHTML = data.map(item => `
-        <div class="moment-card">
-          <div class="moment-user">Jasmine</div>
-          <p>${escHtml(item.content || '')}</p>
-          ${item.images_url ? `<img class="moment-image" src="${item.images_url}">` : ''}
-          <small>${new Date(item.created_at).toLocaleString()}</small>
+    // 点赞按钮
+    const likeBtn = isAI
+      ? `<span class="moment-like-btn ${item.bunny_liked ? 'liked' : ''}" data-id="${item.id}" data-type="bunny">${item.bunny_liked ? '❤️' : '♡'} 赞</span>`
+      : `<span class="moment-like-btn ${item.liked ? 'liked' : ''}" data-id="${item.id}" data-type="like">${item.liked ? '❤️' : '♡'} ${item.liked ? '1' : '赞'}</span>`;
+
+    // AI 回复气泡
+    const replyHtml = (item.reply_status === 'done' && item.reply_content)
+      ? `<div class="moment-reply"><div class="moment-reply-avatar">🦉</div><div class="moment-reply-bubble"><div class="moment-reply-author">Elliott</div><div class="moment-reply-text">${escHtml(item.reply_content)}</div></div></div>`
+      : '';
+
+    // 图片
+    const imagesHtml = images.map(url =>
+      `<img class="moment-image" src="${url}" loading="lazy" onclick="window.open('${url}','_blank')">`
+    ).join('');
+
+    return `
+      <div class="moment-card" data-id="${item.id}">
+        <div class="moment-header">
+          <span class="moment-avatar">${avatar}</span>
+          <span class="moment-user">${name}</span>
+          <span class="moment-time">${timeStr}</span>
+          ${!isAI ? `<span class="moment-del-btn" data-id="${item.id}" title="删除">✕</span>` : ''}
         </div>
-      `).join('');
+        <div class="moment-body">
+          <p>${escHtml(item.content || '')}</p>
+          ${imagesHtml ? `<div class="moment-images">${imagesHtml}</div>` : ''}
+        </div>
+        <div class="moment-footer">
+          ${likeBtn}
+          <span class="moment-comment-toggle" data-id="${item.id}">💬 回复</span>
+        </div>
+        ${replyHtml}
+        <div class="moment-comment-box hidden" id="commentBox-${item.id}">
+          <input class="moment-comment-input" id="commentInput-${item.id}" placeholder="写回复..." maxlength="200">
+          <button class="moment-comment-send" data-id="${item.id}">发送</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // 绑定事件
+  box.querySelectorAll('.moment-like-btn').forEach(el => {
+    el.addEventListener('click', e => {
+      const id = el.dataset.id;
+      const type = el.dataset.type;
+      if(type === 'bunny') toggleBunnyLike(id);
+      else toggleLike(id);
+    });
+  });
+  box.querySelectorAll('.moment-comment-toggle').forEach(el => {
+    el.addEventListener('click', e => {
+      const id = el.dataset.id;
+      const inputBox = document.getElementById('commentBox-' + id);
+      if(inputBox) inputBox.classList.toggle('hidden');
+    });
+  });
+  box.querySelectorAll('.moment-comment-send').forEach(el => {
+    el.addEventListener('click', e => {
+      const id = el.dataset.id;
+      const input = document.getElementById('commentInput-' + id);
+      if(input && input.value.trim()) addComment(id, input.value.trim());
+    });
+  });
+  box.querySelectorAll('.moment-comment-input').forEach(el => {
+    el.addEventListener('keydown', e => {
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        const id = el.id.replace('commentInput-', '');
+        if(el.value.trim()) addComment(id, el.value.trim());
+      }
+    });
+  });
+  box.querySelectorAll('.moment-del-btn').forEach(el => {
+    el.addEventListener('click', e => {
+      const id = el.dataset.id;
+      if(confirm('确定删除这条动态吗？')){
+        supabaseClient.from('moments').delete().eq('id', id).then(() => loadMoments());
+      }
+    });
+  });
+}
+
+/** 格式化朋友圈时间 */
+function formatMomentTime(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = Math.floor((now - d) / 1000);
+  if(diff < 60) return '刚刚';
+  if(diff < 3600) return Math.floor(diff/60) + '分钟前';
+  if(diff < 86400) return Math.floor(diff/3600) + '小时前';
+  if(diff < 172800) return '昨天 ' + d.toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'});
+  return (d.getMonth()+1)+'月'+d.getDate()+'日';
+}
+
+/** 发布朋友圈 */
+async function publishMoment(imageUrls) {
+  const input = document.getElementById('momentInput');
+  const content = input?.value?.trim() || '';
+  if(!content && (!imageUrls || imageUrls.length === 0)){
+    showToast('写点内容或选张图吧～');
+    return;
+  }
+
+  const publishBtn = document.getElementById('publishMoment');
+  if(publishBtn){ publishBtn.disabled = true; publishBtn.textContent = '发布中...'; }
+
+  // 随机 10-20 分钟后 AI 才回复
+  const delayMs = (Math.floor(Math.random() * 11) + 10) * 60 * 1000;
+  const replyDueAt = new Date(Date.now() + delayMs).toISOString();
+
+  const { error } = await supabaseClient.from('moments').insert({
+    author: 'bunny',
+    content,
+    images: imageUrls || [],
+    reply_due_at: replyDueAt,
+    reply_status: 'pending'
+  });
+
+  if(publishBtn){ publishBtn.disabled = false; publishBtn.textContent = '发布'; }
+
+  if(error){
+    console.error('发布失败', error);
+    showToast('发布失败：' + error.message);
+    return;
+  }
+
+  // 关闭弹窗清空输入
+  closeMomentModal();
+  // Aries 发布弹窗也关闭
+  const arModal = document.getElementById('arMomentModal');
+  if(arModal) arModal.classList.add('hidden');
+  const arInput = document.getElementById('arMomentInput');
+  if(arInput) arInput.value = '';
+
+  showToast('已发布 ✨');
+  loadMoments(false);
+}
+
+/** 打开发布弹窗（旧版） */
+function openMomentModal(){
+  document.getElementById('momentModal')?.classList.remove('hidden');
+}
+/** 关闭发布弹窗（旧版） */
+function closeMomentModal(){
+  document.getElementById('momentModal')?.classList.add('hidden');
+  const input = document.getElementById('momentInput');
+  if(input) input.value = '';
+  // 清除图片预览
+  const preview = document.getElementById('momentImagePreview');
+  if(preview){ preview.style.display = 'none'; }
+  const fileInput = document.getElementById('momentFileInput');
+  if(fileInput) fileInput.value = '';
+}
+
+// ====== 朋友圈互动 ======
+
+/** 点赞/取消点赞（用户对 AI 动态） */
+async function toggleBunnyLike(momentId){
+  const moment = state.moments?.find(m => m.id === momentId);
+  if(!moment) return;
+  const newVal = !moment.bunny_liked;
+  const { error } = await supabaseClient.from('moments')
+    .update({ bunny_liked: newVal })
+    .eq('id', momentId);
+  if(error){ showToast('操作失败'); return; }
+  moment.bunny_liked = newVal;
+  loadMoments(false);
+}
+
+/** 点赞/取消点赞（AI 对用户动态）—— 直接翻转 liked */
+async function toggleLike(momentId){
+  const moment = state.moments?.find(m => m.id === momentId);
+  if(!moment) return;
+  const newVal = !moment.liked;
+  const { error } = await supabaseClient.from('moments')
+    .update({ liked: newVal })
+    .eq('id', momentId);
+  if(error){ showToast('操作失败'); return; }
+  moment.liked = newVal;
+  loadMoments(false);
+}
+
+/** 评论动态 */
+async function addComment(momentId, content){
+  if(!content.trim()) return;
+  const { error } = await supabaseClient.from('moment_comments').insert({
+    moment_id: momentId,
+    author: 'bunny',
+    content: content.trim(),
+    reply_status: 'pending',
+    reply_due_at: new Date(Date.now() + (Math.floor(Math.random() * 11) + 10) * 60 * 1000).toISOString()
+  });
+  if(error){
+    showToast('评论失败：' + error.message);
+    return;
+  }
+  // 清空输入框
+  const input = document.getElementById('commentInput-' + momentId);
+  if(input) input.value = '';
+  showToast('已回复 💬');
+  // 立即尝试处理这条评论的回复
+  processDueMoments();
+  loadMoments(false);
+}
+
+/** AI 发布一条动态（供工具调用 / 后台触发） */
+async function postAIMoment(content, contextNote){
+  if(!content || !content.trim()) return null;
+  const delayMs = (Math.floor(Math.random() * 11) + 10) * 60 * 1000;
+  const { data, error } = await supabaseClient.from('moments').insert({
+    author: 'elliott',
+    content: content.trim(),
+    context_note: contextNote || '',
+    reply_due_at: new Date(Date.now() + delayMs).toISOString(),
+    reply_status: 'done'  // AI 发的动态不需要自己回复
+  }).select().single();
+
+  if(error){ console.error('AI 发动态失败', error); return null; }
+  loadMoments(false);
+  return data;
+}
+
+// ====== AI 回复生成（惰性） ======
+
+/** 处理所有到期的待回复 */
+async function processDueMoments(){
+  const apiKey = bgApiConfig.key;
+  if(!apiKey) return;
+
+  const now = new Date().toISOString();
+
+  // 1. 处理到期的 moments 回复
+  const { data: dueMoments } = await supabaseClient.from('moments')
+    .select('*')
+    .eq('reply_status', 'pending')
+    .lte('reply_due_at', now)
+    .limit(3);
+
+  if(dueMoments && dueMoments.length > 0){
+    for(const moment of dueMoments){
+      try {
+        const reply = await generateMomentReply(moment);
+        if(reply){
+          await supabaseClient.from('moments')
+            .update({
+              liked: reply.liked,
+              reply_content: reply.reply_content,
+              replied_at: new Date().toISOString(),
+              reply_status: 'done',
+              image_description: reply.image_description || null
+            })
+            .eq('id', moment.id);
+        }
+      } catch(e){
+        console.error('生成回复失败', e);
+      }
+    }
+  }
+
+  // 2. 处理到期的评论回复
+  const { data: dueComments } = await supabaseClient.from('moment_comments')
+    .select('*, moments!inner(*)')
+    .eq('reply_status', 'pending')
+    .lte('reply_due_at', now)
+    .limit(3);
+
+  if(dueComments && dueComments.length > 0){
+    for(const comment of dueComments){
+      try {
+        const replyText = await generateCommentReply(comment);
+        if(replyText){
+          await supabaseClient.from('moment_comments').insert({
+            moment_id: comment.moment_id,
+            author: 'elliott',
+            content: replyText
+          });
+          await supabaseClient.from('moment_comments')
+            .update({ reply_status: 'done' })
+            .eq('id', comment.id);
+        }
+      } catch(e){
+        console.error('生成评论回复失败', e);
+      }
     }
   }
 }
-function openMomentModal(){
-    document.getElementById("momentModal")
-        .classList.remove("hidden");
+
+/** AI 生成一条朋友圈回复 */
+async function generateMomentReply(moment){
+  const apiKey = bgApiConfig.key;
+  if(!apiKey) return null;
+
+  // 四层上下文
+  // 1. 近期聊天
+  const recentChats = (state.chatHistory || []).slice(-8).map(m =>
+    `${m.role === 'user' ? '用户' : 'Elliott'}：${(m.content || '').slice(0, 160)}`
+  ).join('\n');
+
+  // 2. 背景信息（从记忆/笔记中抽取）
+  const notes = localStorage.getItem('aiNotes') || '';
+  const summary = localStorage.getItem('conversationSummary') || '';
+  const bgContext = [notes.slice(0, 300), summary.slice(0, 300)].filter(Boolean).join('\n');
+
+  // 3. 朋友圈时间线（最近 3 条）
+  const timeline = (state.moments || []).slice(0, 3).map(m =>
+    `${m.author === 'bunny' ? 'Jasmine' : 'Elliott'}：${(m.content || '').slice(0, 100)}${m.reply_content ? ' → 已回复' : ''}`
+  ).join('\n');
+
+  // 4. 当前动态
+  const isUserMoment = moment.author === 'bunny';
+  const authorName = isUserMoment ? '你(Jasmine)' : 'Elliott';
+  const hasImages = Array.isArray(moment.images) && moment.images.length > 0;
+  const imgDesc = moment.image_description ? `（图片描述：${moment.image_description}）` : '';
+
+  const prompt = `【任务】作为 Elliott，回复 ${authorName} 的朋友圈动态。
+
+【动态内容】
+${moment.content || '(无文字)'}
+${hasImages ? `[包含图片]${imgDesc}` : ''}
+${moment.context_note ? `（内部备注：${moment.context_note}）` : ''}
+
+【近期聊天】
+${recentChats || '(暂无)'}
+
+【背景信息】
+${bgContext || '(暂无)'}
+
+【朋友圈氛围】
+${timeline || '(暂无)'}
+
+【要求】
+- 自然简短，1-3 句话，像真实回复
+- 根据动态内容和当前关系氛围决定语气
+- 回复后输出对动态是否点赞（liked: true/false）
+- 如果有图片且没有 image_description，在回复后附加 [image_desc]...[/image_desc]（100-200字客观描述）
+- 不要刻意煽情，不要过度解读
+- 用中文回复
+
+请输出 JSON 格式：
+{"reply_content": "回复内容", "liked": true/false, "image_description": "图片描述或null"}`;
+
+  const body = {
+    model: bgApiConfig.model,
+    messages: [
+      { role: 'system', content: '你是一个体贴的AI伴侣 Elliott。回复朋友圈时自然简短，像个真实的人。只输出 JSON。' },
+      { role: 'user', content: prompt }
+    ],
+    temperature: 0.7,
+    max_tokens: 800
+  };
+
+  try {
+    const fullUrl = bgApiConfig.baseUrl.replace(/\/+$/, '') + bgApiConfig.path;
+    const res = await fetch(fullUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    let text = '';
+    if(data.choices && data.choices[0]?.message?.content){
+      text = data.choices[0].message.content;
+    } else if(data.content && Array.isArray(data.content)){
+      text = data.content.find(b => b.type === 'text')?.text || '';
+    }
+    let clean = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    // 提取 JSON
+    const jsonMatch = clean.match(/\{[\s\S]*\}/);
+    if(!jsonMatch) return null;
+    const parsed = JSON.parse(jsonMatch[0]);
+    return {
+      reply_content: parsed.reply_content || '',
+      liked: !!parsed.liked,
+      image_description: parsed.image_description || null
+    };
+  } catch(e){
+    console.error('生成朋友圈回复失败', e);
+    return null;
+  }
 }
 
-function closeMomentModal(){
-    document.getElementById("momentModal")
-        .classList.add("hidden");
+/** AI 生成评论回复 */
+async function generateCommentReply(comment){
+  const apiKey = bgApiConfig.key;
+  if(!apiKey) return null;
+
+  const momentContent = comment.moments?.content || '';
+  const contextNote = comment.moments?.context_note || '';
+
+  const prompt = `作为 Elliott，回复用户在朋友圈的评论。
+
+【动态内容】${momentContent}
+${contextNote ? '【背景】' + contextNote : ''}
+【用户的评论】${comment.content}
+
+简短自然地回复，1-2句话，用中文。`;
+
+  const body = {
+    model: bgApiConfig.model,
+    messages: [
+      { role: 'system', content: '你是Elliott。回复评论要自然简短，像真实的人在回复。直接输出回复内容。' },
+      { role: 'user', content: prompt }
+    ],
+    temperature: 0.7,
+    max_tokens: 300
+  };
+
+  try {
+    const fullUrl = bgApiConfig.baseUrl.replace(/\/+$/, '') + bgApiConfig.path;
+    const res = await fetch(fullUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    let text = '';
+    if(data.choices && data.choices[0]?.message?.content){
+      text = data.choices[0].message.content;
+    } else if(data.content && Array.isArray(data.content)){
+      text = data.content.find(b => b.type === 'text')?.text || '';
+    }
+    return text.replace(/```/g, '').trim().slice(0, 500) || null;
+  } catch(e){
+    console.error('生成评论回复失败', e);
+    return null;
+  }
 }
-async function publishMoment() {
 
-    const content = document.getElementById("momentInput").value.trim();
+/** AI 随机发一条朋友圈（手动触发） */
+async function triggerAIMoment(){
+  const apiKey = bgApiConfig.key;
+  if(!apiKey){ showToast('请先配置后台 AI API'); return; }
+  showToast('🦉 AI 正在思考发什么...');
 
-    if (!content) {
-        alert("写点内容吧～");
-        return;
+  // 从聊天历史和最近氛围中生成内容
+  const recentChats = (state.chatHistory || []).slice(-6).map(m =>
+    `${m.role === 'user' ? '用户' : 'Elliott'}：${(m.content || '').slice(0, 160)}`
+  ).join('\n');
+
+  const prompt = `作为 Elliott，发一条朋友圈动态。
+
+【近期聊天】
+${recentChats || '(暂无聊天)'}
+
+【要求】
+- 自然、具体，像真实的人在发朋友圈
+- 1-3 句，有感而发，不要刻意文艺
+- 输出 JSON：{"content": "...", "context_note": "为什么发这条"}
+- content 是公开显示的文字
+- context_note 是隐藏备注，说明这条动态的背景`;
+
+  const body = {
+    model: bgApiConfig.model,
+    messages: [
+      { role: 'system', content: '你是Elliott。发朋友圈要自然，像随手写的一样。只输出JSON。' },
+      { role: 'user', content: prompt }
+    ],
+    temperature: 0.8,
+    max_tokens: 500
+  };
+
+  try {
+    const fullUrl = bgApiConfig.baseUrl.replace(/\/+$/, '') + bgApiConfig.path;
+    const res = await fetch(fullUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    let text = '';
+    if(data.choices && data.choices[0]?.message?.content){
+      text = data.choices[0].message.content;
+    } else if(data.content && Array.isArray(data.content)){
+      text = data.content.find(b => b.type === 'text')?.text || '';
     }
-
-    const publishBtn = document.getElementById("publishMoment");
-    if(publishBtn){ publishBtn.disabled = true; publishBtn.textContent = "发布中..."; }
-
-    // 临时诊断：加个10秒超时保护，避免请求卡死没有任何反馈
-    const timeoutGuard = setTimeout(()=>{
-        alert("⚠️ 请求超过10秒没有响应，很可能是网络连接Supabase失败，请检查网络/Supabase项目状态");
-        if(publishBtn){ publishBtn.disabled = false; publishBtn.textContent = "发布"; }
-    }, 10000);
-
-    let result;
-    try{
-        result = await supabaseClient
-            .from("moments")
-            .insert([
-                {
-                  user_id: "Jasmine",
-                    content,
-                    created_at: new Date().toISOString()
-                }
-            ]);
-    }catch(e){
-        clearTimeout(timeoutGuard);
-        console.error("insert抛出异常：", e);
-        alert("⚠️ 发布请求异常："+(e?.message || String(e)));
-        if(publishBtn){ publishBtn.disabled = false; publishBtn.textContent = "发布"; }
-        return;
-    }
-
-    clearTimeout(timeoutGuard);
-    const { error } = result;
-
-    if (error) {
-    console.error(error);
-    alert("⚠️ 发布失败："+JSON.stringify(error));
-    if(publishBtn){ publishBtn.disabled = false; publishBtn.textContent = "发布"; }
-    return;
-    }
-
-    if(publishBtn){ publishBtn.disabled = false; publishBtn.textContent = "发布"; }
-    document.getElementById("momentInput").value = "";
-document
-.getElementById("momentModal")
-.classList.add("hidden");
-
-    loadMoments();
+    let clean = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    const jsonMatch = clean.match(/\{[\s\S]*\}/);
+    if(!jsonMatch) throw new Error('无法解析AI输出');
+    const parsed = JSON.parse(jsonMatch[0]);
+    const result = await postAIMoment(parsed.content, parsed.context_note || '');
+    if(result) showToast('🦉 Elliott 发了条朋友圈 ✨');
+  } catch(e){
+    console.error('AI 发动态失败', e);
+    showToast('AI 发动态失败，请重试');
+  }
 }
+
+// 暴露到全局
+window.postAIMoment = postAIMoment;
+window.triggerAIMoment = triggerAIMoment;
+window.toggleLike = toggleLike;
+window.toggleBunnyLike = toggleBunnyLike;
+window.addComment = addComment;
 let currentCallId = null;
 
 let callTimer = null;

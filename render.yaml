@@ -7,6 +7,7 @@ services:
     buildCommand: npm install
     startCommand: node server/index.mjs
     rootDir: Duetto
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
         value: 22
@@ -17,5 +18,8 @@ services:
     env: python
     region: singapore
     buildCommand: pip install -r requirements.txt
-    startCommand: python standalone_server.py --host 0.0.0.0
+    startCommand: python standalone_server.py --host 0.0.0.0 --port $PORT
     rootDir: cedareco
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0

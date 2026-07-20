@@ -516,6 +516,7 @@ $('arDarkToggle')?.addEventListener('click', function(){
 });
 
 $('arSwitchThemeBtn')?.addEventListener('click', ()=>{ changeTheme('old'); });
+$('arAIMomentBtn')?.addEventListener('click', ()=>{ if(typeof triggerAIMoment === 'function') triggerAIMoment(); });
 $('arClassicBtn')?.addEventListener('click', ()=>{ changeTheme('old'); });
 
 /* ═══════════════════════════════════
@@ -790,21 +791,70 @@ $('arCallOverlay')?.addEventListener('click', function(e){
 /* ═══════════════════════════════════
    Aries 朋友圈发布
 ═══════════════════════════════════ */
+let arMomentFile = null;
 $('arPostMomentBtn')?.addEventListener('click', ()=>{
   const modal = $('arMomentModal');
   if(modal) modal.classList.remove('hidden');
 });
 $('arCancelMoment')?.addEventListener('click', ()=>{
   $('arMomentModal')?.classList.add('hidden');
-  if($('arMomentInput')) $('arMomentInput').value='';
+  const input = $('arMomentInput');
+  if(input) input.value='';
+  arMomentFile = null;
+  const prev = $('arMomentImagePreview');
+  if(prev){ prev.style.display='none'; }
+});
+// Aries 图片选择
+$('arChooseImage')?.addEventListener('click', ()=>{
+  let fi = document.getElementById('arMomentFileInput');
+  if(!fi){
+    fi = document.createElement('input');
+    fi.id = 'arMomentFileInput';
+    fi.type = 'file';
+    fi.accept = 'image/*';
+    fi.style.display = 'none';
+    document.body.appendChild(fi);
+  }
+  fi.onchange = (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    arMomentFile = file;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const prev = $('arMomentPreviewImg');
+      if(prev) prev.src = ev.target.result;
+      const box = $('arMomentImagePreview');
+      if(box) box.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  };
+  fi.click();
+});
+// 移除Aries图片
+$('arMomentImgRemove')?.addEventListener('click', ()=>{
+  arMomentFile = null;
+  const box = $('arMomentImagePreview');
+  if(box) box.style.display = 'none';
+  const fi = document.getElementById('arMomentFileInput');
+  if(fi) fi.value = '';
 });
 $('arPublishMoment')?.addEventListener('click', async ()=>{
   const input = $('arMomentInput');
   const content = input.value.trim();
-  if(!content) return;
+  if(!content && !arMomentFile){ showToast('写点内容或选张图吧～'); return; }
+  // 有图片先上传
+  let urls = [];
+  if(arMomentFile){
+    try { urls.push(await uploadMomentImage(arMomentFile)); }
+    catch(e){ showToast('图片上传失败：'+e.message); return; }
+  }
   $('momentInput').value = content;
-  $('arCancelMoment')?.click();
-  if(typeof publishMoment === 'function') publishMoment();
+  $('arMomentModal')?.classList.add('hidden');
+  input.value='';
+  arMomentFile = null;
+  const prev = $('arMomentImagePreview');
+  if(prev) prev.style.display='none';
+  if(typeof publishMoment === 'function') await publishMoment(urls);
 });
 
 /* ═══════════════════════════════════
