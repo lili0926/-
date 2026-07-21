@@ -1784,24 +1784,26 @@ function bindEvents(){
   function loadRemoteUrls(){
     try {
       const urls = JSON.parse(localStorage.getItem('remoteServiceUrls') || '{}');
-      const dUrl = document.getElementById('remoteDuettoUrl');
-      const cUrl = document.getElementById('remoteCedarecoUrl');
-      if(dUrl) dUrl.value = urls.duetto || RENDER_URLS.duetto;
-      if(cUrl) cUrl.value = urls.cedareco || RENDER_URLS.cedareco;
-      // Aries 版
-      const arD = document.getElementById('arRemoteDuettoUrl');
-      const arC = document.getElementById('arRemoteCedarecoUrl');
-      if(arD) arD.value = urls.duetto || RENDER_URLS.duetto;
-      if(arC) arC.value = urls.cedareco || RENDER_URLS.cedareco;
+      const setVal = (id, key, fallback) => {
+        const el = document.getElementById(id);
+        if(el) el.value = urls[key] || fallback;
+      };
+      setVal('remoteDuettoUrl', 'duetto', RENDER_URLS.duetto);
+      setVal('remoteCedarecoUrl', 'cedareco', RENDER_URLS.cedareco);
+      setVal('remoteCollarUrl', 'collar', RENDER_URLS.collar);
+      setVal('remoteEventideUrl', 'eventide', RENDER_URLS.eventide);
+      setVal('remoteHervoiceUrl', 'hervoice', RENDER_URLS.hervoice);
     } catch(e){}
   }
   function saveRemoteUrls(){
-    const urls = {
-      duetto: document.getElementById('remoteDuettoUrl')?.value.trim() || document.getElementById('arRemoteDuettoUrl')?.value.trim() || '',
-      cedareco: document.getElementById('remoteCedarecoUrl')?.value.trim() || document.getElementById('arRemoteCedarecoUrl')?.value.trim() || ''
-    };
+    const ids = ['remoteDuettoUrl','remoteCedarecoUrl','remoteCollarUrl','remoteEventideUrl','remoteHervoiceUrl'];
+    const urls = {};
+    ids.forEach(id => {
+      const key = id.replace('remote','').replace('Url','').toLowerCase();
+      urls[key] = document.getElementById(id)?.value.trim() || '';
+    });
     localStorage.setItem('remoteServiceUrls', JSON.stringify(urls));
-    loadRemoteUrls(); // 同步另一套
+    loadRemoteUrls();
     showToast('远程地址已保存 ✨');
   }
   document.getElementById('saveRemoteUrlsBtn')?.addEventListener('click', saveRemoteUrls);
@@ -3805,7 +3807,9 @@ function initEventideFrame(){
   if(host === '127.0.0.1' || host === 'localhost' || host.match(/^192\.|^10\.|^172\./)){
     frame.src = `http://${host}:3876`;
   } else {
-    frame.src = `http://localhost:3876`;
+    // 非本地环境：尝试用户配置的远程地址
+    const remoteUrls = JSON.parse(localStorage.getItem('remoteServiceUrls') || '{}');
+    frame.src = remoteUrls.eventide || 'http://localhost:3876';
   }
 }
 initEventideFrame();
@@ -3818,7 +3822,8 @@ function initHervoiceFrame(){
   if(host === '127.0.0.1' || host === 'localhost' || host.match(/^192\.|^10\.|^172\./)){
     frame.src = `http://${host}:8010`;
   } else {
-    frame.src = `http://localhost:8010`;
+    const remoteUrls = JSON.parse(localStorage.getItem('remoteServiceUrls') || '{}');
+    frame.src = remoteUrls.hervoice || 'http://localhost:8010';
   }
 }
 initHervoiceFrame();
