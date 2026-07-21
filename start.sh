@@ -30,7 +30,7 @@ MY_IP=$(get_ip)
 cleanup() {
   echo ""
   echo "🛑 正在关闭所有服务..."
-  kill $PID_MAIN $PID_DUETTO $PID_ECO $PID_COLLAR $PID_EVENTIDE $PID_HERVOICE $PID_MONOPOLY 2>/dev/null || true
+  kill $PID_MAIN $PID_DUETTO $PID_ECO $PID_COLLAR $PID_EVENTIDE $PID_HERVOICE $PID_MONOPOLY $PID_CAPTIVITY 2>/dev/null || true
   wait 2>/dev/null || true
   echo "✅ 已关闭"
 }
@@ -98,11 +98,19 @@ echo "   PID: $PID_HERVOICE  端口: 8010"
 
 # ─── 7. 涩涩大富翁 API ───
 echo ""
-echo "🎲 [7/7] 启动涩涩大富翁 API..."
+echo "🎲 [7/8] 启动涩涩大富翁 API..."
 cd "$ROOT_DIR/spicy-monopoly-tmp"
 python3 -m uvicorn monopoly_api:app --host 0.0.0.0 --port 8069 &
 PID_MONOPOLY=$!
 echo "   PID: $PID_MONOPOLY  端口: 8069"
+
+# ─── 8. Captivity Simulator ───
+echo ""
+echo "⛓️ [8/8] 启动囚禁模拟器..."
+cd "$ROOT_DIR/captivity-simulator"
+captivity-simulator &
+PID_CAPTIVITY=$!
+echo "   PID: $PID_CAPTIVITY  端口: 5058"
 
 # ─── 启动完成 ───
 cd "$ROOT_DIR"

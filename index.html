@@ -329,9 +329,9 @@
 <div class="modal" id="gamePanel" onclick="if(event.target===this)this.classList.remove('open')"><div class="modal-box modal-large" style="max-width:420px"><div class="modal-header"><span>🎮 游戏大厅</span><button class="icon-btn" onclick="document.getElementById('gamePanel').classList.remove('open')">✕</button></div><div id="gameList"></div></div></div>
 <!-- 内嵌游戏遮罩 -->
 <div class="modal" id="gameEmbedPanel" onclick="if(event.target===this)closeGameEmbed()" style="z-index:1000;background:rgba(0,0,0,.6);backdrop-filter:blur(8px)">
-  <div style="position:relative;width:100%;height:100%;max-width:480px;max-height:90vh;margin:auto;border-radius:20px;overflow:hidden;background:#faf3ee;box-shadow:0 20px 60px rgba(0,0,0,.3)">
-    <button onclick="closeGameEmbed()" style="position:absolute;top:10px;right:10px;z-index:10;width:32px;height:32px;border-radius:50%;border:none;background:rgba(0,0,0,.3);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
-    <iframe id="gameEmbedFrame" style="width:100%;height:100%;border:none" allow="autoplay"></iframe>
+  <div style="position:relative;width:100%;height:100%;max-width:480px;margin:auto;border-radius:20px;overflow-y:auto;background:#faf3ee;box-shadow:0 20px 60px rgba(0,0,0,.3);-webkit-overflow-scrolling:touch">
+    <button onclick="closeGameEmbed()" style="position:sticky;top:10px;left:100%;z-index:10;width:32px;height:32px;border-radius:50%;border:none;background:rgba(0,0,0,.3);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;float:right;margin-right:10px">✕</button>
+    <iframe id="gameEmbedFrame" style="width:100%;min-height:100vh;border:none" allow="autoplay"></iframe>
   </div>
 </div>
 <div class="mem-modal" id="memCategoryModal" onclick="if(event.target===this)this.classList.remove('show')"><div class="mem-card mem-category-card"><button class="mem-card-close" id="closeMemCategoryModal">×</button><div class="mem-category-title">记忆匣</div><div class="mem-category-list"><button class="mem-category-item" data-category="about"><span class="mem-category-icon">💌</span><span class="mem-category-name">关于我们</span></button><button class="mem-category-item" data-category="other"><span class="mem-category-icon">🗂</span><span class="mem-category-name">其他</span></button><button class="mem-category-item" data-category="nsfw"><span class="mem-category-icon">🔥</span><span class="mem-category-name">色色</span></button></div></div></div>

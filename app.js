@@ -3699,6 +3699,14 @@ const GAMES = [
     embed: true,
   },
   {
+    id: 'captivity',
+    name: '⚔️ 囚禁模拟器',
+    icon: '⛓️',
+    desc: '30 天囚禁角色扮演，规则引擎驱动',
+    get url(){ return serviceUrl(5058, ''); },
+    embed: false,
+  },
+  {
     id: 'spicy-monopoly',
     name: '🎲 涩涩大富翁',
     icon: '🏰',
