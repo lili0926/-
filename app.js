@@ -3632,9 +3632,9 @@ const RENDER_URLS = {
 // 生成外部服务的 URL
 function serviceUrl(port, path){
   const host = window.location.hostname;
-  // 本地开发 → 用局域网地址
+  // 本地 / 局域网 → 用当前页面的 host（手机访问时不会错误地回退到 localhost）
   if(host === '127.0.0.1' || host === 'localhost' || host.match(/^192\.|^10\.|^172\./)){
-    return `http://localhost:${port}${path || ''}`;
+    return `http://${host}:${port}${path || ''}`;
   }
   // 从 localStorage 读取用户自定义的远程地址
   const remoteUrls = JSON.parse(localStorage.getItem('remoteServiceUrls') || '{}');
