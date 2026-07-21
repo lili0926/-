@@ -1,13 +1,11 @@
 // sw.js — Service Worker
 
-const CACHE_NAME = "aries-home-v2";
+const CACHE_NAME = "aries-home-v3";
 const STATIC_ASSETS = [
   "/",
   "/index.html",
   "/app.js",
-  "/aries-init.js",
   "/style.css",
-  "/style-aries.css",
 ];
 
 // 安装时预缓存核心文件
