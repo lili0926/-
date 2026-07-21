@@ -1,11 +1,11 @@
 {
   "name": "Jasmine's Home",
   "short_name": "Aries",
-  "start_url": "/index.html", 
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "theme_color": "#1a1a2e",
-"background_color": "#1a1a2e", 
+  "background_color": "#1a1a2e",
   "icons": [
     {
       "src": "icon-192.png",
