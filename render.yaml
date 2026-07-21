@@ -30,31 +30,33 @@ services:
     env: node
     region: singapore
     buildCommand: npm install && npm run build
-    startCommand: npx next start -H 0.0.0.0
+    startCommand: npm start
     rootDir: collar-tmp
     envVars:
       - key: NODE_VERSION
         value: 22
 
   # 🌙 Eventide 生理 — Python 纯标准库
+  # 注：用 bash wrapper 避免 Render 吞 .py 扩展名
   - type: web
     name: eventide
     env: python
     region: singapore
     buildCommand: ""
-    startCommand: PYTHONPATH=eventide-tmp/src python3 eventide-server.py $PORT
+    startCommand: bash eventide-start.sh
     rootDir: .
     envVars:
       - key: PYTHON_VERSION
         value: 3.14.0
 
   # 🎙 hervoice 语情 — Python 纯标准库
+  # 注：用 bash wrapper 避免 Render 吞 .py 扩展名
   - type: web
     name: hervoice
     env: python
     region: singapore
     buildCommand: ""
-    startCommand: python3 hervoice-server.py $PORT
+    startCommand: bash hervoice-start.sh
     rootDir: .
     envVars:
       - key: PYTHON_VERSION
