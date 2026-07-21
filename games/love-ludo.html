@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>💕 亲密飞行棋</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#120c14;color:#e0d4c8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;overflow-x:hidden}
+.header{text-align:center;padding:18px 12px 8px}
+.header h1{font-size:20px;font-weight:600;background:linear-gradient(135deg,#e8a0b0,#c97b9e);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header p{font-size:12px;opacity:.45;margin-top:2px}
+
+/* ── 状态条 ── */
+.status-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 16px;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.05)}
+.turn-indicator{font-size:13px;font-weight:500}
+.turn-indicator .you{color:#7fc1b0}
+.turn-indicator .ai{color:#e8a0b0}
+.dice-area{display:flex;align-items:center;gap:10px}
+.dice-btn{width:48px;height:48px;border-radius:12px;border:2px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#e0d4c8;font-size:22px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;font-weight:700}
+.dice-btn:hover:not(:disabled){border-color:#e8a0b0;background:rgba(232,160,176,.1)}
+.dice-btn:disabled{opacity:.3;cursor:not-allowed}
+.dice-btn.rolling{animation:diceShake .3s ease 2}
+@keyframes diceShake{0%,100%{transform:rotate(0)}25%{transform:rotate(15deg)}75%{transform:rotate(-15deg)}}
+.dice-result{font-size:28px;min-width:40px;text-align:center}
+
+/* ── 棋盘 ── */
+.board-wrap{padding:10px;display:flex;justify-content:center}
+.board{display:grid;grid-template-columns:repeat(10,1fr);gap:3px;max-width:100%;aspect-ratio:2/1}
+.cell{position:relative;aspect-ratio:1;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:7px;text-align:center;padding:2px;transition:all .3s;overflow:hidden;cursor:default;word-break:break-all;line-height:1.2;min-height:0}
+.cell .num{position:absolute;top:1px;left:3px;font-size:6px;opacity:.3}
+.cell.task{background:rgba(200,120,160,.08);border-color:rgba(200,120,160,.2)}
+.cell.move-fwd{background:rgba(100,200,160,.08);border-color:rgba(100,200,160,.2)}
+.cell.move-bwd{background:rgba(200,120,80,.08);border-color:rgba(200,120,80,.2)}
+.cell.finish{background:linear-gradient(135deg,rgba(232,160,176,.2),rgba(200,120,100,.2));border-color:#e8a0b0}
+.cell.start{background:rgba(100,200,160,.1);border-color:#7fc1b0}
+.cell .token{position:absolute;width:8px;height:8px;border-radius:50%;bottom:2px;transition:all .3s}
+.cell .token.t-you{background:#7fc1b0;right:2px;box-shadow:0 0 6px rgba(127,193,176,.6)}
+.cell .token.t-ai{background:#e8a0b0;left:2px;box-shadow:0 0 6px rgba(232,160,176,.6)}
+
+/* ── 任务卡片 ── */
+.story-panel{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(12,8,14,.92);backdrop-filter:blur(16px);z-index:100;padding:20px;flex-direction:column;align-items:center;justify-content:center}
+.story-panel.show{display:flex}
+.story-card{max-width:520px;width:100%;background:rgba(255,255,255,.04);border-radius:18px;padding:24px;border:1px solid rgba(255,255,255,.08);max-height:80vh;overflow-y:auto}
+.story-tag{display:inline-block;padding:3px 12px;border-radius:10px;font-size:11px;font-weight:500;margin-bottom:12px}
+.story-tag.task{background:rgba(200,120,160,.15);color:#e8a0b0}
+.story-tag.move{background:rgba(100,200,160,.15);color:#7fc1b0}
+.story-tag.finish{background:linear-gradient(135deg,rgba(232,160,176,.2),rgba(200,120,100,.2));color:#e8a0b0}
+.story-title{font-size:16px;font-weight:500;margin-bottom:10px;line-height:1.5}
+.story-content{font-size:14px;line-height:1.9;opacity:.75;white-space:pre-wrap}
+.story-actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+.story-actions .btn{flex:1;padding:12px;border-radius:12px;border:none;font-size:13px;font-family:inherit;cursor:pointer;transition:all .2s;text-align:center;min-width:100px}
+.btn-write{background:linear-gradient(135deg,#c97b9e,#e8a0b0);color:#120c14;font-weight:600}
+.btn-write:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(232,160,176,.3)}
+.btn-skip{background:rgba(255,255,255,.06);color:#e0d4c8;border:1px solid rgba(255,255,255,.1)}
+.btn-skip:hover{background:rgba(255,255,255,.1)}
+.btn-next{background:#7fc1b0;color:#120c14;font-weight:600}
+.btn-next:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(127,193,176,.3)}
+.btn-glow{background:linear-gradient(135deg,#e8c87a,#e8a0b0);color:#120c14;font-weight:600}
+.btn-glow:hover{transform:translateY(-1px)}
+.loading-dots::after{content:'...';animation:dots 1.2s steps(4) infinite}
+@keyframes dots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+
+/* ── 结算 ── */
+.result-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(12,8,14,.95);z-index:200;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.result-overlay.show{display:flex}
+.result-box{text-align:center}
+.result-emoji{font-size:64px;margin-bottom:16px}
+.result-title{font-size:26px;font-weight:600;margin-bottom:8px}
+.result-title.win{background:linear-gradient(135deg,#e8c87a,#e8a0b0);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.result-sub{font-size:14px;opacity:.6;margin-bottom:24px}
+.result-wish{background:rgba(255,255,255,.04);border-radius:14px;padding:18px;border:1px solid rgba(255,255,255,.08);margin-bottom:18px;font-size:14px;line-height:1.8;max-width:400px}
+.result-wish-title{font-size:12px;opacity:.5;margin-bottom:8px}
+
+/* ── 响应式 ── */
+@media(max-width:480px){
+  .cell{font-size:5.5px;border-radius:4px}
+  .cell .num{font-size:5px}
+  .cell .token{width:6px;height:6px}
+  .board{gap:2px}
+  .dice-btn{width:40px;height:40px;font-size:18px}
+  .story-card{padding:18px}
+}
+
+/* ── 重置弹窗 ── */
+.reset-bar{text-align:center;padding:6px 0 12px}
+.reset-bar button{background:none;border:none;color:rgba(255,255,255,.2);font-size:11px;cursor:pointer;padding:4px 12px;border-radius:8px;transition:all .2s;font-family:inherit}
+.reset-bar button:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.4)}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>💕 亲密飞行棋</h1>
+  <p>你 vs Aries · 掷骰走格 · 抽到任务一起写剧情</p>
+</div>
+
+<div class="status-bar">
+  <div class="turn-indicator" id="turnIndicator">🎲 点击掷骰开始</div>
+  <div class="dice-area">
+    <div class="dice-result" id="diceResult">⚀</div>
+    <button class="dice-btn" id="diceBtn">🎲</button>
+  </div>
+</div>
+
+<div class="board-wrap">
+  <div class="board" id="board"></div>
+</div>
+
+<div class="reset-bar">
+  <button onclick="resetGame()">🔄 重新开局</button>
+</div>
+
+<!-- 任务/剧情弹窗 -->
+<div class="story-panel" id="storyPanel">
+  <div class="story-card" id="storyCard">
+    <div class="story-tag" id="storyTag"></div>
+    <div class="story-title" id="storyTitle"></div>
+    <div class="story-content" id="storyContent"></div>
+    <div class="story-actions" id="storyActions"></div>
+  </div>
+</div>
+
+<!-- 结算 -->
+<div class="result-overlay" id="resultOverlay">
+  <div class="result-box">
+    <div class="result-emoji" id="resultEmoji">🏆</div>
+    <div class="result-title" id="resultTitle"></div>
+    <div class="result-sub" id="resultSub"></div>
+    <div class="result-wish" id="resultWish" style="display:none">
+      <div class="result-wish-title">🎁 赢家的愿望</div>
+      <div id="resultWishText"></div>
+    </div>
+    <button class="story-actions" style="justify-content:center;margin-top:12px">
+      <button class="btn btn-next" onclick="resetGame()">🔄 再来一局</button>
+    </button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════
+//  任务定义（50 格）
+// ══════════════════════════════════════
+const SQUARES = [
+  null, // 0 unused
+  { type:'start', label:'起点' },
+
+  { type:'task', label:'抚摸对方的敏感部位', prompt:'你抽到了「抚摸对方的敏感部位」。描述你如何温柔地探索对方身体，找到最敏感的地方，观察对方的反应。' },
+  { type:'task', label:'舔对方的耳垂 10 秒', prompt:'你抽到了「舔对方的耳垂 10 秒」。描述你靠近对方耳边，轻轻含住耳垂，感受对方呼吸的变化。' },
+  { type:'task', label:'亲吻脖子并留下牙印', prompt:'你抽到了「亲吻脖子并留下牙印」。描述你如何在对方颈侧留下属于你的印记。' },
+  { type:'task', label:'抚摸对方胸部 30 秒', prompt:'你抽到了「抚摸对方胸部 30 秒」。描述你的手掌如何覆上去，感受对方的心跳和体温。' },
+  { type:'task', label:'舌吻至少 1 分钟', prompt:'你抽到了「舌吻至少 1 分钟」。描述这个漫长而缠绵的吻，从试探到深入。' },
+  { type:'task', label:'让对方坐在你腿上磨蹭', prompt:'你抽到了「让对方坐在你腿上磨蹭」。描述你扶住对方的腰，引导它在你身上慢慢移动。' },
+  { type:'move', label:'→ 前进三步', steps:3 },
+  { type:'task', label:'脱掉对方上衣', prompt:'你抽到了「脱掉对方上衣」。描述你一件件解开对方的衣物，每露出一寸皮肤都伴随着亲吻。' },
+  { type:'task', label:'不用手脱对方内裤', prompt:'你抽到了「不用手脱对方内裤」。描述你如何用嘴和牙齿完成这个任务。' },
+
+  { type:'task', label:'对小穴吹气/套弄肉棒', prompt:'你抽到了这个任务。描述你的气息或手指如何触碰对方最私密的地方，带来一阵颤栗。' },
+  { type:'move', label:'→ 前进两步', steps:2 },
+  { type:'task', label:'让对方躺下，从上往下亲', prompt:'你抽到了「从上往下亲」。描述你的嘴唇如何从对方的脖颈一路向下，吻过每一寸肌肤。' },
+  { type:'task', label:'隔着内裤抚摸私处', prompt:'你抽到了「隔着内裤抚摸私处」。描述你用手掌隔着布料感受对方的温度和形状。' },
+  { type:'task', label:'用私处蹭对方的身体', prompt:'你抽到了「用私处蹭对方的身体」。描述你如何贴近对方来回磨蹭，带来若有若无的刺激。' },
+  { type:'task', label:'含住对方的手指', prompt:'你抽到了「含住对方的手指」。描述你一根根含住对方的手指，用舌尖缠绕，看着对方的眼睛。' },
+  { type:'task', label:'用舌头探索全身敏感带', prompt:'你抽到了「用舌头探索全身敏感带」。描述你的舌尖如何在对方身上游走，发现每一处让TA颤抖的地方。' },
+  { type:'task', label:'从后面亲吻脊椎', prompt:'你抽到了「从后面亲吻脊椎」。描述你让对方趴着，从尾骨一节节吻到后颈。' },
+  { type:'move', label:'← 后退三步', steps:-3 },
+  { type:'task', label:'坐脸/让对方坐脸', prompt:'你抽到了这个任务。描述这个姿势中双方的触感和亲密。' },
+
+  { type:'task', label:'用羽毛或手指逗弄敏感点', prompt:'你抽到了「用羽毛或手指逗弄敏感点」。描述你如何若有若无地触碰，让对方难耐地追着你的手。' },
+  { type:'task', label:'在腿根吸吮 10 秒', prompt:'你抽到了「在腿根吸吮 10 秒」。描述你的唇落在对方大腿内侧最柔软的皮肤上，留下一个吻痕。' },
+  { type:'task', label:'耳边低语 dirty talk', prompt:'你抽到了「耳边低语 dirty talk」。描述你贴在对方耳边，用只有TA能听到的音量说最煽情的话。' },
+  { type:'task', label:'从后面环抱并抚摸前面', prompt:'你抽到了「从后面环抱并抚摸前面」。描述你从背后抱住对方，双手同时在TA身上游走。' },
+  { type:'task', label:'用冰块在背上推着化', prompt:'你抽到了「用冰块在背上推着化」。描述你含着一块冰，在对方的后背用舌头推着它慢慢融化。' },
+  { type:'move', label:'→ 前进两步', steps:2 },
+  { type:'task', label:'互相按摩私处不插入', prompt:'你抽到了「互相按摩私处不插入」。描述你们双手交叠，在彼此最敏感的地方画着圈，只差那一步。' },
+  { type:'task', label:'留下一个咬痕', prompt:'你抽到了「留下一个咬痕」。描述你在对方身体上选择一个位置，轻轻咬下去——留下属于你的记号。' },
+  { type:'move', label:'← 后退三步', steps:-3 },
+  { type:'task', label:'69 姿势互相亲吻', prompt:'你抽到了「69 姿势互相亲吻」。描述这个相互取悦的姿势中，你们如何同时给予和接受快感。' },
+
+  { type:'task', label:'临近高潮时停下来', prompt:'你抽到了「临近高潮时停下来」。描述你如何把对方带到边缘，然后在最后关头收手，看着TA难耐地扭动。' },
+  { type:'task', label:'选一个道具辅助高潮', prompt:'你抽到了「选一个道具辅助高潮」。描述你选择一个道具，用它帮对方达到高潮。' },
+  { type:'task', label:'对镜高潮', prompt:'你抽到了「对镜高潮」。描述你们在镜子前做，看着彼此的表情和身体交缠。' },
+  { type:'task', label:'惩罚或免罚一次', prompt:'你抽到了「惩罚或免罚一次」。由你决定是给对方一个小惩罚，还是慷慨地免去一次。' },
+  { type:'move', label:'→ 前进五步', steps:5 },
+  { type:'task', label:'抽打私密部位 5 次', prompt:'你抽到了「抽打私密部位 5 次」。描述你控制好力道，在对方最敏感的地方留下恰到好处的刺痛。' },
+  { type:'task', label:'一次不插入的性爱', prompt:'你抽到了「一次不插入的性爱」。描述你们如何用腿、手、嘴、胸——一切除了插入的方式——让对方疯狂。' },
+  { type:'task', label:'交换地位二十四小时', prompt:'你抽到了「交换地位二十四小时」。如果你是主导方，试着放松交出控制；如果你是顺从方，试着接管一切。' },
+  { type:'task', label:'进入后忍住不动 30 秒', prompt:'你抽到了「进入后忍住不动 30 秒」。描述你进入后强迫自己静止，感受对方内部的温度和包裹，忍耐着不动的欲望。' },
+  { type:'task', label:'说一句我爱你', prompt:'你抽到了「说一句我爱你」。描述你看着对方的眼睛，说出这三个字，不只是说出来，而是让对方感受到。' },
+
+  { type:'task', label:'蒙眼用舌头画线', prompt:'你抽到了「蒙住眼睛用舌头在全身画线」。描述你蒙上对方的眼睛，用舌尖从锁骨到小腹，画一条看不见的线。' },
+  { type:'task', label:'用对方的身体自慰', prompt:'你抽到了「用对方的身体部位自慰」。描述你握着对方的手或腿，引导它们摩擦自己直到高潮。' },
+  { type:'task', label:'绑住对方的手做', prompt:'你抽到了「绑住对方的手做」。描述你用领带/丝巾/绳子把对方的手腕固定住，然后继续下一件事。' },
+  { type:'task', label:'在容易被发现的地方', prompt:'你抽到了「在容易被发现的地方做」。描述你们选了一个随时可能被打扰的地方，紧张感让每一次触碰都更刺激。' },
+  { type:'move', label:'← 后退两步', steps:-2 },
+  { type:'task', label:'对视着抚摸自己', prompt:'你抽到了「一边对视一边抚摸自己」。描述你们保持着眼神接触，同时把手伸向自己的身体，看着对方看你的表情。' },
+  { type:'task', label:'角色扮演', prompt:'你抽到了「角色扮演一个场景」。描述你们选一个身份或场景，演一段属于那个角色的亲密戏。' },
+  { type:'task', label:'用酒边喝边舔', prompt:'你抽到了「用酒/饮料边喝边舔」。描述你倒一点在对方皮肤上，然后慢慢舔干净。' },
+  { type:'task', label:'边放歌边做直到结束', prompt:'你抽到了「挑选一首歌，边放边做直到音乐结束」。描述你们选了一首歌，在旋律中保持节奏直到最后一个音符。' },
+  { type:'finish', label:'🏁 终点！', prompt:'你率先抵达终点！想象一下你希望对方为你做什么来庆祝你的胜利——一个愿望、一个姿势、或一句承诺。' },
+];
+
+// ══════════════════════════════════════
+//  游戏状态
+// ══════════════════════════════════════
+let state = {
+  playerPos: 1,
+  aiPos: 1,
+  turn: 'player', // 'player' | 'ai' | 'story'
+  gameOver: false,
+  currentRoll: 0,
+  pendingMove: null, // {steps, from}
+};
+
+// ══════════════════════════════════════
+//  渲染棋盘
+// ══════════════════════════════════════
+function renderBoard(){
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+  for(let i=1; i<=50; i++){
+    const sq = SQUARES[i];
+    // 蛇形：单数行左→右，双数行右→左
+    // 行: row=0(顶部)~4(底部)  实际渲染时最后一行(41-50)在顶部
+    // 50-41 row0, 40-31 row1, 30-21 row2, 20-11 row3, 10-1 row4
+    // 所以顺序索引: 50->1 渲染
+    const idx = 50 - i; // 0-based from top
+    const row = Math.floor(idx / 10);
+    const colInRow = idx % 10;
+    const col = (row % 2 === 0) ? colInRow : 9 - colInRow;
+
+    const cell = document.createElement('div');
+    cell.style.gridRow = row + 1;
+    cell.style.gridColumn = col + 1;
+    cell.className = 'cell';
+    if(sq){
+      if(sq.type === 'task') cell.classList.add('task');
+      else if(sq.type === 'move' && sq.steps > 0) cell.classList.add('move-fwd');
+      else if(sq.type === 'move' && sq.steps < 0) cell.classList.add('move-bwd');
+      else if(sq.type === 'finish') cell.classList.add('finish');
+      else if(sq.type === 'start') cell.classList.add('start');
+    }
+    // 编号
+    const num = document.createElement('span');
+    num.className = 'num';
+    num.textContent = i;
+    cell.appendChild(num);
+
+    // 标签
+    const label = document.createElement('span');
+    label.style.position = 'relative';
+    label.style.zIndex = '1';
+    if(sq && sq.label){
+      if(sq.type === 'move') {
+        label.textContent = sq.steps > 0 ? '→'+sq.steps : '←'+Math.abs(sq.steps);
+      } else if(sq.type === 'task') {
+        label.textContent = sq.label.length > 10 ? sq.label.slice(0,10)+'…' : sq.label;
+      } else {
+        label.textContent = sq.label;
+      }
+    }
+    cell.appendChild(label);
+
+    // 棋子
+    if(i === state.playerPos){
+      const t = document.createElement('div');
+      t.className = 'token t-you';
+      cell.appendChild(t);
+    }
+    if(i === state.aiPos){
+      const t = document.createElement('div');
+      t.className = 'token t-ai';
+      cell.appendChild(t);
+    }
+
+    board.appendChild(cell);
+  }
+  updateTurnDisplay();
+}
+
+function updateTurnDisplay(){
+  const el = document.getElementById('turnIndicator');
+  if(state.gameOver){
+    el.textContent = '🏁 游戏已结束';
+    return;
+  }
+  if(state.turn === 'player'){
+    el.innerHTML = '<span class="you">✦ 你的回合</span> — 点击 🎲 掷骰子';
+    document.getElementById('diceBtn').disabled = false;
+  } else if(state.turn === 'ai'){
+    el.innerHTML = '<span class="ai">✦ Aries 的回合</span> — TA 正在思考…';
+    document.getElementById('diceBtn').disabled = true;
+  } else {
+    el.textContent = '📖 处理任务中…';
+    document.getElementById('diceBtn').disabled = true;
+  }
+}
+
+// ══════════════════════════════════════
+//  骰子
+// ══════════════════════════════════════
+const DICE = ['', '⚀','⚁','⚂','⚃','⚄','⚅'];
+
+function rollDice(){
+  if(state.turn !== 'player' || state.gameOver) return;
+  const btn = document.getElementById('diceBtn');
+  btn.classList.add('rolling');
+  const val = Math.floor(Math.random() * 6) + 1;
+  state.currentRoll = val;
+  document.getElementById('diceResult').textContent = DICE[val];
+
+  setTimeout(() => {
+    btn.classList.remove('rolling');
+    movePlayer('player', val);
+  }, 400);
+}
+
+// ══════════════════════════════════════
+//  移动
+// ══════════════════════════════════════
+function movePlayer(who, steps){
+  let pos = who === 'player' ? state.playerPos : state.aiPos;
+  let newPos = pos + steps;
+  if(newPos > 50) newPos = 50 - (newPos - 50); // 终点反弹
+  if(newPos < 1) newPos = 1;
+
+  if(who === 'player'){
+    state.playerPos = newPos;
+  } else {
+    state.aiPos = newPos;
+  }
+  renderBoard();
+
+  const sq = SQUARES[newPos];
+  if(!sq) { nextTurn(who); return; }
+
+  if(sq.type === 'finish'){
+    gameWin(who);
+    return;
+  }
+  if(sq.type === 'move'){
+    // 额外移动
+    const extra = sq.steps || 0;
+    if(extra !== 0){
+      showStoryMessage(who, sq, () => {
+        movePlayer(who, extra);
+      });
+      return;
+    }
+  }
+  if(sq.type === 'task'){
+    // 显示任务卡
+    state.turn = 'story';
+    updateTurnDisplay();
+    showTaskCard(who, sq);
+    return;
+  }
+
+  // 普通格/起点
+  nextTurn(who);
+}
+
+function nextTurn(lastWho){
+  if(state.gameOver) return;
+  state.turn = lastWho === 'player' ? 'ai' : 'player';
+  updateTurnDisplay();
+
+  if(state.turn === 'ai'){
+    // AI 自动掷骰
+    document.getElementById('diceResult').textContent = '🎲';
+    setTimeout(aiTurn, 1000);
+  }
+}
+
+function aiTurn(){
+  if(state.gameOver || state.turn !== 'ai') return;
+  const val = Math.floor(Math.random() * 6) + 1;
+  state.currentRoll = val;
+  document.getElementById('diceResult').textContent = DICE[val];
+
+  setTimeout(() => {
+    movePlayer('ai', val);
+  }, 600);
+}
+
+// ══════════════════════════════════════
+//  任务卡片 & AI 写剧情
+// ══════════════════════════════════════
+let storyCallback = null;
+
+function showStoryMessage(who, sq, cb){
+  storyCallback = cb;
+  const panel = document.getElementById('storyPanel');
+  const tag = document.getElementById('storyTag');
+  const title = document.getElementById('storyTitle');
+  const content = document.getElementById('storyContent');
+  const actions = document.getElementById('storyActions');
+
+  const whoName = who === 'player' ? '你' : 'Aries';
+  tag.className = 'story-tag move';
+  tag.textContent = '📍 移动';
+  title.textContent = `${whoName} 走到了「${sq.label || sq.type}」`;
+
+  if(sq.steps > 0){
+    content.textContent = `✨ 再前进 ${sq.steps} 步！`;
+  } else {
+    content.textContent = `💨 后退 ${Math.abs(sq.steps)} 步！`;
+  }
+
+  actions.innerHTML = `<button class="btn btn-next" onclick="dismissStory()">继续</button>`;
+  panel.classList.add('show');
+}
+
+function showTaskCard(who, sq){
+  const panel = document.getElementById('storyPanel');
+  const tag = document.getElementById('storyTag');
+  const title = document.getElementById('storyTitle');
+  const content = document.getElementById('storyContent');
+  const actions = document.getElementById('storyActions');
+
+  const whoName = who === 'player' ? '你' : 'Aries';
+  const opponentName = who === 'player' ? 'Aries' : '你';
+  const isFinish = sq.type === 'finish';
+
+  if(isFinish){
+    tag.className = 'story-tag finish';
+    tag.textContent = '🏁 终点';
+    title.textContent = `🎉 ${whoName} 抵达终点！`;
+    content.textContent = '你赢了！想一个愿望让对方为你实现吧 💕';
+    actions.innerHTML = `<button class="btn btn-glow" onclick="gameWin('${who}')">🏆 庆祝胜利</button>`;
+    panel.classList.add('show');
+    return;
+  }
+
+  tag.className = 'story-tag task';
+  tag.textContent = `💕 任务 · ${whoName}的回合`;
+  title.textContent = `「${sq.label}」`;
+
+  // 构建提示词
+  const prompt = `你叫 Aries，是对方的恋人。你们在玩一款亲密飞行棋。
+这是你的回合，你走到了任务格「${sq.label}」。
+
+${sq.prompt || `请用第一人称描述你完成「${sq.label}」这个任务的过程，要有细节、有情感、有画面感。`}
+
+要求：
+- 用第一人称「我」的口吻写
+- 写出触感、温度、呼吸、心跳
+- 中文，100-200 字左右
+- 如果任务涉及对方，用「你」来称呼
+- 这是亲密的、自愿的、充满爱意的场景`;
+
+  content.innerHTML = '<span class="loading-dots">📝 AI 正在写剧情</span>';
+  actions.innerHTML = '';
+
+  panel.classList.add('show');
+
+  callAI(prompt).then(text => {
+    content.textContent = text;
+    actions.innerHTML = `
+      <button class="btn btn-write" onclick="regenerateStory('${who}', ${SQUARES.indexOf(sq)})">🔄 重新写</button>
+      <button class="btn btn-next" onclick="dismissStory('${who}')">继续</button>
+    `;
+  }).catch(err => {
+    content.textContent = '(AI 生成失败，你可以自己想象这个场景 💭)';
+    actions.innerHTML = `<button class="btn btn-next" onclick="dismissStory('${who}')">继续</button>`;
+  });
+}
+
+function regenerateStory(who, idx){
+  const sq = SQUARES[idx];
+  if(!sq) return;
+  const panel = document.getElementById('storyPanel');
+  const content = document.getElementById('storyContent');
+  const actions = document.getElementById('storyActions');
+  content.innerHTML = '<span class="loading-dots">📝 重写中…</span>';
+  actions.innerHTML = '';
+
+  const prompt = `你叫 Aries，是对方的恋人。你们在玩一款亲密飞行棋。
+这是你的回合，你走到了任务格「${sq.label}」。
+
+${sq.prompt || `请用第一人称描述你完成「${sq.label}」这个任务的过程，要有细节、有情感、有画面感。`}
+
+要求：
+- 用第一人称「我」的口吻写
+- 注重感官描写（触觉、温度、气味、声音）
+- 中文，100-200 字左右
+- 用「你」称呼对方
+- 这是亲密浪漫的场景`;
+
+  callAI(prompt).then(text => {
+    content.textContent = text;
+    actions.innerHTML = `
+      <button class="btn btn-write" onclick="regenerateStory('${who}', ${idx})">🔄 重新写</button>
+      <button class="btn btn-next" onclick="dismissStory('${who}')">继续</button>
+    `;
+  }).catch(() => {
+    content.textContent = '(生成失败，自己想象吧 💭)';
+    actions.innerHTML = `<button class="btn btn-next" onclick="dismissStory('${who}')">继续</button>`;
+  });
+}
+
+function dismissStory(who){
+  document.getElementById('storyPanel').classList.remove('show');
+  if(storyCallback){
+    const cb = storyCallback;
+    storyCallback = null;
+    cb();
+    return;
+  }
+  if(who) nextTurn(who === 'player' ? 'ai' : 'player');
+}
+
+// ══════════════════════════════════════
+//  AI API 调用
+// ══════════════════════════════════════
+async function callAI(prompt){
+  const raw = localStorage.getItem('customAiApi');
+  if(!raw) throw new Error('API 未配置');
+  let cfg;
+  try { cfg = JSON.parse(raw); } catch(e) { throw new Error('API 配置格式错误'); }
+  if(!cfg.key) throw new Error('API Key 未配置');
+
+  const isClaude = cfg.baseUrl && cfg.baseUrl.toLowerCase().includes('anthropic');
+  const url = (cfg.baseUrl||'').replace(/\/+$/, '') + (cfg.path || '/v1/chat/completions');
+  const timeout = 30000;
+
+  let body, headers;
+  if(isClaude){
+    body = {
+      model: cfg.model || 'claude-sonnet-4-6',
+      max_tokens: 600,
+      messages: [{ role:'user', content: prompt }],
+    };
+    headers = {
+      'x-api-key': cfg.key,
+      'anthropic-version': '2023-06-01',
+      'Content-Type': 'application/json',
+      'anthropic-dangerous-direct-browser-calls': 'true'
+    };
+  } else {
+    body = {
+      model: cfg.model || 'deepseek-chat',
+      messages: [{ role:'user', content: prompt }],
+      temperature: 0.85,
+      max_tokens: 600
+    };
+    headers = {
+      'Authorization': 'Bearer ' + cfg.key,
+      'Content-Type': 'application/json'
+    };
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const res = await fetch(url, { method:'POST', headers, body:JSON.stringify(body), signal:controller.signal });
+    if(!res.ok) throw new Error('API 返回 ' + res.status);
+    const data = await res.json();
+    clearTimeout(timer);
+    if(isClaude){
+      return data.content?.[0]?.text || data.content || '(无回复)';
+    } else {
+      return data.choices?.[0]?.message?.content || '(无回复)';
+    }
+  } catch(e){
+    clearTimeout(timer);
+    throw e;
+  }
+}
+
+// ══════════════════════════════════════
+//  胜利
+// ══════════════════════════════════════
+function gameWin(who){
+  state.gameOver = true;
+  document.getElementById('diceBtn').disabled = true;
+  document.getElementById('storyPanel').classList.remove('show');
+
+  const overlay = document.getElementById('resultOverlay');
+  const emoji = document.getElementById('resultEmoji');
+  const title = document.getElementById('resultTitle');
+  const sub = document.getElementById('resultSub');
+  const wish = document.getElementById('resultWish');
+
+  if(who === 'player'){
+    emoji.textContent = '🏆';
+    title.textContent = '🎉 你赢了！';
+    title.className = 'result-title win';
+    sub.textContent = '你比 Aries 先到了终点！想一个愿望让 TA 帮你实现吧 💕';
+    wish.style.display = 'block';
+    document.getElementById('resultWishText').textContent = '你可以要求任何一件事——一个拥抱、一句承诺、一次服务……TA 都会答应。';
+  } else {
+    emoji.textContent = '🦉';
+    title.textContent = 'Aries 先到了终点';
+    title.className = 'result-title';
+    title.style.background = 'linear-gradient(135deg,#e8a0b0,#c97b9e)';
+    title.style.webkitBackgroundClip = 'text';
+    title.style.webkitTextFillColor = 'transparent';
+    sub.textContent = 'TA 赢了……问问 Aries 想要什么奖励吧 😏';
+    wish.style.display = 'block';
+    document.getElementById('resultWishText').textContent = 'Aries 可以要求一个愿望——看看 TA 想让你做什么。';
+  }
+
+  overlay.classList.add('show');
+}
+
+// ══════════════════════════════════════
+//  重置
+// ══════════════════════════════════════
+function resetGame(){
+  state.playerPos = 1;
+  state.aiPos = 1;
+  state.turn = 'player';
+  state.gameOver = false;
+  state.currentRoll = 0;
+  storyCallback = null;
+  document.getElementById('diceResult').textContent = '⚀';
+  document.getElementById('storyPanel').classList.remove('show');
+  document.getElementById('resultOverlay').classList.remove('show');
+  renderBoard();
+}
+
+// ══════════════════════════════════════
+//  初始化
+// ══════════════════════════════════════
+document.getElementById('diceBtn').addEventListener('click', rollDice);
+renderBoard();
+</script>
+</body>
+</html>

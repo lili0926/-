@@ -3142,57 +3142,112 @@ function stopCallTimer(){
 // 通话语音识别：开启麦克风 + Web Speech API 听写
 let localStream;
 let callRecognition = null;
+let callMicActive = false;
+
+// 通话文本发送
+function setupCallTextInput(){
+  const input = document.getElementById('callTextInput');
+  const sendBtn = document.getElementById('callTextSendBtn');
+  if(!input || !sendBtn) return;
+  const send = () => {
+    const text = input.value.trim();
+    if(!text) return;
+    input.value = '';
+    const chatInput = document.getElementById('chatInput');
+    if(chatInput){ chatInput.value = text; }
+    const btn = document.getElementById('sendBtn');
+    if(btn) btn.click();
+  };
+  sendBtn.onclick = send;
+  input.onkeydown = (e) => { if(e.key === 'Enter') send(); };
+}
 
 function startCallSpeechRecognition(){
+  const micStatus = document.getElementById('callMicStatus');
+  const inputRow = document.getElementById('callInputRow');
+
+  // 先检查 SpeechRecognition 支持
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){
+    console.warn("浏览器不支持语音识别，显示文字输入");
+    if(micStatus) micStatus.textContent = '⌨️ 语音不可用，请打字';
+    if(inputRow) inputRow.style.display = 'flex';
+    setupCallTextInput();
+    return;
+  }
+
   // 开启麦克风
   navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
     localStream = stream;
-    console.log("麦克风已开启");
+    callMicActive = true;
+    if(micStatus) micStatus.textContent = '🎤 语音识别中...';
+    if(inputRow) inputRow.style.display = 'flex'; // 保留输入框作为备用
+    setupCallTextInput();
 
-    // 启动语音识别（Web Speech API）
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if(!SR){ console.warn("浏览器不支持语音识别"); return; }
+    // 创建并启动语音识别
+    function startSR(){
+      if(!callMicActive || !currentCallId) return;
+      try {
+        callRecognition = new SR();
+        callRecognition.lang = 'zh-CN';
+        callRecognition.continuous = true;
+        callRecognition.interimResults = true;
 
-    callRecognition = new SR();
-    callRecognition.lang = 'zh-CN';
-    callRecognition.continuous = true;
-    callRecognition.interimResults = true;
-
-    callRecognition.onresult = (event) => {
-      let interim = '';
-      for(let i = event.resultIndex; i < event.results.length; i++){
-        const t = event.results[i][0].transcript;
-        if(event.results[i].isFinal){
-          const input = document.getElementById('chatInput');
-          const sendBtn = document.getElementById('sendBtn');
-          if(input && sendBtn){
-            input.value = t;
-            sendBtn.click();
+        callRecognition.onresult = (event) => {
+          let interim = '';
+          for(let i = event.resultIndex; i < event.results.length; i++){
+            const t = event.results[i][0].transcript;
+            if(event.results[i].isFinal){
+              const input = document.getElementById('chatInput');
+              const sendBtn = document.getElementById('sendBtn');
+              if(input && sendBtn){
+                input.value = t;
+                sendBtn.click();
+              }
+              if(micStatus) micStatus.textContent = '🎤 已发送 ✓';
+              setTimeout(() => { if(micStatus && callMicActive) micStatus.textContent = '🎤 语音识别中...'; }, 1500);
+            } else {
+              interim = t;
+            }
           }
-        } else {
-          interim = t;
-        }
+          const status = document.getElementById('callStatus');
+          if(status && interim) status.innerText = '🎤 ' + interim;
+          if(micStatus && interim) micStatus.textContent = '🎤 ' + interim;
+        };
+
+        callRecognition.onerror = (e) => {
+          console.error('语音识别错误:', e.error);
+          if(e.error === 'not-allowed'){
+            if(micStatus) micStatus.textContent = '🔇 麦克风被拒绝';
+            return;
+          }
+          if(e.error !== 'aborted'){
+            // 出错后稍等重试
+            setTimeout(startSR, 800);
+          }
+        };
+
+        callRecognition.onend = () => {
+          // 自然结束（如静音超时）自动重启
+          if(callMicActive && currentCallId){
+            setTimeout(startSR, 300);
+          }
+        };
+
+        callRecognition.start();
+        console.log("语音识别已启动");
+      } catch(e){
+        console.error('启动语音识别失败:', e);
+        setTimeout(startSR, 1000);
       }
-      const status = document.getElementById('callStatus');
-      if(status && interim) status.innerText = '🎤 ' + interim;
-    };
+    }
 
-    callRecognition.onerror = (e) => {
-      console.error('语音识别错误:', e.error);
-      if(e.error !== 'aborted' && e.error !== 'not-allowed'){
-        setTimeout(() => { if(callRecognition) callRecognition.start(); }, 500);
-      }
-    };
-
-    callRecognition.onend = () => {
-      if(callRecognition && currentCallId) callRecognition.start();
-    };
-
-    callRecognition.start();
-    console.log("语音识别已启动");
+    startSR();
   }).catch(e => {
     console.error("麦克风开启失败:", e);
-    alert("请允许麦克风权限");
+    if(micStatus) micStatus.textContent = '🔇 麦克风不可用，请打字';
+    if(inputRow) inputRow.style.display = 'flex';
+    setupCallTextInput();
   });
 }
 
@@ -3366,6 +3421,7 @@ async function endCall(){
         localStream.getTracks().forEach(track => track.stop());
         localStream = null;
     }
+    callMicActive = false;
     if(callRecognition){
         try { callRecognition.abort(); } catch(e) {}
         callRecognition = null;
@@ -3567,7 +3623,8 @@ window.openPanel = window.openPanel || function(panel){
 // Render 部署的远程服务地址（默认值）
 const RENDER_URLS = {
   duetto: 'https://duetto-mqc7.onrender.com',
-  cedareco: 'https://cedareco-e0hj.onrender.com'
+  cedareco: 'https://cedareco-e0hj.onrender.com',
+  collar: 'https://collar.onrender.com'
 };
 
 // 生成外部服务的 URL
@@ -3581,6 +3638,7 @@ function serviceUrl(port, path){
   const remoteUrls = JSON.parse(localStorage.getItem('remoteServiceUrls') || '{}');
   if(port === 8765) return remoteUrls.cedareco || RENDER_URLS.cedareco;
   if(port === 4183) return (remoteUrls.duetto || RENDER_URLS.duetto) + (path || '');
+  if(port === 3412) return remoteUrls.collar || RENDER_URLS.collar;
   // 未知环境，尝试同域端口
   return `http://${host}:${port}${path || ''}`;
 }
@@ -3616,6 +3674,30 @@ const GAMES = [
     icon: '🐾',
     desc: '按一下说句话，Aries 不在的时候也会偷偷按',
     url: '/games/dog-buttons.html',
+    embed: true,
+  },
+  {
+    id: 'collar',
+    name: '项圈',
+    icon: '📿',
+    desc: 'AI 服从训练终端',
+    get url(){ return serviceUrl(3412, ''); },
+    embed: true,
+  },
+  {
+    id: 'loveludo',
+    name: '💕 飞行棋',
+    icon: '🎲',
+    desc: '亲密双人飞行棋，抽任务和AI一起写剧情',
+    url: '/games/love-ludo.html',
+    embed: true,
+  },
+  {
+    id: 'spicy-monopoly',
+    name: '🎲 涩涩大富翁',
+    icon: '🏰',
+    desc: '双人棋盘亲密游戏，AI 当荷官，有金币经济',
+    url: '/games/spicy-monopoly.html',
     embed: true,
   },
   // === 在这里加新游戏 ↓ ===
@@ -3711,12 +3793,32 @@ function closeGameEmbed(){
   if(frame) setTimeout(() => { frame.src = ''; }, 300);
 }
 
-// 动态设置 iframe src（解决 WSL 下 127.0.0.1 不通的问题）
-function initDuettoIframes(){
-  const base = serviceUrl(4183, '/pkg/bootstrap.html');
-  const oldFrame = document.getElementById('duettoFrame');
-  if(oldFrame && !oldFrame.src) oldFrame.src = base;
-  const arFrame = document.getElementById('arDuettoFrame');
-  if(arFrame && !arFrame.src) arFrame.src = base;
+
+// 游戏入口现在仅通过游戏大厅内的 iframe 访问
+// Duetto 音乐入口已移除，可通过游戏大厅 → Duetto 访问
+
+// ── Eventide iframe 动态 src ──
+function initEventideFrame(){
+  const frame = document.getElementById('eventideFrame');
+  if(!frame) return;
+  const host = window.location.hostname;
+  if(host === '127.0.0.1' || host === 'localhost' || host.match(/^192\.|^10\.|^172\./)){
+    frame.src = `http://${host}:3876`;
+  } else {
+    frame.src = `http://localhost:3876`;
+  }
 }
-initDuettoIframes();
+initEventideFrame();
+
+// ── hervoice iframe 动态 src ──
+function initHervoiceFrame(){
+  const frame = document.getElementById('hervoiceFrame');
+  if(!frame) return;
+  const host = window.location.hostname;
+  if(host === '127.0.0.1' || host === 'localhost' || host.match(/^192\.|^10\.|^172\./)){
+    frame.src = `http://${host}:8010`;
+  } else {
+    frame.src = `http://localhost:8010`;
+  }
+}
+initHervoiceFrame();

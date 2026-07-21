@@ -7,7 +7,6 @@
   <title>Jasmine's Home ♡</title>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Dancing+Script:wght@400;600&family=Great+Vibes&family=EB+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="style-aries.css">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icon.png">
 </head>
@@ -29,16 +28,15 @@
       <a href="#" class="nav-item" data-page="chat"><span class="nav-icon">♡</span><span>聊天</span></a>
       <a href="#" class="nav-item" data-page="tasks"><span class="nav-icon">☑</span><span>行程</span></a>
       <a href="#" class="nav-item" data-page="novel"><span class="nav-icon">✎</span><span>小说</span></a>
-      <a href="#" class="nav-item" data-page="music"><span class="nav-icon">♬</span><span>音乐</span></a>
+      <a href="#" class="nav-item" data-page="eventide"><span class="nav-icon">🌙</span><span>生理</span></a>
       <a href="#" class="nav-item" data-page="diary"><span class="nav-icon">✉</span><span>日记</span></a>
       <a href="#" class="nav-item" data-page="callhome"><span class="nav-icon">☎</span><span>通话</span></a>
+      <a href="#" class="nav-item" data-page="hervoice"><span class="nav-icon">🎙</span><span>语情</span></a>
       <a href="#" class="nav-item" data-page="settings"><span class="nav-icon">◎</span><span>设置</span></a>
       <a href="#" class="nav-item" data-page="moments"><span class="nav-icon">☛</span><span>朋友圈</span></a>
     </nav>
     <div class="sidebar-footer">
       <button class="theme-toggle" id="themeToggle"><span class="theme-icon">☽</span><span>深色模式</span></button>
-      <button onclick="changeTheme('aries')">Aries</button>
-      <button onclick="changeTheme('old')">经典</button>
     </div>
   </aside>
   <main class="main" id="main">
@@ -139,10 +137,10 @@
           <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 16px;border-top:1px solid var(--border);"><button class="btn-primary" id="novelPrev" style="padding:6px 18px;">上一页</button><span id="novelPageInfo" style="font-size:12px;opacity:0.5;"></span><button class="btn-primary" id="novelNext" style="padding:6px 18px;">下一页</button></div>
         </div>
       </section>
-      <section class="page" id="page-music">
-        <iframe id="duettoFrame"
+      <section class="page" id="page-eventide">
+        <iframe id="eventideFrame"
           style="width:100%;height:calc(100vh - 60px);border:none;border-radius:0"
-          allow="microphone;autoplay"></iframe>
+          allow="microphone"></iframe>
       </section>
       <section class="page" id="page-diary">
         <div class="diary-header"><h2>我的日记</h2><button class="btn-primary" id="newDiaryBtn">+ 新建</button></div>
@@ -224,6 +222,12 @@
               <canvas id="callWave"></canvas>
             </div>
             <div class="call-screen-caps" id="callCaps"></div>
+            <!-- 通话输入：语音识别不可用时打字 -->
+            <div class="call-input-row" id="callInputRow" style="display:none;padding:6px 14px;gap:8px;align-items:center">
+              <span class="call-mic-status" id="callMicStatus" style="font-size:11px;opacity:0.5;white-space:nowrap">🎤 语音识别中...</span>
+              <input type="text" id="callTextInput" placeholder="打字回应 Aries..." style="flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 12px;color:#fff;font-size:13px;outline:none">
+              <button id="callTextSendBtn" style="background:var(--accent,#7c5cbf);border:none;border-radius:10px;padding:8px 14px;color:#fff;font-size:12px;cursor:pointer">发送</button>
+            </div>
             <div class="call-screen-dock">
               <div class="call-screen-btn" id="callMuteBtn">
                 <div class="call-screen-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4"/></svg></div>
@@ -250,6 +254,11 @@
           </div>
 
         </div>
+      </section>
+      <section class="page" id="page-hervoice">
+        <iframe id="hervoiceFrame"
+          style="width:100%;height:calc(100vh - 60px);border:none;border-radius:0"
+          allow="microphone"></iframe>
       </section>
       <section class="page" id="page-settings">
         <div class="settings-group">
@@ -331,484 +340,8 @@
 <div class="toast" id="toast"></div>
 
 
-<!-- ARIES 主题 -->
-<div id="aries-theme" style="display:none">
-<div class="ar-phone">
-  <div class="ar-topbar">
-    <div class="ar-topbar-title" id="arTitle">主页</div>
-    <div style="display:flex;gap:8px">
-      <div class="ar-topbar-btn" id="arWpBtn">🖼</div>
-      <div class="ar-topbar-btn" id="arThoughtBtn">📖</div>
-      <div class="ar-topbar-btn" id="arClassicBtn" title="切换回经典主题">◈</div>
-    </div>
-  </div>
-  <div class="ar-content">
-
-    <!-- ① 主页 TAB → 三页横滑 -->
-    <div class="ar-tab-panel active" id="arHomeTab">
-      <div class="ar-moments-panel" id="arMomentsWidgets">
-        <div class="ar-pages" id="arPages">
-
-          <!-- 页1：主页 — 情侣头像 + 在一起 + 日记 + 天气/记忆/待办 -->
-          <div class="ar-page" id="arHomePage">
-            <div class="ar-couple-section">
-              <div class="ar-couple-avatars">
-                <div class="ar-couple-avatar" id="arAvatar1">
-                  <div class="ar-couple-avatar-inner" id="arAvatar1Inner">
-                    <img src="assets/moments/avatar.jpg" onerror="this.style.display='none';this.parentNode.textContent='👩'">
-                  </div>
-                  <div class="ar-couple-avatar-overlay">更换</div>
-                  <input type="file" id="arAvatar1Upload" accept="image/*" style="display:none">
-                </div>
-                <div class="ar-couple-heart">💕</div>
-                <div class="ar-couple-avatar" id="arAvatar2">
-                  <div class="ar-couple-avatar-inner" id="arAvatar2Inner">🦉</div>
-                </div>
-              </div>
-              <div class="ar-together-display">
-                <span class="ar-together-label">在一起</span>
-                <div class="ar-together-number">
-                  <span class="ar-together-num" id="arTogetherDaysBig">—</span>
-                  <span class="ar-together-unit">天</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="ar-widget ar-full" id="arDiaryWidget" style="min-height:80px">
-              <div class="ar-w-label">📖 日记</div>
-              <div class="ar-w-content" id="arDiaryPreview" style="-webkit-line-clamp:3;">今天想和你去看海。</div>
-            </div>
-
-            <div class="ar-grid">
-              <div class="ar-widget">
-                <div class="ar-w-label">天气</div>
-                <div class="ar-weather-icon" id="arWeatherIcon">⛅</div>
-                <div class="ar-w-big" style="font-size:28px" id="arTemp">—</div>
-                <div class="ar-w-sub" id="arWeatherDesc">加载中...</div>
-              </div>
-              <div class="ar-widget" id="arMemWidget">
-                <div class="ar-w-label">🗝 记忆</div>
-                <div class="ar-w-sub" style="font-size:11px;line-height:1.7;margin-top:4px;color:var(--ar-text-soft)">点击打开记忆匣</div>
-                <div class="ar-w-tag" id="arMemCountTag">0 条</div>
-              </div>
-            </div>
-
-            <div class="ar-widget ar-full" id="arTodoWidget" style="min-height:60px">
-              <div class="ar-w-label">📋 待办</div>
-              <div class="ar-w-sub" style="font-size:12px;line-height:1.7;margin-top:3px;color:var(--ar-text-soft)" id="arTodoPreview">点击查看待办事项</div>
-            </div>
-          </div>
-
-          <!-- 页2：功能 -->
-          <div class="ar-page" id="arPluginPage">
-            <div class="ar-widget ar-podcast-widget" id="arPodcastWidget">
-              <div class="ar-podcast-text">
-                <div class="ar-podcast-title">小播客</div>
-                <div class="ar-podcast-sub">心事，随风说给你听</div>
-                <div class="ar-wave"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
-              </div>
-              <div class="ar-podcast-img">🎙</div>
-            </div>
-            <div class="ar-grid">
-              <div class="ar-widget" id="arNovelWidget">
-                <div class="ar-w-label">📚 小说</div>
-                <div class="ar-w-sub" style="font-size:12px;margin-top:4px;color:var(--ar-text)">点击打开书架</div>
-                <div style="height:2px;background:var(--ar-accent-light);border-radius:2px;margin-top:8px"><div style="width:30%;height:100%;background:var(--ar-accent);border-radius:2px"></div></div>
-              </div>
-              <div class="ar-widget" id="arAppearWidget">
-                <div class="ar-w-label">🎨 外观</div>
-                <div class="ar-w-sub" style="font-size:11px;margin-top:4px">主题和壁纸设置</div>
-                <div class="ar-w-badge" id="arThemeBadge">Aries</div>
-              </div>
-            </div>
-            <div class="ar-widget ar-music-widget" id="arDuettoWidget" style="cursor:pointer" onclick="document.getElementById('arDuettoOverlay').style.display='flex'">
-              <div class="ar-music-cover" id="arMusicCover">🎵</div>
-              <div class="ar-music-info">
-                <div class="ar-music-title" id="arMusicTitle">Duetto 音乐</div>
-                <div class="ar-music-artist" id="arMusicArtist">点击打开播放器</div>
-                <div class="ar-music-bar-bg"><div class="ar-music-bar" id="arMusicBar" style="width:60%"></div></div>
-              </div>
-              <div class="ar-music-play" id="arMusicPlay">▶</div>
-            </div>
-            <div class="ar-grid">
-              <div class="ar-widget" id="arCallWidget">
-                <div class="ar-w-label">☎ 通话</div>
-                <div style="font-size:36px;opacity:0.4;margin:8px 0 4px;text-align:center">📞</div>
-                <div class="ar-w-sub" style="font-size:11px">给 Aries 打电话</div>
-              </div>
-              <div class="ar-widget" id="arThoughtWidget">
-                <div class="ar-w-label">☁ 思绪</div>
-                <div class="ar-w-content" id="arThoughtPreview">此刻的心情<br>如潮汐起伏</div>
-              </div>
-            </div>
-            <div class="ar-grid">
-              <div class="ar-widget" id="arArchiveWidget">
-                <div class="ar-w-label">📦 存档</div>
-                <div style="font-size:36px;opacity:0.4;margin:8px 0 4px;text-align:center">🗃</div>
-                <div class="ar-w-sub" style="font-size:11px">珍藏的瞬间</div>
-              </div>
-              <div class="ar-widget" id="arTimelineWidget">
-                <div class="ar-w-label">⏳ 时光</div>
-                <div style="font-size:36px;opacity:0.4;margin:8px 0 4px;text-align:center">⌛</div>
-                <div class="ar-w-sub" style="font-size:11px">回忆的时间线</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 页3：日历 + 游戏 -->
-          <div class="ar-page" id="arDiaryPage">
-            <div class="ar-widget ar-full" id="arCalWidget">
-              <div class="ar-w-label">📅 <span id="arCalMonthLabel">—</span></div>
-              <div class="ar-cal-grid" id="arCalGrid"></div>
-            </div>
-            <div class="ar-widget ar-full" id="arGameWidget" style="cursor:pointer;margin-top:12px" onclick="openGamePanel()">
-              <div class="ar-w-label">🎮 游戏</div>
-              <div style="display:flex;align-items:center;gap:12px;padding:8px 4px">
-                <div style="font-size:36px;opacity:0.5" id="arGameWidgetIcon">🎮</div>
-                <div>
-                  <div style="font-size:14px;font-weight:500;color:var(--ar-text)" id="arGameWidgetTitle">游戏大厅</div>
-                  <div style="font-size:11px;color:var(--ar-text-soft);margin-top:2px" id="arGameWidgetDesc">点击打开游戏面板</div>
-                </div>
-                <div style="margin-left:auto;font-size:12px;color:var(--ar-accent)">打开 ›</div>
-              </div>
-            </div>
-          </div>
-
-        </div><!-- /ar-pages -->
-        <div class="ar-page-dots" id="arDots">
-          <div class="ar-dot active"></div>
-          <div class="ar-dot"></div>
-          <div class="ar-dot"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ② 聊天 TAB -->
-    <div class="ar-tab-panel" id="arChatTab">
-      <div class="ar-chat-panel">
-        <div class="ar-chat-days-bg">
-          <div class="ar-chat-days-num" id="arChatDaysNum">—</div>
-          <div class="ar-chat-days-txt">天</div>
-        </div>
-        <div class="ar-chat-messages" id="arChatMessages">
-          <div class="ar-chat-welcome">你好，今天想聊什么？</div>
-        </div>
-        <div class="ar-chat-bottom">
-          <div class="ar-chat-opts">
-            <button class="ar-chat-opt-btn" id="arClearChat">🗑 清空</button>
-            <div class="ar-thinking-chip" id="arThinkingChip">💭 思考链</div>
-          </div>
-          <div class="ar-chat-input-row">
-            <textarea class="ar-chat-input" id="arChatInput" placeholder="说点什么..." rows="1"></textarea>
-            <button class="ar-send-btn" id="arSendBtn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9 22,2"/></svg>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ③ 朋友圈 TAB → 朋友圈（和老UI风格一致） -->
-    <div class="ar-tab-panel" id="arMomentsTab">
-      <div class="ar-moments-feed" id="arMomentsFeed">
-        <div class="ar-mfeed-cover">
-          <div class="ar-mfeed-cover-bg"></div>
-          <div class="ar-mfeed-profile">
-            <div class="ar-mfeed-avatar"><img id="arMfeedAvatar" src="assets/moments/avatar.jpg"></div>
-            <div class="ar-mfeed-name">Jasmine</div>
-            <div class="ar-mfeed-bio">🫧啵啵pupa</div>
-          </div>
-          <button class="ar-mfeed-dash-btn" id="arPostMomentBtn">✎ 发表</button>
-        </div>
-        <div class="ar-moment-list" id="arMomentList"></div>
-      </div>
-    </div>
-
-    <!-- ④ 设置 TAB -->
-    <div class="ar-tab-panel" id="arSettingsTab">
-      <div class="ar-settings-panel">
-
-        <!-- 资料头 -->
-        <div class="ar-profile-head">
-          <div class="ar-profile-avatar" id="arSettingsProfileAvatar"><img src="assets/moments/avatar.jpg" onerror="this.style.display='none';this.parentNode.textContent='🦉'"></div>
-          <div>
-            <div class="ar-profile-name" id="arProfileName">Aries 🌿</div>
-            <div class="ar-profile-id">ID: ZestLorn</div>
-            <div class="ar-profile-bio">「澜汐不居，余生只剩空念。」</div>
-          </div>
-        </div>
-
-        <!-- AI 接入 -->
-        <div class="ar-settings-group">
-          <div class="ar-settings-group-title">AI 接入</div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>API地址</span><small>留空默认Claude</small></div><input class="ar-settings-input" id="arApiBaseUrl" placeholder="https://api.deepseek.com"></div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>接口路径</span><small>如 /v1/chat/completions</small></div><input class="ar-settings-input" id="arApiPath" placeholder="/v1/chat/completions"></div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>接口格式</span></div><select class="ar-settings-select" id="arApiFormat"><option value="anthropic">Claude原生</option><option value="openai">OpenAI兼容</option></select></div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>API Key</span><small>仅本地存储</small></div><input class="ar-settings-input" type="password" id="arApiKey" placeholder="sk-ant-..."></div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>模型</span></div><select class="ar-settings-select" id="arModelSelect"><option value="claude-sonnet-4-6">Sonnet 4.6</option><option value="claude-opus-4-6">Opus 4.6</option><option value="claude-haiku-4-5-20251001">Haiku 4.5</option></select></div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>系统提示词</span><small>定义 AI 人格</small></div></div>
-          <div class="ar-settings-item ar-settings-full"><textarea class="ar-settings-textarea" id="arSystemPrompt" placeholder="你是..."></textarea></div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>NSFW 模式</span><small>解锁成人内容</small></div><div class="ar-toggle" id="arNsfwToggle"></div></div>
-        </div>
-
-        <!-- 后台任务 AI -->
-        <div class="ar-settings-group">
-          <div class="ar-settings-group-title">后台任务 AI <small style="font-weight:400;font-size:10px">日记/思绪/主动消息等</small></div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>API地址</span><small>默认DeepSeek</small></div><input class="ar-settings-input" id="arBgBaseUrl" placeholder="https://api.deepseek.com"></div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>API路径</span></div><input class="ar-settings-input" id="arBgPath" placeholder="/v1/chat/completions"></div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>API Key</span></div><input class="ar-settings-input" type="password" id="arBgKey" placeholder="sk-..."></div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>模型</span></div><input class="ar-settings-input" id="arBgModel" placeholder="deepseek-chat"></div>
-        </div>
-
-        <!-- 聊天外观 -->
-        <div class="ar-settings-group">
-          <div class="ar-settings-group-title">聊天外观</div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>UI美化方案</span></div><select class="ar-settings-select" id="arUiPresetSelect"><option value="ins-soft">Ins奶油风</option><option value="night-glass">夜间玻璃</option><option value="jasmine">Jasmine</option><option value="daddy">daddy</option><option value="frosted">雾面玻璃</option><option value="rose-night">蔷薇夜</option><option value="matcha-tea">茶雾</option><option value="aries">Aries</option></select></div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>思考链颜色</span></div><div><input type="color" id="arThinkingColor" value="#7c5cbf" style="width:36px;height:36px;border:none;border-radius:8px;cursor:pointer;background:none;padding:0;vertical-align:middle"><span id="arThinkingColorVal" style="font-size:11px;color:var(--ar-text-ghost);margin-left:4px">#7c5cbf</span></div></div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>气泡不透明度</span></div><div style="display:flex;align-items:center;gap:8px"><input type="range" id="arBubbleOpacity" min="2" max="60" value="10" style="width:80px;accent-color:var(--ar-accent)"><span id="arBubbleOpacityVal" style="font-size:11px;color:var(--ar-text-soft);min-width:28px">10%</span></div></div>
-        </div>
-
-        <!-- 外观 -->
-        <div class="ar-settings-group">
-          <div class="ar-settings-group-title">外观</div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>英文字体</span></div><select class="ar-settings-select" id="arFontSelect"><option value="default">默认</option><option value="cormorant">Cormorant Garamond</option><option value="dancing">Dancing Script</option><option value="great">Great Vibes</option><option value="eb">EB Garamond</option></select></div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>壁纸设置</span></div><button class="ar-btn-secondary" id="arWpBtn2" style="font-size:12px;padding:4px 12px">更换</button></div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>深色模式</span></div><div class="ar-toggle" id="arDarkToggle"></div></div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>通话头像</span></div><div><img id="arCallAvatarPreview" src="assets/avatar.jpg" style="width:36px;height:36px;border-radius:50%;object-fit:cover;vertical-align:middle;cursor:pointer" title="点击更换通话头像"><input type="file" id="arCallAvatarUpload" accept="image/*" style="display:none"></div></div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>朋友圈头像</span></div><div><img id="arMomentsAvatarPreview" src="assets/moments/avatar.jpg" style="width:36px;height:36px;border-radius:50%;object-fit:cover;vertical-align:middle;cursor:pointer" title="点击更换朋友圈头像"><input type="file" id="arMomentsAvatarUpload" accept="image/*" style="display:none"></div></div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>朋友圈封面</span></div><div><img id="arMomentsCoverPreview" src="assets/moments/cover.jpg" style="width:60px;height:36px;border-radius:6px;object-fit:cover;vertical-align:middle;cursor:pointer" title="点击更换朋友圈封面"><input type="file" id="arMomentsCoverUpload" accept="image/*" style="display:none"></div></div>
-        </div>
-
-        <!-- 远程服务 -->
-        <div class="ar-settings-group">
-          <div class="ar-settings-group-title">远程服务</div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>🎵 Duetto 音乐</span></div><input class="ar-settings-input" id="arRemoteDuettoUrl" placeholder="https://duetto-mqc7.onrender.com"></div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>🌿 瓶中生态</span></div><input class="ar-settings-input" id="arRemoteCedarecoUrl" placeholder="https://cedareco-e0hj.onrender.com"></div>
-        </div>
-
-        <!-- 天气 & 位置 -->
-        <div class="ar-settings-group">
-          <div class="ar-settings-group-title">天气 &amp; 位置</div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>城市</span></div><input class="ar-settings-input" id="arCityInput" placeholder="Beijing"></div>
-        </div>
-
-        <!-- 个人 -->
-        <div class="ar-settings-group">
-          <div class="ar-settings-group-title">个人</div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>名字</span></div><input class="ar-settings-input" id="arNameInput" placeholder="小猫" maxlength="10"></div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>在一起从</span></div><input class="ar-settings-input" type="date" id="arDateInput"></div>
-          <div class="ar-settings-item"><div class="ar-settings-label"><span>纪念日</span><small>格式 MM-DD，逗号分隔</small></div><input class="ar-settings-input" id="arAnniversaryInput" placeholder="02-14,06-01"></div>
-        </div>
-
-        <!-- 底部按钮 -->
-        <button class="ar-save-btn" id="arSaveBtn">保存设置</button>
-        <button class="ar-btn-secondary" style="width:100%;padding:14px;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px" id="arAIMomentBtn"><span>🦉</span> 让 Elliott 发一条朋友圈</button>
-        <button class="ar-btn-secondary" style="width:100%;padding:14px;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px" id="arSwitchThemeBtn"><span>🎨</span> 切换回经典主题</button>
-      </div>
-    </div>
-
-  </div><!-- /ar-content -->
-
-  <nav class="ar-navbar">
-    <button class="ar-nav-btn active" data-tab="home"><span class="ar-nav-icon">🏠</span><span>主页</span></button>
-    <button class="ar-nav-btn" data-tab="chat"><span class="ar-nav-icon">💬</span><span>聊天</span></button>
-    <button class="ar-nav-btn" data-tab="moments"><span class="ar-nav-icon">♡</span><span>朋友圈</span></button>
-    <button class="ar-nav-btn" data-tab="settings"><span class="ar-nav-icon">⚙</span><span>设置</span></button>
-  </nav>
-</div><!-- /ar-phone -->
-
-<!-- Aries 壁纸弹层 -->
-<div class="ar-wp-modal" id="arWpModal">
-  <div class="ar-wp-sheet">
-    <div class="ar-wp-title">更换壁纸</div>
-    <div class="ar-wp-grid">
-      <div class="ar-wp-swatch" data-wp="none" style="background:#f0ebe5;font-size:12px;color:#a08878">无</div>
-      <div class="ar-wp-swatch" data-wp="gradient1" style="background:linear-gradient(135deg,#fbc2eb,#a6c1ee)"></div>
-      <div class="ar-wp-swatch" data-wp="gradient2" style="background:linear-gradient(135deg,#1a1a2e,#0f3460)"></div>
-      <div class="ar-wp-swatch" data-wp="gradient3" style="background:linear-gradient(135deg,#d4fc79,#96e6a1)"></div>
-      <div class="ar-wp-swatch" data-wp="gradient4" style="background:linear-gradient(135deg,#f093fb,#f5576c)"></div>
-      <div class="ar-wp-swatch" data-wp="gradient5" style="background:linear-gradient(135deg,#0c3483,#6b8cce)"></div>
-      <div class="ar-wp-swatch" data-wp="warm" style="background:linear-gradient(135deg,#fdf0e8,#e8c9b8);font-size:12px;color:#a08878">暖</div>
-      <div class="ar-wp-swatch" data-wp="upload" style="background:rgba(210,170,155,0.2);font-size:12px;color:#c9907a">上传</div>
-    </div>
-    <input type="file" id="arWpUpload" accept="image/*" style="display:none">
-    <button class="ar-wp-close" id="arWpClose">取消</button>
-  </div>
-</div>
-
-<div class="ar-toast" id="arToast"></div>
-
-<!-- Aries 通话弹层 -->
-<div class="ar-call-overlay" id="arCallOverlay" style="display:none;">
-  <!-- 待机 / 去电状态 -->
-  <div class="ar-call-card" id="arCallIdle">
-    <div class="ar-call-avatar">🦉</div>
-    <div class="ar-call-name">Aries</div>
-    <div class="ar-call-status" id="arCallStatus">准备呼叫...</div>
-    <div class="ar-call-time" id="arCallTime">00:00</div>
-    <div class="ar-call-buttons">
-      <button class="ar-call-btn ar-call-start" id="arCallStartBtn">📞 呼叫</button>
-      <button class="ar-call-btn ar-call-end" id="arCallEndBtn" style="display:none">🔴 挂断</button>
-      <button class="ar-call-btn ar-call-answer" id="arCallAnswerBtn" style="display:none">📲 接听</button>
-    </div>
-    <button class="ar-call-close" id="arCallClose">✕ 关闭</button>
-  </div>
-
-  <!-- Aries 来电卡片 -->
-  <div class="ar-call-incoming" id="arCallIncoming" style="display:none">
-    <div class="ar-call-kind"><i></i>incoming call</div>
-    <div class="ar-call-avwrap">
-      <div class="ar-call-ripple"></div>
-      <div class="ar-call-ripple r2"></div>
-      <div class="ar-call-ripple r3"></div>
-      <div class="ar-call-av-inner">🦉</div>
-    </div>
-    <div class="ar-call-name">Aries</div>
-    <div class="ar-call-reason" id="arCallReason"></div>
-    <div class="ar-call-inc-dock">
-      <div class="ar-call-inc-btn" id="arCallIncDecline">
-        <div class="ar-call-inc-ico dec">
-          <svg viewBox="0 0 24 24" fill="currentColor"><g transform="rotate(135 12 12)"><path d="M6.6 10.8c1.4 2.8 3.8 5.2 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.4.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.6c.6 0 1 .4 1 1 0 1.2.2 2.5.6 3.6.1.4 0 .8-.2 1l-3 2.2z"/></g></svg>
-        </div>
-        <div class="ar-call-inc-lab">挂断</div>
-      </div>
-      <div class="ar-call-inc-btn" id="arCallIncAnswer">
-        <div class="ar-call-inc-ico acc">
-          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8c1.4 2.8 3.8 5.2 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.4.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.6c.6 0 1 .4 1 1 0 1.2.2 2.5.6 3.6.1.4 0 .8-.2 1l-3 2.2z"/></svg>
-        </div>
-        <div class="ar-call-inc-lab">接听</div>
-      </div>
-    </div>
-    <div class="ar-call-quick" id="arCallQuick" style="display:none">
-      <div class="ar-call-chips">
-        <span class="ar-call-chip" data-reason="在忙">在忙</span>
-        <span class="ar-call-chip" data-reason="在外面">在外面</span>
-        <span class="ar-call-chip" data-reason="想打字聊">想打字聊</span>
-      </div>
-      <div class="ar-call-inrow">
-        <input type="text" id="arCallDeclineInput" maxlength="60" placeholder="或者打几个字…">
-        <span class="ar-call-send" id="arCallDeclineSend">发送</span>
-      </div>
-      <div class="ar-call-skip" id="arCallDeclineSkip">直接挂断</div>
-    </div>
-  </div>
-
-  <!-- Aries 通话中界面 -->
-  <div class="ar-call-active" id="arCallActive" style="display:none">
-    <div class="ar-call-active-bg"></div>
-    <div class="ar-call-act-meta">
-      <div class="ar-call-act-kind"><span class="ar-call-act-dot"></span> <span id="arCallActStatus">通话中</span></div>
-      <div class="ar-call-act-time" id="arCallActTime">00:00</div>
-    </div>
-    <div class="ar-call-act-mid">
-      <div class="ar-call-act-pair">
-        <div class="ar-call-act-av" id="arCallActAvAries"><span class="ar-call-act-emoji">🦉</span></div>
-        <div class="ar-call-act-av" id="arCallActAvUser"><span class="ar-call-act-emoji">😊</span></div>
-      </div>
-      <div class="ar-call-act-names"><span>Aries</span><span>我</span></div>
-      <canvas id="arCallWave"></canvas>
-    </div>
-    <div class="ar-call-act-caps" id="arCallActCaps"></div>
-    <div class="ar-call-act-dock">
-      <div class="ar-call-act-btn">
-        <div class="ar-call-act-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4"/></svg></div>
-        <div class="ar-call-act-lab">静音</div>
-      </div>
-      <div class="ar-call-act-btn" id="arCallActHangup">
-        <div class="ar-call-act-ico end">
-          <svg viewBox="0 0 24 24" fill="currentColor"><g transform="rotate(135 12 12)"><path d="M6.6 10.8c1.4 2.8 3.8 5.2 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.4.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.6c.6 0 1 .4 1 1 0 1.2.2 2.5.6 3.6.1.4 0 .8-.2 1l-3 2.2z"/></g></svg>
-        </div>
-        <div class="ar-call-act-lab">挂断</div>
-      </div>
-    </div>
-    <div class="ar-call-act-veil" id="arCallActVeil" style="display:none">
-      <div class="ar-call-act-bye">
-        <div class="ar-call-act-t1">通话结束</div>
-        <div class="ar-call-act-t2" id="arCallActT2">回头再聊</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Aries 音乐播放器（Duetto 全屏嵌入） -->
-<div class="ar-call-overlay" id="arDuettoOverlay" style="display:none;z-index:1300">
-  <div style="position:relative;width:100%;height:100%;max-width:100vw;max-height:100vh;background:#000" id="arDuettoContainer">
-    <button onclick="document.getElementById('arDuettoOverlay').style.display='none'"
-      style="position:absolute;top:12px;right:12px;z-index:10;width:36px;height:36px;border-radius:50%;border:none;background:rgba(0,0,0,.5);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
-    <iframe id="arDuettoFrame"
-      style="width:100%;height:100%;border:none"
-      allow="microphone;autoplay"></iframe>
-  </div>
-</div>
-
-<!-- Aries 行程弹层 -->
-<div class="ar-tasks-overlay" id="arTasksOverlay" style="display:none;">
-  <div class="ar-tasks-card">
-    <div class="ar-tasks-header">
-      <span>📋 行程</span>
-      <button class="ar-tasks-close" id="arTasksClose">✕</button>
-    </div>
-    <div class="ar-tasks-add-row">
-      <input type="text" class="ar-tasks-input" id="arTaskInput" placeholder="添加新待办...">
-      <input type="date" class="ar-tasks-date" id="arTaskDate">
-      <button class="ar-tasks-add-btn" id="arTaskAddBtn">添加</button>
-    </div>
-    <div class="ar-tasks-cols">
-      <div><div class="ar-tasks-col-title todo">📋 待办 <span id="arTodoCount">0</span></div><div id="arTodoList"></div></div>
-      <div><div class="ar-tasks-col-title done">✅ 已办 <span id="arDoneCount">0</span></div><div id="arDoneList"></div></div>
-    </div>
-  </div>
-</div>
-
-<!-- Aries 朋友圈发布 -->
-<div class="moment-modal hidden" id="arMomentModal">
-  <div class="moment-dialog">
-    <textarea id="arMomentInput" placeholder="分享今天发生的事情..."></textarea>
-    <div class="moment-toolbar"><button id="arChooseImage">📷 图片</button></div>
-    <div class="moment-image-preview" id="arMomentImagePreview" style="display:none;margin-top:8px;position:relative;"><img id="arMomentPreviewImg" style="width:100%;max-height:200px;object-fit:cover;border-radius:12px;"><span class="moment-img-remove" id="arMomentImgRemove" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.5);color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;">✕</span></div>
-    <div class="moment-actions">
-      <button id="arCancelMoment">取消</button>
-      <button id="arPublishMoment">发布</button>
-    </div>
-  </div>
-</div>
-
-<!-- Aries 小说弹层 -->
-<div class="ar-novel-overlay" id="arNovelOverlay" style="display:none;">
-  <div class="ar-novel-card">
-    <div class="ar-novel-header">
-      <span class="ar-novel-back" id="arNovelBack">‹ 返回</span>
-      <span id="arNovelTitle">📚 小说</span>
-      <button class="ar-novel-close" id="arNovelClose">✕</button>
-    </div>
-    <div class="ar-novel-shelf" id="arNovelShelf"></div>
-    <div class="ar-novel-reader" id="arNovelReader" style="display:none;">
-      <div class="ar-novel-text" id="arNovelText"></div>
-      <div class="ar-novel-nav">
-        <button class="ar-novel-prev" id="arNovelPrev">‹ 上一页</button>
-        <span id="arNovelPageInfo">0/0</span>
-        <button class="ar-novel-next" id="arNovelNext">下一页 ›</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Aries 时光/日记弹层 -->
-<div class="ar-diary-overlay" id="arDiaryOverlay" style="display:none;">
-  <div class="ar-diary-card">
-    <div class="ar-novel-header">
-      <span>📖 时光</span>
-      <button class="ar-novel-close" id="arDiaryClose">✕</button>
-    </div>
-    <div class="ar-diary-list" id="arDiaryOverlayList"></div>
-    <button class="ar-diary-new-btn" id="arDiaryNewBtn">+ 写日记</button>
-  </div>
-</div>
-
-</div><!-- /aries-theme -->
 
 <script src="app.js"></script>
-<script src="aries-init.js"></script>
 <script>
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js");

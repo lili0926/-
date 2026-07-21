@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>涩涩大富翁</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#140e16;color:#e8dcd0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column}
+.header{text-align:center;padding:24px 16px 12px;background:linear-gradient(180deg,rgba(200,120,100,.08),transparent)}
+.header h1{font-size:22px;font-weight:600;background:linear-gradient(135deg,#e8b88a,#c96f5e);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header p{font-size:13px;opacity:.5;margin-top:4px}
+.tabs{display:flex;gap:4px;padding:0 16px;margin-top:12px}
+.tab{padding:8px 16px;border-radius:10px 10px 0 0;font-size:13px;cursor:pointer;background:rgba(255,255,255,.04);color:rgba(255,255,255,.4);border:none;font-family:inherit;transition:all .2s}
+.tab.active{background:rgba(200,120,100,.12);color:#e8b88a}
+.panel{display:none;flex:1;padding:16px;overflow-y:auto}
+.panel.active{display:block}
+.card{background:rgba(255,255,255,.04);border-radius:14px;padding:16px;margin-bottom:12px;border:1px solid rgba(255,255,255,.06)}
+.card h3{font-size:14px;font-weight:500;margin-bottom:8px;opacity:.8}
+.card p{font-size:13px;line-height:1.7;opacity:.6}
+.card .tag{display:inline-block;padding:3px 10px;border-radius:8px;font-size:11px;background:rgba(200,120,100,.12);color:#e8b88a;margin:2px}
+.btn{display:block;width:100%;padding:12px;border-radius:12px;border:none;font-size:14px;font-family:inherit;cursor:pointer;text-align:center;transition:all .2s;margin-bottom:8px}
+.btn.primary{background:linear-gradient(135deg,#c96f5e,#e8b88a);color:#140e16;font-weight:600}
+.btn.primary:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(200,120,100,.3)}
+.btn.secondary{background:rgba(255,255,255,.06);color:#e8dcd0;border:1px solid rgba(255,255,255,.1)}
+.btn.secondary:hover{background:rgba(255,255,255,.1)}
+.api-box{background:rgba(0,0,0,.3);border-radius:10px;padding:14px;font-size:12px;line-height:1.8;font-family:'Courier New',monospace;color:#b8b0c8;overflow-x:auto;white-space:pre-wrap;word-break:break-all}
+.step{display:flex;gap:12px;align-items:flex-start;margin-bottom:14px}
+.step-num{width:26px;height:26px;border-radius:50%;background:rgba(200,120,100,.15);color:#e8b88a;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;margin-top:2px}
+.step-text{font-size:13px;line-height:1.6;opacity:.7}
+.status-bar{position:fixed;bottom:0;left:0;right:0;padding:10px 16px;background:rgba(20,14,22,.95);backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,.06);font-size:12px;opacity:.5;text-align:center}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🎲 涩涩大富翁</h1>
+  <p>双人棋盘亲密游戏 · API 驱动</p>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('play')">🎮 开始</button>
+  <button class="tab" onclick="switchTab('about')">📖 说明</button>
+  <button class="tab" onclick="switchTab('api')">🔌 API</button>
+</div>
+
+<div class="panel active" id="panel-play">
+  <div class="card">
+    <h3>🎯 三种玩法</h3>
+    <div style="margin-top:10px">
+      <button class="btn primary" onclick="openAI()">🤖 让 AI 当荷官（推荐）</button>
+      <button class="btn secondary" onclick="openApiDocs()">📋 查看 API 文档</button>
+      <button class="btn secondary" onclick="openPublic()">🌐 公开托管实例</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>📋 快速开始</h3>
+    <div class="step"><div class="step-num">1</div><div class="step-text">把 <strong>monopoly-给AI的操作手册.md</strong> 发给你的 AI</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-text">让 AI 照着手册调 API 当荷官，你们两个下场玩</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-text">AI 既当荷官也下场当你的玩伴（或者两个真人玩）</div></div>
+  </div>
+
+  <div class="card">
+    <h3>📍 服务状态</h3>
+    <p id="apiStatus">检测中...</p>
+  </div>
+</div>
+
+<div class="panel" id="panel-about">
+  <div class="card">
+    <h3>🎲 什么是涩涩大富翁</h3>
+    <p>一个双人棋盘亲密游戏。AI 是荷官+玩伴：掷骰、走格、抽任务、算账都由代码算好真值，轮到它的任务它自己演。</p>
+  </div>
+  <div class="card">
+    <h3>🎮 游戏机制</h3>
+    <p>20 格棋盘 · 金币经济 · 身份卡 · 任务库 900+<br>
+    安全词 / 红线过滤 / 跳过换任务<br>
+    包容任何组合（AI/真人、性别、攻受独立）</p>
+    <div style="margin-top:8px">
+      <span class="tag">🎴 身份卡</span>
+      <span class="tag">🌀 淫纹</span>
+      <span class="tag">⚔️ 对决</span>
+      <span class="tag">🎰 赌徒</span>
+      <span class="tag">🎭 背德者</span>
+    </div>
+  </div>
+  <div class="card">
+    <h3>⚠️ 成人内容 · 仅限 18+</h3>
+    <p>含露骨成人/性内容，仅供两个自愿成年人之间私密娱乐。内置安全词、红线过滤机制。</p>
+  </div>
+</div>
+
+<div class="panel" id="panel-api">
+  <div class="card">
+    <h3>🔌 API 基础地址</h3>
+    <div class="api-box" id="apiUrl">http://localhost:8069</div>
+  </div>
+  <div class="card">
+    <h3>📡 常用接口</h3>
+    <div class="api-box">POST /new_game    开局
+POST /roll/{id}   掷骰
+GET  /state/{id}  查看状态
+GET  /help        完整文档</div>
+  </div>
+  <div class="card">
+    <h3>📁 游戏文件</h3>
+    <p style="margin-bottom:6px">项目文件夹 spicy-monopoly-tmp/ 包含：</p>
+    <div class="api-box">monopoly-给AI的操作手册.md
+monopoly-API使用手册.md
+monopoly-怎么玩-人类版.md
+monopoly-library.v2.json
+monopoly-identities.json
+monopoly-truths.json</div>
+  </div>
+</div>
+
+<div class="status-bar">🎲 涩涩大富翁 · API v0.1.0</div>
+
+<script>
+async function checkStatus(){
+  const el = document.getElementById('apiStatus');
+  try {
+    const r = await fetch('http://localhost:8069/');
+    if(r.ok){ el.textContent = '✅ API 服务运行中 · localhost:8069'; el.style.opacity='.8'; }
+    else { el.textContent = '⚠️ API 返回异常'; el.style.opacity='.5'; }
+  } catch(e){
+    el.textContent = '❌ API 未连接（需要启动后端服务）'; el.style.opacity='.4';
+  }
+}
+checkStatus();
+
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelector(`.tab[onclick*="'${name}'"]`).classList.add('active');
+  document.getElementById('panel-'+name).classList.add('active');
+}
+
+function openAI(){
+  const hint = '把 spicy-monopoly-tmp/monopoly-给AI的操作手册.md 发给你的 AI（ChatGPT/Claude），让它照着手册调 API 当荷官。你们两个下场玩，AI 也下场当你的玩伴。\n\nAPI 地址: http://localhost:8069';
+  alert(hint);
+}
+function openApiDocs(){ window.open('http://localhost:8069/help', '_blank'); }
+function openPublic(){ window.open('https://spicy-monopoly.lol', '_blank'); }
+</script>
+</body>
+</html>

@@ -1,8 +1,29 @@
-node_modules/
-.cache/
-.env
-dist/
-build/
-*.log
+# OS
 .DS_Store
 Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+.next/
+
+# Project runtime
+hervoice_data/
+monopoly-games/
+monopoly-seen/
+eventide_state.json
+eventide.html
+collartmp_state.json
+
+# Temp clones not yet integrated
+veglia-tmp/
+
+# Settings
+.claude/settings.local.json

@@ -538,10 +538,9 @@ function LSQueueSheet({ idx, setIdx, ncmQueue, playNcmIdx, playMode, cyclePlayMo
           <button className={tab === 'cur' ? 'on' : ''} onClick={(e) => { stop(e); setTab('cur'); }}>当前播放<sup>{real ? ncmQueue.list.length : list.length}</sup></button>
           <button className={tab === 'his' ? 'on' : ''} onClick={(e) => { stop(e); setTab('his'); }}>历史播放</button>
         </div>
-        {/* 操作栏：播放方式 chip + 智能过渡 + 下载/收藏/清空 */}
+        {/* 操作栏：播放方式 chip + 下载/收藏/清空 */}
         <div className="ls-queue-bar">
           <button className="chip" onClick={(e) => { stop(e); cyclePlayMode && cyclePlayMode(); }}>{playModeIcon()}<span>{playModeName}</span></button>
-          <button className="chip" onClick={(e) => { stop(e); say('智能过渡已保持当前设置'); }}><span className="merge"></span>智能过渡</button>
           <div className="sp"></div>
           <button className="ic" title="下载" onClick={downloadCurrent}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v11M8 11l4 4 4-4M5 20h14"/></svg></button>
           <button className="ic" title="收藏整个播放列表" onClick={saveQueue}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 9v6M9 12h6"/></svg></button>

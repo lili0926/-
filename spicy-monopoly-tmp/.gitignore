@@ -1,0 +1,25 @@
+# ── 运行时产物（每个部署自己生成，别提交）──
+# 注意：.gitignore 的 # 只有在【行首】才是注释；跟在 pattern 后面的 # 会被当成 pattern 的一部分，
+# 让规则失效。所以注释必须单独成行、pattern 行只留裸 pattern。
+monopoly-state.json
+monopoly-games/
+monopoly-seen/
+monopoly-swap-log.jsonl
+monopoly-feedback.jsonl
+monopoly-admin.key
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ── Node / MCP ──
+node_modules/
+
+# ── 备份/临时 ──
+*.bak
+*.bak.*
+pending_*.json
+*.tmp
