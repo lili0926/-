@@ -23,3 +23,39 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.14.0
+
+  # 📿 项圈 Collar — Next.js
+  - type: web
+    name: collar
+    env: node
+    region: singapore
+    buildCommand: npm install && npm run build
+    startCommand: npx next start -H 0.0.0.0
+    rootDir: collar-tmp
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+
+  # 🌙 Eventide 生理 — Python 纯标准库
+  - type: web
+    name: eventide
+    env: python
+    region: singapore
+    buildCommand: ""
+    startCommand: PYTHONPATH=eventide-tmp/src python3 eventide-server.py $PORT
+    rootDir: .
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.14.0
+
+  # 🎙 hervoice 语情 — Python 纯标准库
+  - type: web
+    name: hervoice
+    env: python
+    region: singapore
+    buildCommand: ""
+    startCommand: python3 hervoice-server.py $PORT
+    rootDir: .
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.14.0

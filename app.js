@@ -3626,7 +3626,9 @@ window.openPanel = window.openPanel || function(panel){
 const RENDER_URLS = {
   duetto: 'https://duetto-mqc7.onrender.com',
   cedareco: 'https://cedareco-e0hj.onrender.com',
-  collar: 'https://collar.onrender.com'
+  collar: 'https://collar.onrender.com',
+  eventide: 'https://eventide.onrender.com',
+  hervoice: 'https://hervoice.onrender.com'
 };
 
 // 生成外部服务的 URL
@@ -3641,6 +3643,8 @@ function serviceUrl(port, path){
   if(port === 8765) return remoteUrls.cedareco || RENDER_URLS.cedareco;
   if(port === 4183) return (remoteUrls.duetto || RENDER_URLS.duetto) + (path || '');
   if(port === 3412) return remoteUrls.collar || RENDER_URLS.collar;
+  if(port === 3876) return remoteUrls.eventide || RENDER_URLS.eventide;
+  if(port === 8010) return remoteUrls.hervoice || RENDER_URLS.hervoice;
   // 未知环境，尝试同域端口
   return `http://${host}:${port}${path || ''}`;
 }
@@ -3807,9 +3811,8 @@ function initEventideFrame(){
   if(host === '127.0.0.1' || host === 'localhost' || host.match(/^192\.|^10\.|^172\./)){
     frame.src = `http://${host}:3876`;
   } else {
-    // 非本地环境：尝试用户配置的远程地址
     const remoteUrls = JSON.parse(localStorage.getItem('remoteServiceUrls') || '{}');
-    frame.src = remoteUrls.eventide || 'http://localhost:3876';
+    frame.src = remoteUrls.eventide || RENDER_URLS.eventide || 'http://localhost:3876';
   }
 }
 initEventideFrame();
@@ -3823,7 +3826,7 @@ function initHervoiceFrame(){
     frame.src = `http://${host}:8010`;
   } else {
     const remoteUrls = JSON.parse(localStorage.getItem('remoteServiceUrls') || '{}');
-    frame.src = remoteUrls.hervoice || 'http://localhost:8010';
+    frame.src = remoteUrls.hervoice || RENDER_URLS.hervoice || 'http://localhost:8010';
   }
 }
 initHervoiceFrame();
