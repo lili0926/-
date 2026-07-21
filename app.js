@@ -3626,8 +3626,8 @@ window.openPanel = window.openPanel || function(panel){
 const RENDER_URLS = {
   duetto: 'https://duetto-mqc7.onrender.com',
   cedareco: 'https://cedareco-e0hj.onrender.com',
-  collar: 'https://collar.onrender.com',
-  eventide: 'https://eventide.onrender.com',
+  collar: 'https://collar-awto.onrender.com',
+  eventide: 'https://eventide-j32v.onrender.com',
   hervoice: 'https://hervoice.onrender.com'
 };
 
