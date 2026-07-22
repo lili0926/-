@@ -174,7 +174,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
     flex-direction:column;
     align-items:flex-start;
 }
-.bubble{ max-width:95%; padding:6px 14px; border-radius:16px; line-height:1.6; color:var(--text); background:var(--surface);backdrop-filter:blur(var(--glass-blur,0px));-webkit-backdrop-filter:blur(var(--glass-blur,0px)); border:1px solid rgba(255,255,255,.12);}
+.bubble{ max-width:95%; padding:4px 14px; border-radius:16px; line-height:1.6; color:var(--text); background:var(--surface);backdrop-filter:blur(var(--glass-blur,0px));-webkit-backdrop-filter:blur(var(--glass-blur,0px)); border:1px solid rgba(255,255,255,.12);}
 .bubble{
     position:relative;
     overflow:hidden;

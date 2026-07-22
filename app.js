@@ -1318,13 +1318,10 @@ async function sendPendingToAI() {
       if(tb.length > 0) thinkingContent = tb.map(b => b.thinking).join('\n');
     }
 
-    // 每条独立添加 + 各自存 Supabase（页面重进后仍能恢复）
+    // 每条独立添加（不存 Supabase——避免回环触发 listenAIMessage 重复渲染）
     paragraphs.forEach((p, i) => {
       const thinkForThis = (i === 0) ? thinkingContent : '';
       addChatMessage('assistant', p.trim(), thinkForThis);
-      supabaseClient.from('chat_messages').insert({
-        role:'assistant', type:'chat', content: p.trim(), status:'done'
-      }).then().catch(() => {});
     });
 
     scrollChatBottom();
@@ -2376,6 +2373,9 @@ function addLoadingMessage(){
 }
 
 async function loadAiMessages(){
+
+    // 如果 localStorage 已有聊天记录，说明 init() 会从 localStorage 恢复，跳过 Supabase 加载避免重复
+    if(localStorage.getItem("chatHistory")) return;
 
     const { data, error } = await supabaseClient
     .from("chat_messages")
