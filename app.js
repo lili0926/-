@@ -3745,7 +3745,7 @@ const GAMES = [
     icon: '⛓️',
     desc: '30 天囚禁角色扮演，规则引擎驱动',
     get url(){ return serviceUrl(5058, ''); },
-    embed: false,
+    embed: true,
   },
   {
     id: 'spicy-monopoly',
