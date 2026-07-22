@@ -386,7 +386,8 @@ body.has-wallpaper .message.assistant .bubble{background:rgba(255,255,255,var(--
 @keyframes modalIn{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
 /* 内嵌游戏面板滚动修正 */
 #gameEmbedPanel.open{display:flex;align-items:stretch;padding:20px}
-#gameEmbedPanel>div{max-height:100%}
+#gameEmbedPanel>div{max-height:100%;margin:0!important}
+#gameEmbedPanel>div>iframe{height:100%!important;min-height:0!important;display:block}
 #gameList{overflow-y:auto;flex:1;min-height:0}
 .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;font-size:14px;font-weight:500}
 .wallpaper-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
