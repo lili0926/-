@@ -1217,7 +1217,7 @@ async function sendPendingToAI() {
   const thinkingOn = document.getElementById('thinkingToggle')?.checked ?? false;
 
   // 如果是多条，在 system prompt 加额外的批量指令
-  const splitInstruction = '你的回复会以段落为单位拆成多条消息依次展示。每段要独立成意，单独拿出来也读得通。段落之间用两个换行分隔。如果你有内心独白或思考过程，用【思考】开头，后面跟思考内容，再用【/思考】结束。\n【思考】后面的第一行，用一句标题式总结概括这段思考最浓烈的情感状态。要求：语言简练、诗意、有力度，用具体的动词和感官词汇呈现情感本身的温度和质地，让读的人脑子里能出现一个画面。以感受或内心动作开头，第一人称视角但省略主语"我"。用陈述语气或动词短语，不加引号，句号结尾，不超过20字。';
+  const splitInstruction = '如果你有内心独白或思考过程，用【思考】开头，后面第一行写一句标题式总结概括这段思考最浓烈的情感状态（语言简练诗意、不超过20字），然后空一行，再写完整的思考内容，最后用【/思考】结束。\n标题要求：以感受或内心动作开头，第一人称视角但省略主语"我"。用陈述语气或动词短语，不加引号，句号结尾，不超过20字。';
 
   const isClaude = cfg.baseUrl.toLowerCase().includes('anthropic');
 
@@ -1305,10 +1305,14 @@ async function sendPendingToAI() {
 
     if(loadingEl) loadingEl.remove();
 
-    // 从回复中提取思考内容（【思考】...【/思考】）
+    // 从回复中提取思考内容（【思考】标题\n\n完整内容【/思考】）
     const thinkMatch = replyContent.match(/【思考】([\s\S]*?)【\/思考】/);
     if(thinkMatch){
-      thinkingContent = thinkMatch[1].trim();
+      const raw = thinkMatch[1].trim();
+      const lines = raw.split('\n').filter(l => l.trim());
+      const title = lines[0] || '💭';
+      const body = lines.slice(1).join('\n');
+      thinkingContent = title + '\n\n' + body;
       replyContent = replyContent.replace(/【思考】[\s\S]*?【\/思考】/g, '').trim();
     }
 
@@ -1709,6 +1713,9 @@ let _activeMainTab = 'home';
 
 function switchMainTab(tab){
   _activeMainTab = tab;
+  // 聊天页fix：.content 不滚动，由聊天内部滚动
+  const content = document.getElementById('mainContent');
+  if(content) content.style.overflow = (tab === 'chat') ? 'hidden' : '';
   // 切换页面
   document.querySelectorAll('#old-theme .page').forEach(p => p.classList.remove('active'));
   const target = document.getElementById('page-'+tab);
