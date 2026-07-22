@@ -1079,9 +1079,10 @@ const vchar = {
 };
 
 // ====== 聊天 ======
-function scrollChatBottom(){
+function scrollChatBottom(force){
   const box = document.getElementById("chatMessages");
   if(!box) return;
+  if(force) { box.scrollTop = box.scrollHeight; return; }
   // 只有离底部80px以内才自动滚到底，不打扰翻阅历史
   const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
   if(nearBottom) box.scrollTop = box.scrollHeight;
@@ -1717,7 +1718,7 @@ function switchMainTab(tab){
   const navItem = document.querySelector(`.bottom-nav-item[data-page="${tab}"]`);
   if(navItem) navItem.classList.add('active');
   // 副作用
-  if(tab === 'chat'){ setTimeout(scrollChatBottom, 100); }
+  if(tab === 'chat'){ setTimeout(() => scrollChatBottom(true), 100); }
   if(tab === 'settings'){ setupSettings(); }
 }
 
@@ -1731,7 +1732,7 @@ function switchToSubPage(page){
   const homeNav = document.querySelector(`.bottom-nav-item[data-page="${_activeMainTab || 'home'}"]`);
   if(homeNav) homeNav.classList.add('active');
   // 子页面初始化
-  if(page === 'chat'){ setTimeout(scrollChatBottom, 100); }
+  if(page === 'chat'){ setTimeout(() => scrollChatBottom(true), 100); }
   if(page === 'novel'){ renderShelf(); }
   if(page === 'tasks'){ renderTasks(); }
   if(page === 'moments'){ loadMoments(); }
