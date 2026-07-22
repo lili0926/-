@@ -1713,6 +1713,9 @@ let _activeMainTab = 'home';
 
 function switchMainTab(tab){
   _activeMainTab = tab;
+  // 聊天页：content 不滚动由聊天内部滚；其他页 content 正常滚动
+  const mc = document.getElementById('mainContent');
+  if(mc) mc.style.overflow = (tab === 'chat') ? 'hidden' : '';
   // 切换页面
   document.querySelectorAll('#old-theme .page').forEach(p => p.classList.remove('active'));
   const target = document.getElementById('page-'+tab);
@@ -1727,6 +1730,9 @@ function switchMainTab(tab){
 }
 
 function switchToSubPage(page){
+  // 聊天页：content 不滚动由聊天内部滚
+  const mc = document.getElementById('mainContent');
+  if(mc) mc.style.overflow = (page === 'chat') ? 'hidden' : '';
   // 切换到子页面，底部导航保持主页高亮
   document.querySelectorAll('#old-theme .page').forEach(p => p.classList.remove('active'));
   const target = document.getElementById('page-'+page);
