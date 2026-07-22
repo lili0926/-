@@ -8,7 +8,7 @@ import { WebSocketServer } from 'ws';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { hasSupabase, readAuth as sbReadAuth, writeAuth as sbWrite } from './auth-supabase.mjs';
+import { hasSupabase, readAuth as sbReadAuth, writeAuth as sbWrite, readNcmCookie as sbReadNcm, writeNcmCookie as sbWriteNcmCookie } from './auth-supabase.mjs';
 // 懒加载 NeteaseCloudMusicApi（在 Node 20 下静态 import 可能卡住）
 let _ncmMod = null;
 const _getNcm = async () => { if (!_ncmMod) _ncmMod = (await import('NeteaseCloudMusicApi')).default; return _ncmMod; };
@@ -60,6 +60,9 @@ fs.readFile(authFile, 'utf8', (err, _) => {
   if(err && hasSupabase()){
     sbReadAuth().then(sb => {
       if(sb) { writeAuth(sb); console.log('[auth] 从 Supabase 恢复 PIN'); }
+    }).catch(()=>{});
+    sbReadNcm().then(cookie => {
+      if(cookie) { saveNcmCookie(cookie); console.log('[auth] 从 Supabase 恢复网易云登录'); }
     }).catch(()=>{});
   }
 });
@@ -329,8 +332,8 @@ app.post('/api/song-analysis',async(q,r)=>{ try{ const s0=getSettings(); const b
 // —— NetEase Cloud Music: real QR login ——
 const ncmCookieFile = path.join(dataDir, 'ncm-cookie.txt');
 let ncmCookie = '';
-try { ncmCookie = fs.readFileSync(ncmCookieFile, 'utf8'); } catch (e) {}
-function saveNcmCookie(v){ ncmCookie = v || ''; try { fs.mkdirSync(dataDir,{recursive:true}); writePrivate(ncmCookieFile, ncmCookie); } catch(e){} }
+try { ncmCookie = fs.readFileSync(ncmCookieFile, 'utf8'); } catch (e) { ncmCookie = process.env.NCM_COOKIE || ''; }
+function saveNcmCookie(v){ ncmCookie = v || ''; try { fs.mkdirSync(dataDir,{recursive:true}); writePrivate(ncmCookieFile, ncmCookie); } catch(e){} if(hasSupabase() && v){ sbWriteNcmCookie(v).catch(()=>{}); } }
 async function ncmProfile(){ if(!ncmCookie) return null; try{ const st=await ncm.login_status({ cookie: ncmCookie }); const p=st.body&&st.body.data&&st.body.data.profile; return p||null; }catch(e){ return null; } }
 app.get('/api/ncm/qr', async (_q,r)=>{ try{ const k=await ncm.login_qr_key({}); const key=k.body.data.unikey; const c=await ncm.login_qr_create({ key, qrimg:true }); r.json({ ok:true, key, qrimg:c.body.data.qrimg }); }catch(e){ r.status(500).json({ok:false,error:String(e.message||e)}); } });
 app.get('/api/ncm/check', async (q,r)=>{ try{ const key=q.query.key; const c=await ncm.login_qr_check({ key }); const code=c.body.code; if(code===803){ saveNcmCookie(c.body.cookie); const p=await ncmProfile(); r.json({ ok:true, code, logged:true, nickname:p&&p.nickname, avatar:p&&p.avatarUrl, uid:p&&p.userId }); } else { r.json({ ok:true, code, message:c.body.message||'' }); } }catch(e){ r.status(500).json({ok:false,error:String(e.message||e)}); } });

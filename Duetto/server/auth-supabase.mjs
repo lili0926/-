@@ -38,3 +38,36 @@ export async function writeAuth(a){
     console.error('[auth-supabase] writeAuth error:', e.message);
   }
 }
+
+export async function readNcmCookie(){
+  if(!hasSupabase()) return '';
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?id=eq.2&select=cval`, {
+      headers: { 'apikey': SUPABASE_SERVICE_KEY, 'Authorization': 'Bearer ' + SUPABASE_SERVICE_KEY }
+    });
+    if(!res.ok) return '';
+    const rows = await res.json();
+    return (rows && rows[0] && rows[0].cval) || '';
+  } catch(e){
+    console.error('[auth-supabase] readNcmCookie error:', e.message);
+    return '';
+  }
+}
+
+export async function writeNcmCookie(cookie){
+  if(!hasSupabase() || !cookie) return;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}?id=eq.2`, {
+      method: 'PUT',
+      headers: {
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_SERVICE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({ id: 2, cval: cookie })
+    });
+  } catch(e){
+    console.error('[auth-supabase] writeNcmCookie error:', e.message);
+  }
+}
