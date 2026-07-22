@@ -8,7 +8,7 @@ import { WebSocketServer } from 'ws';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { hasSupabase, writeAuth as sbWrite } from './auth-supabase.mjs';
+import { hasSupabase, readAuth as sbReadAuth, writeAuth as sbWrite } from './auth-supabase.mjs';
 // 懒加载 NeteaseCloudMusicApi（在 Node 20 下静态 import 可能卡住）
 let _ncmMod = null;
 const _getNcm = async () => { if (!_ncmMod) _ncmMod = (await import('NeteaseCloudMusicApi')).default; return _ncmMod; };
@@ -58,7 +58,7 @@ function writeAuth(a){ fs.mkdirSync(dataDir, { recursive: true }); writePrivate(
 // 启动时从 Supabase 恢复认证（本地文件丢失时）
 fs.readFile(authFile, 'utf8', (err, _) => {
   if(err && hasSupabase()){
-    import('./auth-supabase.mjs').then(m => m.readAuth()).then(sb => {
+    sbReadAuth().then(sb => {
       if(sb) { writeAuth(sb); console.log('[auth] 从 Supabase 恢复 PIN'); }
     }).catch(()=>{});
   }

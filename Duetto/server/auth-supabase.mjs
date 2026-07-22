@@ -1,6 +1,6 @@
 // duetto 认证数据持久化到 Supabase（解决 Render 部署清空 data/ 导致 PIN 丢失）
-const SUPABASE_URL = process.env.SUPABASE_URL || '';
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://lqcuklhldvkwbkpftjzu.supabase.co';
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxxY3VrbGhsZHZrd2JrcGZ0anp1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTg1NzIwNCwiZXhwIjoyMDk3NDMzMjA0fQ.-5VYk1Gz3vdhQPQF-zqCtTEYWnS92q_c_knChnAGWis';
 const TABLE = 'duetto_auth';
 
 export function hasSupabase(){ return !!(SUPABASE_URL && SUPABASE_SERVICE_KEY); }
