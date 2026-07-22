@@ -1318,11 +1318,13 @@ async function sendPendingToAI() {
       if(tb.length > 0) thinkingContent = tb.map(b => b.thinking).join('\n');
     }
 
-    // 每条独立添加
+    // 每条独立添加 + 各自存 Supabase（页面重进后仍能恢复）
     paragraphs.forEach((p, i) => {
-      // 思考内容只附加到第一条消息
       const thinkForThis = (i === 0) ? thinkingContent : '';
       addChatMessage('assistant', p.trim(), thinkForThis);
+      supabaseClient.from('chat_messages').insert({
+        role:'assistant', type:'chat', content: p.trim(), status:'done'
+      }).then().catch(() => {});
     });
 
     scrollChatBottom();
@@ -2327,13 +2329,7 @@ function addChatMessage(role, text, thinking){
   const div = document.createElement("div");
   div.className = (role === "user") ? "chat-message user" : "chat-message ai";
 
-  const bubble=document.createElement("div");
-  bubble.className="bubble";
-  text = text.replace(/<thinking>[\s\S]*?<\/thinking>/g, "").trim();
-  bubble.innerText=text;
-  div.appendChild(bubble);
-
-  // 可折叠思考链（判断思考链开关）
+  // 可折叠思考链（放在气泡上方）
   if(thinking && (document.getElementById('thinkingToggle')?.checked ?? true)){
     const wrap = document.createElement("div");
     wrap.className = "thinking-wrap";
@@ -2361,6 +2357,12 @@ function addChatMessage(role, text, thinking){
     wrap.appendChild(body);
     div.appendChild(wrap);
   }
+
+  const bubble=document.createElement("div");
+  bubble.className="bubble";
+  text = text.replace(/<thinking>[\s\S]*?<\/thinking>/g, "").trim();
+  bubble.innerText=text;
+  div.appendChild(bubble);
 
   box.appendChild(div);
   scrollChatBottom();
@@ -2566,14 +2568,12 @@ table:"chat_messages"
 (payload)=>{
 let msg=payload.new;
 if(msg.role==="assistant"){
-  // 去重：如果最后一条气泡内容与这条相同，跳过（避免 sendMessage 本地添加后 Supabase INSERT 又触发一次）
+  // 去重：所有气泡中已有相同内容则跳过（避免 sendPendingToAI 批量存 Supabase 后重复渲染）
   const box=document.getElementById("chatMessages");
   if(box){
-    const lastMsg=box.lastElementChild;
-    if(lastMsg){
-      const lastBubble=lastMsg.querySelector(".bubble");
-      if(lastBubble && lastBubble.innerText===msg.content) return;
-    }
+    let dup=false;
+    box.querySelectorAll(".bubble").forEach(b=>{if(b.innerText===msg.content)dup=true;});
+    if(dup) return;
   }
 addChatMessage(
 "assistant",
