@@ -122,8 +122,6 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 #sq2-together .together-count{justify-content:center;flex:1}
 #sq2-together .count-num{font-size:36px}
 #sq2-grudge .flower-msg{font-size:12px;min-height:auto;overflow:hidden;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}
-.hp1-thought{display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 0;cursor:pointer;opacity:0.6;transition:opacity .15s}
-.hp1-thought:hover{opacity:1}
 /* 第二面：app布局 */
 .hp2-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
 .hp2-row-full{display:block}
@@ -250,7 +248,6 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
 .message.assistant .bubble{padding:11px 16px;border-radius:18px 18px 18px 4px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:14px;line-height:1.7;word-break:break-word}
 body.has-wallpaper .message.user .bubble{background:rgba(200,96,154,var(--bubble-alpha));backdrop-filter:blur(20px) saturate(180%);border:1px solid rgba(255,255,255,0.18);color:white}
 body.has-wallpaper .message.assistant .bubble{background:rgba(255,255,255,var(--bubble-alpha));backdrop-filter:blur(20px) saturate(180%);border:1px solid rgba(255,255,255,0.10)}
-/* 思考链面板（思绪弹窗） */
 .thinking-panel{margin-bottom:6px;border-radius:14px;overflow:hidden;border:1px solid color-mix(in srgb,var(--thinking-color) 35%,rgba(255,255,255,0.15));background:color-mix(in srgb,var(--thinking-color) 10%,transparent);backdrop-filter:blur(24px) saturate(200%) brightness(108%);-webkit-backdrop-filter:blur(24px) saturate(200%) brightness(108%);box-shadow:inset 0 1px 0 rgba(255,255,255,0.1),0 4px 20px color-mix(in srgb,var(--thinking-color) 12%,transparent)}
 .thinking-body{padding:0 14px 12px;font-size:12.5px;line-height:1.75;color:var(--text-dim);display:none;white-space:pre-wrap;border-top:1px solid color-mix(in srgb,var(--thinking-color) 20%,transparent);padding-top:10px}
 .thinking-body.open{display:block}
@@ -493,7 +490,6 @@ html[data-font="deep"] {--text:#111;--text-dim:#222;}
     color:var(--thinking-text);
     white-space:pre-wrap;
     line-height:1.5;}
-.thought-panel{
     position:fixed;
     right:20px;
     top:70px;
@@ -510,11 +506,9 @@ html[data-font="deep"] {--text:#111;--text-dim:#222;}
   
 }
 
-.thought-list{
     padding:20px;
     height:calc(80vh - 64px);
     overflow-y:auto;
-}.thought-header{
     height:64px;
     flex-shrink:0;
     padding:0 22px;
@@ -525,13 +519,11 @@ html[data-font="deep"] {--text:#111;--text-dim:#222;}
     font-weight:600;
     border-bottom:1px solid #eee;
 }
-.thought-date{
     font-size:14px;
     color:#999;
     margin:20px 20px 12px;
     font-weight:500;
 }
-.thought-time{
     display:block;
     margin-top:18px;
     margin-bottom:6px;
@@ -539,7 +531,6 @@ html[data-font="deep"] {--text:#111;--text-dim:#222;}
     color:#999;
     font-weight:600;
 }
-.thought-text{
     font-size:15px;
     line-height:1.9;
     color:#2f2f2f;
@@ -548,12 +539,10 @@ html[data-font="deep"] {--text:#111;--text-dim:#222;}
     word-break:break-word;
     overflow-wrap:anywhere;
 }
-.thoughtContent{
     padding:24px 26px;
     max-height:calc(80vh - 64px);
     overflow-y:auto;
 overflow-x:hidden;}
-.thoughtContent .thought-item{
     max-width: 100%;
     box-sizing:border-box;
         background:rgba(255,255,255,.75);
@@ -564,19 +553,15 @@ overflow-x:hidden;}
         letter-spacing:1px;
         box-shadow:0 4px 15px rgba(0,0,0,.05);
     }
-.thoughtContent .thought-date{
     font-size:20px;
     font-weight:600;
     margin-bottom:20px;}
-    .thought-content::-webkit-scrollbar{
         width:5px;
     }
     
-    .thought-content::-webkit-scrollbar-thumb{
         background:#ddd;
         border-radius:10px;
     }
-.thoughtContent .thought-text{
     font-size:15px;
     line-height:1.8;
     color:#555;
@@ -584,25 +569,20 @@ overflow-x:hidden;}
     word-break:break-word;}
 
   @media(max-width:768px){
-    .thought-panel{
         right:10px;
         left:10px;
         width:auto;
         height:75vh;
     }
 
-    .thought-list{
         height:calc(75vh - 64px);
         padding:16px;
     }
   }
-    /* 思绪日期折叠 */
-    .thought-day{
         margin-bottom:18px;
     }
     
     
-    .thought-day summary{
         cursor:pointer;
         font-size:18px;
         font-weight:600;
@@ -612,13 +592,11 @@ overflow-x:hidden;}
     
     
     /* 去掉默认小三角 */
-    .thought-day summary::-webkit-details-marker{
         display:none;
     }
     
     
     /* 关闭状态 */
-    .thought-day summary::before{
         content:"▶";
         margin-right:10px;
         font-size:14px;
@@ -626,32 +604,21 @@ overflow-x:hidden;}
     
     
     /* 打开状态 */
-    .thought-day[open] summary::before{
         content:"▼";
     }
     
     
-    .thought-day-content{
         padding-left:15px;
     }
 
-.thought-panel{
     display:flex;
     flex-direction:column;
     overflow:hidden;
 }
 
-.thought-header{
     flex-shrink:0;
 }
 
-#thoughtContent{
-    height:0;
-    flex:1;
-    overflow-y:auto;
-    overflow-x:hidden;
-    -webkit-overflow-scrolling:touch;
-}
 
 /* ====== 记忆箱 ====== */
 .mem-box-outer{background:var(--surface);border-radius:20px;border:1px solid var(--border);overflow:hidden;margin-bottom:12px;box-shadow:0 2px 12px rgba(0,0,0,0.1)}

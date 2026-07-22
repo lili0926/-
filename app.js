@@ -584,7 +584,6 @@ document.addEventListener('click', function askOnce(){
 loadAiMessages();
 listenAIMessage();
 loadMoments();
-loadThoughts();
 
 checkAwayTime();
 });
@@ -1351,108 +1350,6 @@ async function sendPendingToAI() {
 }
 
 // 检查离线时间
-async function checkOfflineThought(){
-  console.log("【思绪检查】开始...");
-  if (!state.chatHistory || state.chatHistory.length === 0) {
-    console.log("【思绪检查】没有聊天记录，跳过");
-    return;
-  }
-  
-  const last = state.chatHistory.at(-1);
-  const lastTime = last.time;
-  if(!lastTime) return;
-  
-  const lastDate = new Date(lastTime);
-  const now = new Date();
-  const gap = (now - lastDate) / 1000 / 60; 
-  
-  console.log("【思绪检查】距离上次聊天过去了 " + gap.toFixed(2) + " 分钟");
-  if(gap > 100){ 
-    await generateThoughts(lastTime);
-    await organizeMemory(lastTime);
-  }
-}
-
-// 生成思绪核心函数
-async function generateThoughts(lastTime){
-  const apiKey = bgApiConfig.key;
-  if(!apiKey) return;
-  
-  const thoughtLockKey = "thought-lock-" + lastTime;
-  if(localStorage.getItem("currentThoughtLock") === thoughtLockKey){
-    console.log("【思绪生成】这段时间的思绪已经生成过了，拦截");
-    return;
-  }
-  
-  const chatHistoryForThought = state.chatHistory
-    .slice(-10)
-    .map(m => ({ role: m.role, content: m.content }));
-  
-  const now = new Date();
-  const todayStr = now.getFullYear() + "." + (now.getMonth() + 1) + "." + now.getDate();
-  const currentTime = now.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
-  
-  const prompt = "你是一个AI角色。用户在 " + lastTime + " 离开，现在在 " + todayStr + " " + currentTime + " 回来。期间用户没发消息。请根据聊天内容生成你在这段时间里的私人思绪。要求：1.不描述用户。2.只能描述自己的等待、回忆、猜测。3.保持性格。4.返回纯JSON数组，格式如：[{\"date\":\"" + todayStr + "\",\"time\":\"" + currentTime + "\",\"content\":\"...\"}]。聊天记录：" + JSON.stringify(chatHistoryForThought);
-
-  const body = {
-    model: bgApiConfig.model,
-    messages: [
-      { role: "system", content: "你只输出标准的JSON数组，绝对不要用 markdown 或 json 标签包裹，不要解释。" },
-      { role: "user", content: prompt }
-    ],
-    temperature: 0.7,
-    max_tokens:1000
-  };
-  
-  try { 
-    console.log("【思绪生成】正在请求大模型...");
-    const fullUrl = bgApiConfig.baseUrl.replace(/\/+$/, '') + bgApiConfig.path;
-    const controller = new AbortController();
-
-setTimeout(()=>{
- controller.abort();
-},30000);
-    const res = await fetch(fullUrl, { 
-      method: "POST", 
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + apiKey }, 
-      body: JSON.stringify(body) 
-    });
-    const data = await res.json();
-    let thoughtText = "";
-    if(data.choices && data.choices[0]?.message?.content){
-      thoughtText = data.choices[0].message.content;
-    } else if(data.content && Array.isArray(data.content)){
-      thoughtText = data.content.find(b => b.type === "text")?.text || "";
-    }
-    
-    let clean = thoughtText.replace(/```json/g, "").replace(/```/g, "").trim();
-    let newThoughts = JSON.parse(clean);
-    
-    let oldThoughts = JSON.parse(localStorage.getItem("aiThoughts") || "[]");
-    newThoughts.forEach(t => {
-      oldThoughts.push({ type: "offline", date: t.date || todayStr, time: t.time || currentTime, content: t.content }); 
-    });
-    
-    localStorage.setItem("aiThoughts", JSON.stringify(oldThoughts));
-try{
-  const { error } = await supabaseClient
-    .from("ai_thoughts")
-    .insert(newThoughts);
-
-  if(error){
-    console.log("思绪保存失败:", error);
-  }
-}catch(e){
-  console.log("Supabase异常:", e);
-}
-;
-    localStorage.setItem("currentThoughtLock", thoughtLockKey); 
-    
-    renderThoughts();
-} catch(e) {
-    console.error("【思绪生成】失败了：", e); 
-  }
-}
 
 // ====== 记忆整理：AI自己判断该归到哪个分类，自动写入 ======
 async function organizeMemory(lastTime){
@@ -1574,66 +1471,6 @@ async function organizeMemory(lastTime){
     console.error("【记忆整理】失败了：", e);
   }
 }
-
-window.addEventListener("DOMContentLoaded", () => {
-  setTimeout(() => {
-    checkOfflineThought();
-    renderThoughts();
-  }, 2000);
-
-  // 思绪面板开关
-  const thoughtBtn = document.getElementById("thoughtBtn");
-  const thoughtPanel = document.getElementById("thoughtPanel");
-  const closeThought = document.getElementById("closeThought");
-  if(thoughtBtn && thoughtPanel){
-    thoughtBtn.addEventListener("click", () => {
-      thoughtPanel.style.display = "flex";
-      renderThoughts();
-    });
-  }
-  if(closeThought && thoughtPanel){
-    closeThought.addEventListener("click", () => {
-      thoughtPanel.style.display = "none";
-    });
-  }
-});
-
-function renderThoughts(){
-  const box = document.getElementById("thoughtContent");
-  if(!box) return;
-  
-  let list = JSON.parse(localStorage.getItem("aiThoughts") || "[]");
-  if(list.length === 0){
-    box.innerHTML = "暂无思绪";
-    return;
-  }
-  
-  let groups = {};
-  list.forEach(item => {       
-     let date = item.date;      
-     if(!groups[date]){ groups[date] = []; }
-     groups[date].push({ time: item.time, content: item.content });    
-  });  
-  
-  let html = "";
-  Object.keys(groups).forEach(date => {
-    html += `<details class="thought-day"><summary>${date}</summary><div class="thought-day-content">`;
-    groups[date].forEach(x => {
-      html += `<div class="thought-item"><div class="thought-time">${x.time}</div><div class="thought-text">${x.content.replace(/\n/g, "<br>")}</div></div>`;
-    });
-    html += `</div></details>`;
-  });
-  box.innerHTML = html;
-}
-
-window.addEventListener("DOMContentLoaded", () => {
-  localStorage.removeItem("thoughtKey");
-  localStorage.removeItem("aithoughts");
-  localStorage.removeItem("aiThoughtsRaw");
-});
-
-// ====== 站子API扩展代码 ======
-let stationApiConfig = JSON.parse(localStorage.getItem("stationApiCfg")) || {baseUrl: "", authType: "header-token", token: "", customKey: ""};
 
 window.addEventListener('DOMContentLoaded', () => {
   const stationOpenBtn = document.getElementById("openStationBtn");
@@ -2748,32 +2585,7 @@ msg.thinking || ""
 .subscribe();
 
 }
-async function loadThoughts(){
-  try {
-    const {data}=await supabaseClient
-      .from("ai_thoughts")
-      .select("*")
-      .order("created_at",{ascending:false});
-    if(data && data.length){
-      // 合并到 localStorage 再用 renderThoughts()
-      let local = JSON.parse(localStorage.getItem("aiThoughts") || "[]");
-      const existing = new Set(local.map(t => t.time + t.content));
-      let newCount = 0;
-      data.forEach(t => {
-        const key = (t.time || "") + (t.content || "");
-        if(!existing.has(key)){
-          local.push({ type: t.type || "offline", date: t.date || today(), time: t.time || "", content: t.content });
-          existing.add(key);
-          newCount++;
-        }
-      });
-      if(newCount > 0){
-        localStorage.setItem("aiThoughts", JSON.stringify(local));
-      }
-    }
-  } catch(e) { console.log("loadThoughts error:", e); }
-  if(typeof renderThoughts === 'function') renderThoughts();
-}
+
 // ====== 朋友圈核心函数 ======
 
 /** 上传图片到 Supabase Storage，返回公开 URL */
@@ -4104,13 +3916,6 @@ function renderBigCalendar(){
 }
 
 // 思绪面板快捷打开（顶栏按钮已移除，由方块中的按钮调用）
-window.showThoughtPanel = function(){
-  const panel = document.getElementById("thoughtPanel");
-  if(panel){
-    panel.style.display = "flex";
-    renderThoughts();
-  }
-};
 
 
 // 游戏入口现在仅通过游戏大厅内的 iframe 访问
