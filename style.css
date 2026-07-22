@@ -15,7 +15,7 @@
 html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;background:var(--bg);color:var(--text);overflow:hidden}
 /* ── 无侧栏全宽布局 ── */
 .main-full{margin-left:0!important}
-.main-full .content{padding:12px}
+.main-full .content{padding:0 12px 12px}
 /* ── 底部导航 ── */
 .bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:1000;height:56px;display:flex;align-items:center;justify-content:space-around;background:var(--bg2);border-top:1px solid var(--border);backdrop-filter:blur(16px);padding-bottom:env(safe-area-inset-bottom,0)}
 .bottom-nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 16px;cursor:pointer;color:var(--text-dim);text-decoration:none;transition:color .15s;border:none;background:none;font-family:inherit;font-size:10px}
