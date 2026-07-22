@@ -673,6 +673,17 @@ const UI_PRESETS = {
       "--user-bubble":"rgba(139,26,26,0.18)", "--ai-bubble":"rgba(13,17,23,0.85)",
       "--thinking-color":"#c8a96e", "--memory-bg":"#111820"},
     bubbleAlpha:0.85},
+  "sketch":{
+    name:"✏️ 手绘风", root:{
+      "--bg":"#f5ede0", "--bg2":"#efe3d0", "--surface":"rgba(255,249,240,0.92)",
+      "--accent":"#c4956a", "--accent2":"#e0b88a", "--text":"#4a3728",
+      "--text-dim":"rgba(74,55,40,0.55)", "--text-muted":"rgba(74,55,40,0.3)",
+      "--border":"rgba(180,140,100,0.25)", "--shadow":"0 6px 28px rgba(130,90,50,0.12)",
+      "--surface-hover":"rgba(180,140,100,0.08)",
+      "--user-bubble":"rgba(255,249,240,0.9)", "--ai-bubble":"rgba(236,218,190,0.5)",
+      "--thinking-color":"rgba(196,149,106,0.5)", "--memory-bg":"#f5ede0",
+      "--radius":"18px", "--radius-sm":"12px"},
+    bubbleAlpha:0.7},
 };
 
 function today() { return new Date().toISOString().slice(0,10); }
@@ -800,6 +811,8 @@ function applyUIPreset(key){
   applyThinkingColor(preset.thinkingColor);
   localStorage.setItem("uiPreset", key);
   state.uiPreset = key;
+  // 手绘风特殊样式
+  document.body.classList.toggle('preset-sketch', key === 'sketch');
 }
 
 // ====== 问候 ======
