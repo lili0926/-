@@ -1155,14 +1155,17 @@ function autoResize(){
 let pendingQueue = [];
 
 function updatePendingBar(){
-  const bar = document.getElementById('pendingBar');
+  const info = document.getElementById('pendingBar');
+  const btn = document.getElementById('pendingSendBtn');
   const count = document.getElementById('pendingCount');
-  if(!bar) return;
+  if(!info) return;
   if(pendingQueue.length > 0){
-    bar.style.display = 'flex';
+    info.style.display = '';
+    if(btn) btn.style.display = '';
     if(count) count.textContent = pendingQueue.length;
   } else {
-    bar.style.display = 'none';
+    info.style.display = 'none';
+    if(btn) btn.style.display = 'none';
   }
 }
 

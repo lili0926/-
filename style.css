@@ -193,10 +193,10 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
     pointer-events:none;
 }
 /* ── 待发队列 ── */
-.pending-bar{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:color-mix(in srgb,var(--accent) 10%,transparent);border-radius:var(--radius-sm);margin:4px 20px 0}
+.pending-info-sm{font-size:11px;color:var(--accent);font-weight:500}
 .pending-info{font-size:11px;color:var(--text-dim)}
-.pending-send{padding:4px 14px;font-size:12px;border:none;background:var(--accent);color:var(--bg);border-radius:20px;cursor:pointer;font-weight:500;transition:all .15s}
-.pending-send:hover{opacity:.8;transform:scale(1.02)}
+.pending-send-sm{padding:2px 10px;font-size:11px;border:none;background:var(--accent);color:var(--bg);border-radius:14px;cursor:pointer;font-weight:600;transition:all .15s;line-height:1.8}
+.pending-send-sm:hover{opacity:.8;transform:scale(1.05)}
 /* ── 可折叠思考链 ── */
 .thinking-wrap{border:1px solid color-mix(in srgb,var(--thinking-color) 35%,rgba(255,255,255,0.15));background:color-mix(in srgb,var(--thinking-color) 10%,transparent);backdrop-filter:blur(24px) saturate(200%) brightness(108%);-webkit-backdrop-filter:blur(24px) saturate(200%) brightness(108%);box-shadow:inset 0 1px 0 rgba(255,255,255,0.1),0 4px 20px color-mix(in srgb,var(--thinking-color) 12%,transparent);border-radius:14px;overflow:hidden;margin-bottom:6px}
 .thinking-header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;cursor:pointer;font-size:12px;color:var(--thinking-color);user-select:none;transition:background .15s}
@@ -256,20 +256,24 @@ body.has-wallpaper .message.assistant .bubble{background:rgba(255,255,255,var(--
 .loading-dots span:nth-child(2){animation-delay:.15s}
 .loading-dots span:nth-child(3){animation-delay:.3s}
 @keyframes dot{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
-.chat-bottom{padding:12px 20px 16px;border-top:1px solid var(--border);background:color-mix(in srgb,var(--bg2) 80%,transparent);backdrop-filter:blur(12px);flex-shrink:0;position:relative;z-index:10}
-.chat-opts{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.chat-bottom{flex-shrink:0;padding:0 10px 10px;display:flex;flex-direction:column;gap:4px}
+.chat-opts{display:flex;align-items:center;gap:6px;padding:0 4px}
+.chat-opts .chat-opt-btn{display:flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid var(--border);border-radius:14px;background:transparent;color:var(--text-dim);cursor:pointer;font-size:11px;transition:all .15s}
+.chat-opts .chat-opt-btn:hover{border-color:var(--accent);color:var(--accent)}
 .chat-opt-btn{display:flex;align-items:center;gap:5px;padding:5px 10px;border:1px solid var(--border);border-radius:20px;background:transparent;color:var(--text-dim);cursor:pointer;font-size:12px;transition:all .15s}
 .chat-opt-btn:hover{border-color:var(--accent);color:var(--accent)}
 .thinking-label{display:flex;align-items:center;cursor:pointer}
 .thinking-label input{display:none}
 .thinking-chip{padding:5px 12px;border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--text-dim);transition:all .15s}
 .thinking-label input:checked + .thinking-chip{border-color:var(--thinking-color);color:var(--thinking-color);background:color-mix(in srgb,var(--thinking-color) 10%,transparent);backdrop-filter: blur(24px); border: 1px solid color-mix(in srgb, var(--thinking-color) 30%, transparent); border-radius: 12px; padding: 10px 14px; font-size: 12px; color: var(--text-dim); white-space: pre-wrap;margin-bottom: 6px;}
-.chat-input-row{display:flex;gap:10px;align-items:flex-end}
-.chat-input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:10px 14px;font-size:14px;resize:none;font-family:inherit;line-height:1.6;outline:none;max-height:120px;overflow-y:auto;transition:border-color .15s}
+.chat-input-row{display:flex;gap:8px;align-items:center;padding:6px 10px;background:var(--surface);border:1px solid var(--border);border-radius:22px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 4px 20px rgba(0,0,0,0.08);transition:border-color .15s}
+.chat-input-row:focus-within{border-color:var(--accent)}
+.chat-input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:13px;resize:none;font-family:inherit;line-height:1.4;padding:2px 0;max-height:80px;overflow-y:auto}
+.chat-input::placeholder{color:var(--text-muted);font-size:12px}
 .chat-input:focus{border-color:var(--accent)}
 .chat-input::placeholder{color:var(--text-muted)}
-.send-btn{width:40px;height:40px;border:none;border-radius:50%;background:var(--accent);color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
-.send-btn:hover{opacity:.85;transform:scale(1.05)}
+.send-btn{width:32px;height:32px;border:none;border-radius:50%;background:var(--accent);color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.send-btn:hover{opacity:.85;transform:scale(1.08)}
 .send-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
 /* ===== 侧边栏玻璃效果 ===== */
 .sidebar {background: rgba(20, 20, 30, 0.35); 
@@ -417,7 +421,6 @@ body.has-wallpaper .message.assistant .bubble{background:rgba(255,255,255,var(--
   .vchar{bottom:100px}
   .feat-card{min-height:70px;padding:12px 6px}
   .feat-card .feat-icon{font-size:24px}}
-.chat-bottom {padding: 12px 20px 16px;border-top: 1px solid var(--border);flex-shrink: 0;}
 .page.active {display: flex !important; flex-direction: column; flex: 1;}
 .nav-item.active {background: rgba(255,255,255,0.15);}
 body { padding-bottom: env(safe-area-inset-bottom);}
@@ -485,9 +488,6 @@ html[data-font="normal"] {--text:#555;--text-dim:#777;}
 html[data-font="deep"] {--text:#111;--text-dim:#222;}
 /* ===== 新版聊天输入框玻璃UI ===== */
 .input-panel{margin:12px;padding:12px;background:rgba(255,255,255,.08);backdrop-filter:blur(25px);-webkit-backdrop-filter:blur(25px);border:1px solid rgba(255,255,255,.18);border-radius:28px;box-shadow:0 10px 40px rgba(0,0,0,.25);}
-.chat-input-row{display:flex;align-items:center;gap:10px;padding:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:26px;backdrop-filter:blur(20px);}
-.chat-input{flex:1;min-height:42px;background:rgba(255,255,255,.08);border:none;outline:none;border-radius:20px;padding:12px 16px;color:white;}
-.send-btn{width:46px;height:46px;border-radius:50%;border:none;background:rgba(150,200,255,.45);backdrop-filter:blur(15px);}
 /* thinking-chain moved to .thinking-wrap above */
     color:var(--thinking-text);
     white-space:pre-wrap;

@@ -144,17 +144,14 @@
           <div class="chat-messages" id="chatMessages"><div class="chat-welcome" id="chatWelcome"><div class="welcome-icon"></div><div class="welcome-text">你好，今天想聊什么？</div><div class="welcome-hint" id="apiHint"></div></div></div>
           <div class="chat-bottom">
             <div class="chat-opts">
-              <button class="chat-opt-btn" id="clearChat"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6"/></svg>清空</button>
+              <button class="chat-opt-btn" id="clearChat"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3,6 5,6 21,6"/><path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6"/></svg></button>
               <label class="thinking-label"><input type="checkbox" id="thinkingToggle" checked><span class="thinking-chip">💭 思考链</span></label>
-            </div>
-            <!-- 待发队列指示 -->
-            <div class="pending-bar" id="pendingBar" style="display:none">
-              <span class="pending-info"><span id="pendingCount">0</span> 条待回复</span>
-              <button class="btn-primary pending-send" id="pendingSendBtn">AI 回复</button>
+              <span class="pending-info-sm" id="pendingBar" style="display:none"><span id="pendingCount">0</span>条</span>
+              <button class="pending-send-sm" id="pendingSendBtn" style="display:none">AI→</button>
             </div>
             <div class="chat-input-row">
               <textarea class="chat-input" id="chatInput" placeholder="说点什么..." rows="1"></textarea>
-              <button class="send-btn" id="sendBtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9 22,2"/></svg></button>
+              <button class="send-btn" id="sendBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9 22,2"/></svg></button>
             </div>
           </div>
         </div>
