@@ -8,6 +8,7 @@ import { WebSocketServer } from 'ws';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { hasSupabase, writeAuth as sbWrite } from './auth-supabase.mjs';
 // 懒加载 NeteaseCloudMusicApi（在 Node 20 下静态 import 可能卡住）
 let _ncmMod = null;
 const _getNcm = async () => { if (!_ncmMod) _ncmMod = (await import('NeteaseCloudMusicApi')).default; return _ncmMod; };
@@ -50,10 +51,18 @@ try {
 } catch(e){ console.log('[songs backfill]', e.message); }
 const app=express();
 app.use(express.json({limit:'2mb'}));
-// ═══ 应用级门禁：首次打开设 PIN，之后所有 /api/* 与 /ws 需要 token（网易云登录只是登网易账号，这道门才是应用自己的锁） ═══
+// ═══ 应用级门禁：首次打开设 PIN，之后所有 /api/* 与 /ws 需要 token ═══
 const authFile = path.join(dataDir, 'auth.json');
-function readAuth(){ try { return JSON.parse(fs.readFileSync(authFile, 'utf8')); } catch(e){ return null; } }
-function writeAuth(a){ fs.mkdirSync(dataDir, { recursive: true }); writePrivate(authFile, JSON.stringify(a)); }
+function readAuth(){ try { const d = JSON.parse(fs.readFileSync(authFile, 'utf8')); return d; } catch(e){ return null; } }
+function writeAuth(a){ fs.mkdirSync(dataDir, { recursive: true }); writePrivate(authFile, JSON.stringify(a)); if(hasSupabase()) sbWrite(a).catch(()=>{}); }
+// 启动时从 Supabase 恢复认证（本地文件丢失时）
+fs.readFile(authFile, 'utf8', (err, _) => {
+  if(err && hasSupabase()){
+    import('./auth-supabase.mjs').then(m => m.readAuth()).then(sb => {
+      if(sb) { writeAuth(sb); console.log('[auth] 从 Supabase 恢复 PIN'); }
+    }).catch(()=>{});
+  }
+});
 function hashPin(pin, salt){ return crypto.scryptSync(String(pin), salt, 32).toString('hex'); }
 function makeToken(secret){ return crypto.createHmac('sha256', String(secret)).update('duetto-access').digest('hex'); }
 function reqToken(req){ const h = String(req.headers['authorization'] || ''); if (h.startsWith('Bearer ')) return h.slice(7); try { return String((req.query && req.query.token) || ''); } catch(e){ return ''; } }
