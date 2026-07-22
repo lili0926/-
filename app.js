@@ -1713,9 +1713,6 @@ let _activeMainTab = 'home';
 
 function switchMainTab(tab){
   _activeMainTab = tab;
-  // 聊天页fix：.content 不滚动，由聊天内部滚动
-  const content = document.getElementById('mainContent');
-  if(content) content.style.overflow = (tab === 'chat') ? 'hidden' : '';
   // 切换页面
   document.querySelectorAll('#old-theme .page').forEach(p => p.classList.remove('active'));
   const target = document.getElementById('page-'+tab);
