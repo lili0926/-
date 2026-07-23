@@ -58,14 +58,22 @@ function ensureApiConfig() {
 }
 
 async function fetchNewMessages() {
+  // Use simple ordering, let bridge dedup (timestamp filter caused PG errors)
   try {
-    const after = state.lastSyncAt.replace('Z', '+00:00');
-    const url = `${SUPABASE_REST}/chat_messages?select=id,role,content,type,created_at&order=created_at.asc&created_at=gt.${after}&limit=100`;
+    const url = `${SUPABASE_REST}/chat_messages?select=id,role,content,type,created_at&order=created_at.asc&limit=100`;
     const res = await fetch(url, {
       headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
     });
-    if (!res.ok) { const txt = await res.text().catch(()=>''); console.error('[worker] Supabase 查询失败:', res.status, txt.slice(0,100)); return []; }
-    return await res.json() || [];
+    if (!res.ok) { return []; }
+    const data = await res.json();
+    if (!data || !data.length) return [];
+    // Filter client-side by timestamp
+    const since = new Date(state.lastSyncAt).getTime();
+    const filtered = data.filter(function(m) {
+      var t = new Date(m.created_at).getTime();
+      return t > since;
+    });
+    return filtered;
   } catch (e) { console.error('[worker] Supabase 请求失败:', e.message); return []; }
 }
 
