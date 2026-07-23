@@ -1777,6 +1777,7 @@ function switchToSubPage(page){
   if(page === 'tasks'){ renderTasks(); }
   if(page === 'moments'){ loadMoments(); }
   if(page === 'diary'){ renderDiaries(); }
+  if(page === 'album'){ renderAlbum(); }
 }
 
 // ====== 主页三面划页 ======
@@ -3947,6 +3948,149 @@ function openStarMap(){
   }
 }
 
+// ── 相册 ──
+function initAlbumState(){
+  state.albumPhotos = JSON.parse(localStorage.getItem('albumPhotos') || '{}');
+  state.albumCats = JSON.parse(localStorage.getItem('albumCats') || '["默认"]');
+  state.albumCurCat = '默认';
+}
+function saveAlbumState(){
+  localStorage.setItem('albumPhotos', JSON.stringify(state.albumPhotos));
+  localStorage.setItem('albumCats', JSON.stringify(state.albumCats));
+}
+function renderAlbum(){
+  initAlbumState();
+  renderAlbumCats();
+  renderAlbumGrid();
+}
+function renderAlbumCats(){
+  const container = document.getElementById('albumCats');
+  if(!container) return;
+  if(state.albumCats.length === 0) state.albumCats = ['默认'];
+  container.innerHTML = state.albumCats.map(c =>
+    '<button class="album-cat' + (c === state.albumCurCat ? ' active' : '') + '" data-cat="' + escHtml(c) + '">' + escHtml(c) + '</button>'
+  ).join('');
+  container.querySelectorAll('.album-cat').forEach(b => {
+    b.addEventListener('click', () => { state.albumCurCat = b.dataset.cat; renderAlbumCats(); renderAlbumGrid(); });
+  });
+}
+function renderAlbumGrid(){
+  const grid = document.getElementById('albumGrid');
+  if(!grid) return;
+  const photos = state.albumPhotos[state.albumCurCat] || [];
+  if(photos.length === 0){
+    grid.innerHTML = '<div class="album-empty">还没有照片 📸<br><small style="opacity:0.5">点右上角 + 添加照片</small></div>';
+    return;
+  }
+  grid.innerHTML = photos.map((p, i) =>
+    '<div class="album-photo" data-idx="' + i + '">' +
+      '<img src="' + p.data + '" loading="lazy">' +
+      '<button class="album-photo-del" data-idx="' + i + '">✕</button>' +
+    '</div>'
+  ).join('');
+  grid.querySelectorAll('.album-photo').forEach(el => {
+    el.addEventListener('click', function(e){
+      if(e.target.closest('.album-photo-del')) return;
+      const idx = parseInt(this.dataset.idx);
+      showAlbumPreview(idx);
+    });
+  });
+  grid.querySelectorAll('.album-photo-del').forEach(btn => {
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      const idx = parseInt(this.dataset.idx);
+      if(confirm('删除这张照片？')){
+        const photos = state.albumPhotos[state.albumCurCat] || [];
+        photos.splice(idx, 1);
+        if(photos.length === 0) delete state.albumPhotos[state.albumCurCat];
+        saveAlbumState(); renderAlbumGrid();
+      }
+    });
+  });
+}
+function showAlbumPreview(idx){
+  const photos = state.albumPhotos[state.albumCurCat] || [];
+  const p = photos[idx];
+  if(!p) return;
+  document.getElementById('albumPreviewImg').src = p.data;
+  document.getElementById('albumPreviewDate').textContent = (p.date || '') + (p.note ? ' · ' + p.note : '');
+  document.getElementById('albumPreviewModal').classList.add('show');
+  document.getElementById('albumDelBtn').onclick = function(){
+    if(confirm('删除这张照片？')){
+      photos.splice(idx, 1);
+      if(photos.length === 0) delete state.albumPhotos[state.albumCurCat];
+      saveAlbumState(); renderAlbumGrid();
+      document.getElementById('albumPreviewModal').classList.remove('show');
+    }
+  };
+  document.getElementById('closeAlbumPreview').onclick = () => document.getElementById('albumPreviewModal').classList.remove('show');
+  // click backdrop to close
+  document.getElementById('albumPreviewModal').onclick = function(e){ if(e.target === this) this.classList.remove('show'); };
+}
+function loadAlbumPhotos(files){
+  if(!files.length) return;
+  const cat = state.albumCurCat;
+  if(!state.albumPhotos[cat]) state.albumPhotos[cat] = [];
+  Array.from(files).forEach(f => {
+    if(!f.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = function(e){
+      state.albumPhotos[cat].push({ data: e.target.result, date: new Date().toLocaleDateString('zh-CN'), note: '' });
+      saveAlbumState();
+      renderAlbumGrid();
+    };
+    reader.readAsDataURL(f);
+  });
+}
+function initAlbumUI(){
+  const addBtn = document.getElementById('albumAddBtn');
+  if(!addBtn) return;
+  addBtn.addEventListener('click', () => {
+    if(state.albumCats.length === 0) state.albumCats = ['默认'];
+    if(state.albumCats.length > 1){
+      const choice = prompt('添加到哪个分类？可用：' + state.albumCats.join(', ') + '\n留空使用当前分类：' + state.albumCurCat);
+      if(choice && state.albumCats.includes(choice)) state.albumCurCat = choice;
+    }
+    document.getElementById('albumFileInput').click();
+  });
+  document.getElementById('albumFileInput').addEventListener('change', function(){ loadAlbumPhotos(this.files); this.value = ''; });
+  document.getElementById('albumCatBtn').addEventListener('click', () => { document.getElementById('albumCatModal').classList.add('show'); renderAlbumCatList(); });
+  document.getElementById('closeAlbumCatModal').addEventListener('click', () => document.getElementById('albumCatModal').classList.remove('show'));
+  document.getElementById('albumCatModal').addEventListener('click', function(e){ if(e.target === this) this.classList.remove('show'); });
+  document.getElementById('albumNewCatBtn').addEventListener('click', () => {
+    const input = document.getElementById('albumNewCatInput');
+    const name = input.value.trim();
+    if(!name) return;
+    if(state.albumCats.includes(name)){ alert('分类已存在'); return; }
+    state.albumCats.push(name);
+    state.albumCurCat = name;
+    if(!state.albumPhotos[name]) state.albumPhotos[name] = [];
+    saveAlbumState(); input.value = ''; renderAlbumCatList(); renderAlbumCats(); renderAlbumGrid();
+  });
+  document.getElementById('albumNewCatInput').addEventListener('keydown', function(e){ if(e.key==='Enter') document.getElementById('albumNewCatBtn').click(); });
+}
+function renderAlbumCatList(){
+  const list = document.getElementById('albumCatList');
+  if(!list) return;
+  list.innerHTML = state.albumCats.map((c, i) =>
+    '<div class="album-cat-row">' +
+      '<span class="cat-name">' + escHtml(c) + ' (' + ((state.albumPhotos[c]||[]).length) + '张)</span>' +
+      (c !== '默认' ? '<button class="cat-del" data-idx="' + i + '">✕</button>' : '') +
+    '</div>'
+  ).join('');
+  list.querySelectorAll('.cat-del').forEach(btn => {
+    btn.addEventListener('click', function(){
+      const idx = parseInt(this.dataset.idx);
+      const name = state.albumCats[idx];
+      if(!confirm('删除分类 "' + name + '" 及其所有照片？')) return;
+      state.albumCats.splice(idx, 1);
+      delete state.albumPhotos[name];
+      if(state.albumCurCat === name) state.albumCurCat = state.albumCats[0] || '默认';
+      saveAlbumState(); renderAlbumCatList(); renderAlbumCats(); renderAlbumGrid();
+    });
+  });
+}
+
 // ── 持久音乐播放器 ──
 function showPersistentPlayer(gameName){
   const bar = document.getElementById('persistentPlayerBar');
@@ -4042,3 +4186,4 @@ function initHervoiceFrame(){
   }
 }
 initHervoiceFrame();
+initAlbumUI();

@@ -96,6 +96,7 @@
                 <div class="feat-card" onclick="switchToSubPage('novel')"><span class="feat-icon">♮</span><span class="feat-name">小说</span></div>
                 <div class="feat-card" onclick="switchToSubPage('diary')"><span class="feat-icon">✉</span><span class="feat-name">日记</span></div>
                 <div class="feat-card" onclick="openStarMap()"><span class="feat-icon">🪐</span><span class="feat-name">星图</span></div>
+                <div class="feat-card" onclick="switchToSubPage('album')"><span class="feat-icon">📷</span><span class="feat-name">相册</span></div>
               </div>
               <div class="hp2-row hp2-row-full">
                 <div class="hp2-player" id="hp2Player">
@@ -186,6 +187,32 @@
       <section class="page" id="page-diary">
         <div class="diary-header"><h2>我的日记</h2><button class="btn-primary" id="newDiaryBtn">+ 新建</button></div>
         <div class="diary-list" id="diaryList"><div class="empty-diary">还没有日记，写一篇吧</div></div>
+      </section>
+      <section class="page" id="page-album">
+        <div class="album-header">
+          <h2>📷 相册</h2>
+          <div class="album-actions">
+            <button class="btn-secondary" id="albumAddBtn">+ 添加照片</button>
+            <button class="icon-btn" id="albumCatBtn" title="管理分类">⋯</button>
+          </div>
+        </div>
+        <div class="album-cats" id="albumCats"></div>
+        <div class="album-grid" id="albumGrid"><div class="album-empty">还没有照片 📸</div></div>
+        <input type="file" id="albumFileInput" accept="image/*" multiple style="display:none">
+
+        <div class="modal" id="albumCatModal"><div class="modal-box" style="max-width:360px">
+          <div class="modal-header"><span>管理分类</span><button class="icon-btn" id="closeAlbumCatModal">✕</button></div>
+          <div class="album-cat-list" id="albumCatList"></div>
+          <div style="display:flex;gap:6px;margin-top:12px"><input type="text" class="settings-input" id="albumNewCatInput" placeholder="新分类名称" style="flex:1"><button class="btn-primary" id="albumNewCatBtn">添加</button></div>
+        </div></div>
+
+        <div class="modal" id="albumPreviewModal"><div class="modal-box" style="max-width:90vw;width:500px;padding:0;background:transparent;border:none;box-shadow:none">
+          <div style="position:relative"><img id="albumPreviewImg" style="width:100%;border-radius:12px;display:block"><button class="icon-btn" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.5);color:#fff;border:none;border-radius:50%;width:30px;height:30px;cursor:pointer" id="closeAlbumPreview">✕</button></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+            <span id="albumPreviewDate" style="font-size:12px;opacity:0.6"></span>
+            <button class="btn-secondary" style="background:rgba(200,50,50,0.2);border-color:rgba(200,50,50,0.3);color:var(--text);" id="albumDelBtn">删除</button>
+          </div>
+        </div></div>
       </section>
       <section class="page" id="page-callhome">
         <div class="call-container" id="callContainer">
