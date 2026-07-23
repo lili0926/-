@@ -59,13 +59,14 @@ function ensureApiConfig() {
 
 async function fetchNewMessages() {
   try {
-    const url = `${SUPABASE_REST}/chat_messages?select=id,role,content,type,created_at&order=created_at.asc&created_at=gt.${state.lastSyncAt}&limit=100`;
+    const after = state.lastSyncAt.replace('Z', '+00:00');
+    const url = `${SUPABASE_REST}/chat_messages?select=id,role,content,type,created_at&order=created_at.asc&created_at=gt.${after}&limit=100`;
     const res = await fetch(url, {
       headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
     });
-    if (!res.ok) return [];
+    if (!res.ok) { const txt = await res.text().catch(()=>''); console.error('[worker] Supabase 查询失败:', res.status, txt.slice(0,100)); return []; }
     return await res.json() || [];
-  } catch (e) { return []; }
+  } catch (e) { console.error('[worker] Supabase 请求失败:', e.message); return []; }
 }
 
 function bridgeMessages(messages) {
@@ -91,9 +92,9 @@ function bridgeMessages(messages) {
 function writeSimpleFragments() {
   // 取未处理的 messages（最近50条中没有对应碎片的）
   const recentMsgs = db.prepare(`
-    SELECT m.id, m.content, m.sender, m.created_at FROM messages m
-    WHERE m.id NOT IN (SELECT DISTINCT CAST(REPLACE(source_msg_ids, '[', '') AS INTEGER) FROM memory_fragments WHERE source_msg_ids IS NOT NULL AND source_msg_ids != '[]')
-    ORDER BY m.created_at ASC LIMIT 50
+    SELECT m.id, m.content, m.sender, m.timestamp as created_at FROM messages m
+    WHERE m.id NOT IN (SELECT DISTINCT CAST(REPLACE(REPLACE(source_msg_ids, '[', ''), ']', '') AS INTEGER) FROM memory_fragments WHERE source_msg_ids IS NOT NULL AND source_msg_ids != '[]')
+    ORDER BY m.timestamp ASC LIMIT 50
   `).all();
 
   if (!recentMsgs.length) { console.log('[worker] 无新消息需要提取碎片'); return 0; }
