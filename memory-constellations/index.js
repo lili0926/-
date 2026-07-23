@@ -59,6 +59,126 @@ function cookies(req) {
   return c;
 }
 
+// ── 星图 Universe API ──
+function serveUniverse(req, res) {
+  try {
+    var mcdb = getDb();
+
+    // 实体查询（entity_profiles → 星座）
+    var entities = mcdb.prepare(`
+      SELECT ep.id, ep.name, ep.category, ep.overview, ep.fragment_count,
+             ep.related_entities, ep.status as lifecycle_status,
+             ep.updated_at, ep.created_at, ep.relationship_to_clara, ep.aliases, ep.tags,
+             ep.entity_type, ep.subcategory
+      FROM entity_profiles ep
+      WHERE ep.status = 'active' AND ep.fragment_count > 0
+      ORDER BY
+        CASE ep.category WHEN 'person' THEN 0 WHEN 'pet' THEN 1 WHEN 'place' THEN 2
+          WHEN 'event' THEN 3 WHEN 'project' THEN 4 ELSE 5 END,
+        ep.fragment_count DESC
+    `).all();
+
+    var cfg = { user: { name: 'Jasmine' }, ai: { name: 'Aries' }, ui: { user_color: '#e8b96d', ai_color: '#6d9e8b' } };
+    try { cfg = require('./memory_config.json'); } catch(_) {}
+    var USER = cfg.user, AI = cfg.ai, UI = cfg.ui;
+
+    var CORE_NAMES = [USER.name, AI.name];
+    var coreEntities = entities.filter(function(e) { return CORE_NAMES.indexOf(e.name) >= 0; });
+    // 核心实体的碎片也作为星座显示（让记忆星不是空的）
+    var normalEntities = entities.filter(function(e) { return true; });
+    // 但核心实体用特殊星系标记，星系标签用"社交"
+    function galaxyFor(ent) {
+      if (CORE_NAMES.indexOf(ent.name) >= 0) return '社交';
+      var cat = ent.category || 'person';
+      return GALAXY_LABELS[cat] || cat;
+    }
+
+    var GALAXY_COLORS = {
+      person: '#ff9966', pet: '#ff9966', organization: '#ff9966',
+      place: '#6699ff', event: '#66cc99',
+      project: '#cc99ff', work: '#cc99ff', term: '#cc99ff',
+      hobby: '#ffcc66', consumed: '#ffcc66',
+    };
+    var GALAXY_LABELS = {
+      person:'社交', pet:'社交', organization:'社交',
+      place:'地点', event:'事件',
+      project: USER.name + '的', work: USER.name + '的', term: USER.name + '的',
+      hobby:'爱好', consumed:'爱好',
+    };
+
+    var core = coreEntities.map(function(ent) {
+      return {
+        id: 'e' + ent.id, name: ent.name, overview: ent.overview || '',
+        fragment_count: ent.fragment_count, relationship: ent.relationship_to_clara || '',
+        updatedAt: ent.updated_at,
+        color: ent.name === USER.name ? UI.user_color : UI.ai_color,
+        role: ent.name === USER.name ? 'user' : 'ai',
+      };
+    });
+
+    var maxFrags = Math.max(1, normalEntities.reduce(function(m, e) { return Math.max(m, e.fragment_count || 0); }, 1));
+
+    var constellations = normalEntities.map(function(ent) {
+      var frags = mcdb.prepare(`
+        SELECT mf.id, COALESCE(mf.content, '') AS title, mf.content,
+               mf.emotional_weight, mf.created_at AS date, mf.status AS lifecycle,
+               mf.read_count, mf.entity_id, fe.confidence AS link_confidence, fe.relation
+        FROM memory_fragments mf
+        JOIN fragment_entities fe ON fe.fragment_id = mf.id
+        WHERE fe.entity_id = ? AND mf.status IN ('active', 'consolidated', 'cooling', 'frozen')
+        ORDER BY
+          CASE mf.status WHEN 'active' THEN 0 WHEN 'consolidated' THEN 1 WHEN 'cooling' THEN 2 ELSE 3 END,
+          fe.confidence DESC, mf.emotional_weight DESC
+        LIMIT 40
+      `).all(ent.id);
+
+      var stars = frags.map(function(f) {
+        return {
+          id: 'f' + f.id, title: (f.title || '').slice(0, 40) || '…',
+          content: (f.content || '').slice(0, 200),
+          conf: 0.5, mag: 3.5, lifecycle: f.lifecycle || 'active',
+          date: (f.date || '').slice(0, 10) || '', entity_id: f.entity_id,
+        };
+      });
+
+      var episodes = mcdb.prepare(`
+        SELECT id, title, content, weight, valid_from AS date
+        FROM memories WHERE layer = 'episode' AND status = 'permanent' AND entity_id = ?
+        ORDER BY weight DESC, valid_from DESC LIMIT 8
+      `).all(ent.id).map(function(ep) {
+        var c = ep.content || ''; try { c = encryption.decrypt(c); } catch(_) {}
+        var t = ep.title || ''; try { t = encryption.decrypt(t); } catch(_) {}
+        return { id: ep.id, title: t.slice(0, 60), content: c.slice(0, 250), weight: ep.weight, date: (ep.date || '').slice(0, 10) };
+      });
+
+      var cat = ent.category || 'person';
+      return {
+        id: 'e' + ent.id, label: ent.name, description: ent.overview || '',
+        color: GALAXY_COLORS[cat] || '#8899aa',
+        depth: 0.4 + (ent.fragment_count / maxFrags) * 1.2,
+        fragment_count: ent.fragment_count, stars: stars, episodes: episodes,
+        category: cat, galaxyLabel: galaxyFor(ent),
+        aliases: [], tags: [], lifecycleStatus: ent.lifecycle_status || 'active',
+        relatedEntities: [], relationship: ent.relationship_to_clara || '',
+        updatedAt: ent.updated_at, createdAt: ent.created_at,
+      };
+    });
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      constellations: constellations,
+      core: core,
+      entities: constellations.map(function(c) { return { id: c.id, name: c.label, category: c.category, fragmentIds: c.stars.map(function(s) { return s.id; }) }; }),
+      total_fragments: constellations.reduce(function(s, c) { return s + c.stars.length; }, 0),
+      total_categories: constellations.length,
+    }));
+  } catch(e) {
+    console.error('[universe] failed:', e.message);
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: e.message }));
+  }
+}
+
 http.createServer(function(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -91,6 +211,11 @@ http.createServer(function(req, res) {
         res.end(JSON.stringify({ memories: mems, context: ctx, hasMemories: mems.length > 0 }));
       }).catch(function(e) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ memories: [], context: '', hasMemories: false })); });
     });
+  }
+
+  // GET /api/memory/universe — 星图数据
+  if (req.method === 'GET' && url === '/api/memory/universe') {
+    return serveUniverse(req, res);
   }
 
   // Auth check

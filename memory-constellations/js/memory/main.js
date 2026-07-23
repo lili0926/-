@@ -111,7 +111,7 @@ mc.addEventListener('click', e => {
     if (didDrag) { didDrag = false; return; } // 拖拽结束不算点击
     markInteraction();
     const hit = hitTest(e.clientX, e.clientY);
-    if (!hit) { goUp(); return; }
+    if (!hit) return; // 点空白不做任何事
     switch (hit.type) {
         case 'core':
             showCorePanel(hit.name, hit.ent);
@@ -138,8 +138,7 @@ window.addEventListener('keydown', e => {
     if (idx >= 1 && idx <= 4) gotoGalaxy(GALAXIES[idx - 1].id);
     if (e.key === '0' || e.key === '`') gotoUniverse();
     if (e.key === 'Escape') {
-        if (view.level === 'universe') hidePanel();
-        else goUp();
+        hidePanel();
     }
 });
 

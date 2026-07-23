@@ -1,191 +1,165 @@
 // =================================================================
-// MC Worker — Supabase → Memory Constellations 桥接 + 管道
-// 定时从 Supabase 拉聊天消息，写入 MC 本地库，触发 Scribe/Archivist
+// MC Worker — Supabase → Memory Constellations 桥接
+// 定时从 Supabase 拉聊天消息，写入 MC 本地库
 // =================================================================
 require('dotenv').config();
-
 const path = require('path');
 const fs = require('fs');
 
-// ── Supabase 配置（与 server.mjs 相同）──
 const SUPABASE_URL = 'https://lqcuklhldvkwbkpftjzu.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_w13U8_JcT0amx_LVBm9dnA_CoA5xiow';
 const SUPABASE_REST = `${SUPABASE_URL}/rest/v1`;
 
-// ── 初始化 MC 数据库 ──
 const { initDatabase, getDb } = require('./database');
 const { encryption } = require('./encryption');
 initDatabase();
 const db = getDb();
 
-// ── 上次同步时间戳 ──
 const STATE_PATH = path.join(__dirname, 'mc-worker-state.json');
 let state = { lastSyncAt: new Date(0).toISOString() };
 try { if (fs.existsSync(STATE_PATH)) state = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8')); } catch (e) {}
-
 function saveState() {
   try { fs.writeFileSync(STATE_PATH, JSON.stringify(state, null, 2)); } catch (e) {}
 }
 
-// ── 从 push-config 读取 API Key ──
-function getPushKey() {
+// 读取 API Key
+function getApiKey() {
   try {
     const cfgPath = path.join(__dirname, '..', 'push-config.json');
     if (fs.existsSync(cfgPath)) {
       const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
       if (cfg.bgApiConfig?.key) return cfg.bgApiConfig.key;
-      if (cfg.apiKey) return cfg.apiKey;
     }
   } catch (e) {}
-  return process.env.DEEPSEEK_API_KEY || process.env.GEMINI_API_KEY || '';
+  return process.env.DEEPSEEK_API_KEY || process.env.API_KEY || '';
 }
 
-// ── 确保 API Key 写入 MC 的 api_configs 表 ──
+// 确保 API 配置写入 MC 库
 function ensureApiConfig() {
-  const key = getPushKey();
-  if (!key) {
-    console.log('[worker] ⚠️ 无 API Key，跳过 LLM 管道');
-    return false;
-  }
-
-  // 检查是否已有配置
-  const existing = db.prepare("SELECT id FROM api_configs WHERE name = 'Memory LLM'").get();
-  if (existing) {
-    // 更新 key（重新加密）
-    const encrypted = encryption.encrypt(key);
-    db.prepare('UPDATE api_configs SET api_key = ? WHERE id = ?').run(encrypted, existing.id);
-    return true;
-  }
-
-  // 创建新配置 — DeepSeek 格式
+  const key = getApiKey();
+  if (!key) return false;
   const encrypted = encryption.encrypt(key);
-  db.prepare(`INSERT INTO api_configs (name, provider, endpoint, api_key, model_name, is_default, supports_tools)
-    VALUES (?, ?, ?, ?, ?, ?, ?)`).run('Memory LLM', 'openai_compatible', 'https://api.deepseek.com', encrypted, 'deepseek-chat', 1, 0);
-
-  // 确保默认嵌入（gemini）
-  const emb = db.prepare("SELECT id FROM api_configs WHERE name = 'Embedding API'").get();
-  if (!emb) {
-    const geminiKey = process.env.GEMINI_API_KEY || key;
-    const ek = encryption.encrypt(geminiKey);
-    db.prepare(`INSERT INTO api_configs (name, provider, endpoint, api_key, model_name, is_default, supports_tools)
-      VALUES (?, ?, ?, ?, ?, ?, ?)`).run('Embedding API', 'gemini', 'https://generativelanguage.googleapis.com/v1beta', ek, 'text-embedding-004', 0, 0);
+  const exist = db.prepare("SELECT id FROM api_configs WHERE name = 'Memory LLM'").get();
+  if (exist) {
+    db.prepare('UPDATE api_configs SET api_key = ? WHERE id = ?').run(encrypted, exist.id);
+  } else {
+    db.prepare("INSERT INTO api_configs (name, provider, endpoint, api_key, model_name, is_default, supports_tools) VALUES (?,?,?,?,?,?,?)")
+      .run('Memory LLM', 'openai_compatible', 'https://api.deepseek.com/v1', encrypted, 'deepseek-chat', 1, 0);
   }
-
-  console.log('[worker] ✅ API 配置已写入');
+  // 确保 Scribe/Archivist 用到的固定 ID
+  [[36,'Archivist LLM'],[38,'Archivist Verify'],[52,'Scribe LLM']].forEach(([id, name]) => {
+    const e = db.prepare('SELECT id FROM api_configs WHERE id = ?').get(id);
+    if (!e) {
+      db.prepare("INSERT INTO api_configs (id, name, provider, endpoint, api_key, model_name, is_default, supports_tools) VALUES (?,?,?,?,?,?,?,?)")
+        .run(id, name, 'openai_compatible', 'https://api.deepseek.com/v1', encrypted, 'deepseek-chat', 0, 0);
+    }
+  });
   return true;
 }
 
-// ── 获取 Supabase 新消息 ──
 async function fetchNewMessages() {
   try {
-    const url = `${SUPABASE_REST}/chat_messages?select=id,role,content,type,created_at&order=created_at.asc&created_at=gt.${state.lastSyncAt}&limit=50`;
+    const url = `${SUPABASE_REST}/chat_messages?select=id,role,content,type,created_at&order=created_at.asc&created_at=gt.${state.lastSyncAt}&limit=100`;
     const res = await fetch(url, {
       headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
     });
-    if (!res.ok) { console.error('[worker] Supabase 查询失败:', res.status); return []; }
-    const data = await res.json();
-    return data || [];
-  } catch (e) { console.error('[worker] Supabase 请求失败:', e.message); return []; }
+    if (!res.ok) return [];
+    return await res.json() || [];
+  } catch (e) { return []; }
 }
 
-// ── 确保 chat 存在 ──
-function ensureChat() {
-  const chat = db.prepare('SELECT id FROM chats WHERE id = 1').get();
-  if (chat) return 1;
-  db.prepare("INSERT INTO chats (id, name, type) VALUES (1, 'Jasmine & Aries', 'text')").run();
-  return 1;
-}
-
-// ── 写入消息到 MC 数据库 ──
 function bridgeMessages(messages) {
   if (!messages.length) return 0;
+  const chatId = 1;
+  db.prepare("INSERT OR IGNORE INTO chats (id, name, type) VALUES (1, 'Jasmine & Aries', 'text')").run();
 
-  const chatId = ensureChat();
-  const insertMsg = db.prepare(`
-    INSERT OR IGNORE INTO messages (chat_id, sender, content, timestamp, is_encrypted, message_type, status)
-    VALUES (?, ?, ?, ?, ?, ?, 'sent')
-  `);
-  const checkDup = db.prepare('SELECT id FROM messages WHERE chat_id = ? AND content = ? AND timestamp = ?');
-
+  const insertMsg = db.prepare("INSERT OR IGNORE INTO messages (chat_id, sender, content, timestamp, is_encrypted, message_type, status) VALUES (?,?,?,?,?,?,'sent')");
   let count = 0;
-  const insertBatch = db.transaction(() => {
+  const batch = db.transaction(() => {
     for (const m of messages) {
-      // 去重
-      const dup = checkDup.get(chatId, m.content, m.created_at);
+      const dup = db.prepare('SELECT id FROM messages WHERE chat_id=? AND content=? AND timestamp=?').get(chatId, m.content, m.created_at);
       if (dup) continue;
-
-      const sender = m.role === 'user' ? 'clara' : 'draco';
-      insertMsg.run(chatId, sender, m.content, m.created_at, 0, m.type === 'push' ? 'proactive' : 'text');
+      insertMsg.run(chatId, m.role === 'user' ? 'clara' : 'draco', m.content, m.created_at, 0, m.type === 'push' ? 'proactive' : 'text');
       count++;
     }
   });
-  insertBatch();
-
-  if (count > 0) console.log(`[worker] ✅ 桥接 ${count} 条消息`);
+  batch();
   return count;
 }
 
-// ── 打字机效果 ──
-function stripThinking(text) {
-  return text.replace(/<thinking>[\s\S]*?<\/thinking>/g, '').trim();
+// 写入简单记忆碎片（关键词提取——不依赖 AI）
+function writeSimpleFragments() {
+  // 取未处理的 messages（最近50条中没有对应碎片的）
+  const recentMsgs = db.prepare(`
+    SELECT m.id, m.content, m.sender, m.created_at FROM messages m
+    WHERE m.id NOT IN (SELECT DISTINCT CAST(REPLACE(source_msg_ids, '[', '') AS INTEGER) FROM memory_fragments WHERE source_msg_ids IS NOT NULL AND source_msg_ids != '[]')
+    ORDER BY m.created_at ASC LIMIT 50
+  `).all();
+
+  if (!recentMsgs.length) { console.log('[worker] 无新消息需要提取碎片'); return 0; }
+
+  let count = 0;
+  const insertFrag = db.prepare("INSERT INTO memory_fragments (type, entity, content, emotional_weight, source, source_date, status, source_msg_ids, created_at) VALUES (?,?,?,?,?,?,'active',?,datetime('now'))");
+
+  const batch = db.transaction(() => {
+    for (const msg of recentMsgs) {
+      if (!msg.content || msg.content.length < 5) continue;
+
+      // 提取关键词作为简单碎片
+      const entity = msg.sender === 'clara' ? '用户' : 'Aries';
+      const type = 'observation';
+      const maxLen = Math.min(msg.content.length, 120);
+      const content = msg.content.slice(0, maxLen);
+
+      insertFrag.run(type, entity, content, 0.5, 'chat', (msg.created_at || '').slice(0, 10), JSON.stringify([msg.id]));
+      count++;
+    }
+  });
+  batch();
+
+  if (count > 0) console.log(`[worker] 📝 提取了 ${count} 条简单碎片`);
+  return count;
 }
 
-// ── 主轮询 ──
 async function tick() {
   try {
-    const key = getPushKey();
-    if (!key) {
-      console.log('[worker] ⏳ 等待 API Key...');
-      return;
-    }
+    const key = getApiKey();
+    if (!key) { console.log('[worker] ⏳ 等待 API Key...'); return; }
 
     // 1. 拉新消息
     const messages = await fetchNewMessages();
     if (!messages.length) return;
 
-    // 2. 桥接到 MC 库
+    // 2. 桥接消息
     const count = bridgeMessages(messages);
     if (count === 0) return;
 
     // 3. 更新同步进度
     const last = messages[messages.length - 1];
-    if (last.created_at > state.lastSyncAt) {
-      state.lastSyncAt = last.created_at;
-      saveState();
-    }
+    if (last.created_at > state.lastSyncAt) { state.lastSyncAt = last.created_at; saveState(); }
+    console.log(`[worker] ✅ 桥接 ${count} 条消息 (共${db.prepare('SELECT COUNT(*) as c FROM messages').get().c}条)`);
 
-    // 4. 调用 Scribe（提取记忆碎片）
-    try {
-      const { checkAndRunScribe } = require('./services/scribe');
-      await checkAndRunScribe();
-      console.log('[worker] 📝 Scribe 完成');
-    } catch (e) {
-      console.error('[worker] Scribe 失败:', e.message);
-    }
-
-    // 5. 调用 Archivist（整理碎片）
-    try {
-      const archivist = require('./services/archivist');
-      if (archivist.getStatus && !archivist.getStatus().running) {
-        archivist.start();
-        console.log('[worker] 🏛 Archivist 已启动');
+    // 4. 提取简单碎片（关键词匹配，不用 LLM）
+    const fragCount = writeSimpleFragments();
+    if (fragCount > 0) {
+      // 5. 尝试调用 Scribe（用 AI 精炼碎片）
+      try {
+        const { checkAndRunScribe } = require('./services/scribe');
+        await checkAndRunScribe();
+        console.log('[worker] 📝 Scribe 精炼完成');
+      } catch (e) {
+        console.log('[worker] Scribe 跳过（非关键）:', e.message?.slice(0, 80));
       }
-    } catch (e) {
-      console.error('[worker] Archivist 启动失败:', e.message);
     }
-
   } catch (e) {
-    console.error('[worker] tick 异常:', e.message);
+    console.error('[worker] ❌', e.message);
   }
 }
 
-// ── 启动 ──
-console.log('[worker] 🚀 MC Worker 启动');
-
-// 确保 API Config
+console.log('[worker] 🚀 启动');
 ensureApiConfig();
 
-// 启动 Archivist（先确保它跑着）
+// 启动 Archivist（它会在后台自行整理记忆）
 try {
   const archivist = require('./services/archivist');
   if (!archivist.getStatus || !archivist.getStatus().running) {
@@ -193,11 +167,10 @@ try {
     console.log('[worker] 🏛 Archivist 已启动');
   }
 } catch (e) {
-  console.log('[worker] Archivist 暂时无法启动（需要 API Key）');
+  console.log('[worker] Archivist:', e.message?.slice(0, 60));
 }
 
-// 立即执行一次，然后每 90 秒轮询
 tick().then(() => {
   setInterval(tick, 90 * 1000);
-  console.log('[worker] ⏰ 每 90 秒轮询 Supabase');
+  console.log('[worker] ⏰ 每 90 秒轮询');
 });

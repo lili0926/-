@@ -216,11 +216,10 @@ function drawCore(T, cx, cy, orbitR, alpha, hovered) {
         // 星芒
         for (let a = 0; a < 4; a++) spikeAt(ctx, ex, ey, rr * 0.5, a * Math.PI / 2 + T * 0.05, rr * 8, 0.5 * alpha, st.rgb);
         // 标签
-        var fs = window.innerWidth < 640 ? 15 : 12;
-        ctx.font = '500 ' + fs + "px 'Inter','PingFang SC',sans-serif";
+        ctx.font = `500 11px 'Inter','PingFang SC',sans-serif`;
         ctx.fillStyle = `rgba(${st.rgb},${0.75 * alpha})`;
         ctx.textAlign = 'center';
-        ctx.fillText(name, ex, ey + rr * 4.2 + (window.innerWidth < 640 ? 4 : 0));
+        ctx.fillText(name, ex, ey + rr * 4.2);
         corePos.push({ name, x: ex, y: ey, r: rr * 3, ent });
     });
     // 双星间细弱光弧
@@ -352,14 +351,13 @@ function drawUniverse(T, alpha, hovered) {
         });
         // 星系标签
         const lp = w2s(gl.x, gl.y + gl.nebulaR * 1.02, 0.85);
-        const gfs = window.innerWidth < 640 ? (isHovG ? 18 : 16) : (isHovG ? 14 : 12.5);
-        ctx.font = '500 ' + gfs + "px 'Inter','PingFang SC',sans-serif";
+        ctx.font = `500 ${isHovG ? 14 : 12.5}px 'Inter','PingFang SC',sans-serif`;
         ctx.fillStyle = `hsla(${gl.galaxy.hue},70%,75%,${(isHovG ? 0.95 : 0.6) * alpha})`;
         ctx.textAlign = 'center';
         ctx.fillText(gl.galaxy.id + '星系', lp.x, lp.y);
-        ctx.font = '400 ' + (window.innerWidth < 640 ? 13 : 9.5) + "px 'Inter','PingFang SC',sans-serif";
+        ctx.font = `400 9.5px 'Inter','PingFang SC',sans-serif`;
         ctx.fillStyle = `hsla(${gl.galaxy.hue},45%,70%,${0.32 * alpha})`;
-        ctx.fillText(gl.points.length + ' 星座', lp.x, lp.y + (window.innerWidth < 640 ? 22 : 15));
+        ctx.fillText(`${gl.points.length} 星座`, lp.x, lp.y + 15);
     });
     // 双星核心（depth 1.0）
     const cp = w2s(uLayout.cx, uLayout.cy, 1.0);
@@ -411,8 +409,7 @@ function drawGalaxy(T, alpha, hovered, selected) {
         }
         // 标签（用视觉半径 r 定位）
         const lp = w2s(pc.x, pc.y - pc.r - 12, 0.9);
-        var cfs = window.innerWidth < 640 ? (isHov ? 17 : 15) : (isHov ? 12.5 : 11);
-        ctx.font = (isHov ? 500 : 400) + ' ' + cfs + "px 'Inter','PingFang SC',sans-serif";
+        ctx.font = `${isHov ? 500 : 400} ${isHov ? 12.5 : 11}px 'Inter','PingFang SC',sans-serif`;
         ctx.fillStyle = `rgba(${pc.con.rgb},${(isHov ? 0.95 : 0.62) * conAlpha})`;
         ctx.textAlign = 'center';
         ctx.fillText(pc.con.label, lp.x, lp.y);
@@ -459,11 +456,10 @@ function drawConstellation(T, alpha, hovered, selected) {
         drawStar(p.x, p.y, st.baseR * camera.scale, con.rgb, st.star.conf || 0.5, alpha * dim, pulse, isHov, isSel, T, st.star.lifecycle);
     });
     // 星座名（顶部居中淡显示）
-    var cdl = window.innerWidth < 640 ? 18 : 13;
-    ctx.font = '500 ' + cdl + "px 'Inter','PingFang SC',sans-serif";
+    ctx.font = `500 13px 'Inter','PingFang SC',sans-serif`;
     ctx.fillStyle = `rgba(${con.rgb},${0.4 * alpha})`;
     ctx.textAlign = 'center';
-    ctx.fillText(con.label, W / 2, window.innerWidth < 640 ? 90 : 64);
+    ctx.fillText(con.label, W / 2, 64);
 }
 
 // ── 主绘制入口 ──
