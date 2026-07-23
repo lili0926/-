@@ -59,56 +59,66 @@ async function queryMemoryConstellations(endpoint) {
   }
 }
 
-// ========== 记忆召回 ==========
-async function recallMemories(query, limit = 15) {
-  const results = [];
+// ========== 记忆召回（转发到 memory-constellations） ==========
+async function recallFromMC(query, limit = 20) {
+  try {
+    const res = await fetch(`http://localhost:3000/api/recall?q=${encodeURIComponent(query)}&limit=${limit}`, {
+      timeout: 3000
+    });
+    if (res.ok) {
+      const data = await res.json();
+      // 合并 Supabase 的心情数据（星图没有这部分）
+      let moodContext = '';
+      try {
+        const mr = await fetch(
+          `${SUPABASE_REST}/moods?select=mood,note,date&order=created_at.desc&limit=5`,
+          { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } }
+        );
+        if (mr.ok) {
+          const moods = await mr.json();
+          if (moods.length > 0) {
+            moodContext = '\n\n最近心情：\n';
+            for (const m of moods) {
+              moodContext += `  [${m.date?.slice(0, 10) || ''}] ${m.mood}${m.note ? ' - ' + m.note?.slice(0, 100) : ''}\n`;
+            }
+          }
+        }
+      } catch (e) { /* mood 表可能不存在 */ }
 
-  // 1. 查 Supabase memories（organizeMemory 写入的）
+      return {
+        memories: data.memories || [],
+        context: ((data.context || '') + moodContext || '').trim(),
+        hasMemories: data.memories?.length > 0,
+      };
+    }
+  } catch (e) {
+    console.error('[recall] MC 不可用:', e.message);
+  }
+
+  // 降级：直接查 Supabase
+  return fallbackRecallFromSupabase(query, limit);
+}
+
+async function fallbackRecallFromSupabase(query, limit) {
   try {
     const res = await fetch(
       `${SUPABASE_REST}/memories?select=keyword,content,date,category,icon&order=created_at.desc&limit=${limit}`,
       { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } }
     );
-    if (res.ok) {
-      const data = await res.json();
-      for (const m of data) {
-        if (m.content) results.push({ source: 'supabase', ...m });
+    if (!res.ok) return { memories: [], context: '', hasMemories: false };
+    const data = await res.json();
+    const results = data.filter(m => m.content);
+    let context = '';
+    if (results.length > 0) {
+      context = '【回忆中的记忆】\n';
+      for (const m of results) {
+        context += `  [${m.date || ''}] ${m.keyword}：${m.content?.slice(0, 200)}\n`;
       }
     }
-  } catch (e) { /* supabase 不可用 */ }
-
-  // 2. 查 mood 记录（如果有）
-  try {
-    const res = await fetch(
-      `${SUPABASE_REST}/moods?select=mood,note,date&order=created_at.desc&limit=10`,
-      { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } }
-    );
-    if (res.ok) {
-      const data = await res.json();
-      for (const m of data) {
-        if (m.mood) results.push({ source: 'mood', ...m });
-      }
-    }
-  } catch (e) { /* no mood table */ }
-
-  // 3. 查 memory-constellations（如果有数据）
-  const mcData = await queryMemoryConstellations('/api/memories?status=permanent&limit=10');
-  if (Array.isArray(mcData) && mcData.length > 0) {
-    for (const m of mcData) {
-      if (m.content) results.push({ source: 'mc', keyword: m.title, content: m.content, date: m.created_at });
-    }
+    return { memories: results, context: context.trim(), hasMemories: results.length > 0 };
+  } catch (e) {
+    return { memories: [], context: '', hasMemories: false };
   }
-
-  // 4. 去重 + 排序
-  const seen = new Set();
-  const unique = results.filter(m => {
-    const key = m.content?.slice(0, 50);
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-
-  return unique;
 }
 
 // ========== MIME ==========
@@ -183,43 +193,9 @@ async function handleRecall(req, res) {
   req.on('end', async () => {
     try {
       const { query, limit } = JSON.parse(body || '{}');
-      const memories = await recallMemories(query || '', limit || 20);
-
-      // 格式化为可读的记忆上下文
-      let context = '';
-      const cats = {};
-      for (const m of memories) {
-        const cat = m.category || 'other';
-        if (!cats[cat]) cats[cat] = [];
-        cats[cat].push(m);
-      }
-      const catLabels = { 'happy': '😊 开心', 'angry': '😤 生气', 'nsfw': '🔞 亲密', 'sad': '😢 难过', 'other': '📝 其他' };
-      for (const [cat, items] of Object.entries(cats)) {
-        context += `\n${catLabels[cat] || cat}：\n`;
-        for (const m of items.slice(0, 8)) {
-          const date = m.date ? m.date.slice(0, 10) : '';
-          context += `  [${date}] ${m.keyword || ''}：${m.content?.slice(0, 200)}\n`;
-        }
-      }
-
-      // 也返回心情记录
-      const moods = memories.filter(m => m.source === 'mood');
-      let moodContext = '';
-      if (moods.length > 0) {
-        moodContext = '\n最近心情：\n';
-        for (const m of moods.slice(0, 5)) {
-          moodContext += `  [${m.date?.slice(0, 10) || ''}] ${m.mood}${m.note ? ' - ' + m.note?.slice(0, 100) : ''}\n`;
-        }
-      }
-
-      const fullContext = context + moodContext;
-
+      const result = await recallFromMC(query || '', limit || 20);
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        memories: memories.filter(m => m.source !== 'mood').slice(0, limit || 20),
-        context: fullContext.trim(),
-        hasMemories: memories.length > 0
-      }));
+      res.end(JSON.stringify(result));
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: err.message }));
