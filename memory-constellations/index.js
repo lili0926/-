@@ -168,7 +168,10 @@ var server = http.createServer(function(req, res) {
   // memory.html 注入
   if (url === '/memory.html') {
     try {
-      var memoryConfig = require('./memory_config.json');
+      var memoryConfig;
+      try { memoryConfig = require('./memory_config.json'); } catch(_) {
+        memoryConfig = { user: { name: 'User', color: '#ffe0aa' }, ai: { name: 'AI', color: '#aae6c8' }, ui: { user_color: '#ffe0aa', ai_color: '#aae6c8' } };
+      }
       var html = fs.readFileSync(path.join(ROOT, 'memory.html'), 'utf8');
       var configScript = '<script>window.MEMORY_UI_CONFIG=' + JSON.stringify({
         user: { name: memoryConfig.user.name, color: memoryConfig.ui.user_color },
