@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Aries</string>
+    <string name="title_activity_main">Aries</string>
+    <string name="package_name">com.jasmine.aries</string>
+    <string name="custom_url_scheme">com.jasmine.aries</string>
+</resources>

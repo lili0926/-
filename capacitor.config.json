@@ -1,0 +1,22 @@
+{
+  "appId": "com.jasmine.aries",
+  "appName": "Aries",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://engine-disciplinary-vehicles-decreased.trycloudflare.com",
+    "androidScheme": "https",
+    "cleartext": true,
+    "allowNavigation": [
+      "192.169.7.234",
+      "192.169.7.234:3000",
+      "*.trycloudflare.com",
+      "*.supabase.co"
+    ]
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  }
+}
