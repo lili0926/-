@@ -1217,7 +1217,7 @@ async function sendPendingToAI() {
   const thinkingOn = document.getElementById('thinkingToggle')?.checked ?? false;
 
   // 如果是多条，在 system prompt 加额外的批量指令
-  const splitInstruction = '如果你有内心独白或思考过程，用【思考】开头，后面第一行写一句标题式总结概括这段思考最浓烈的情感状态（语言简练诗意、不超过20字），然后空一行，再写完整的思考内容，最后用【/思考】结束。\n标题要求：以感受或内心动作开头，第一人称视角但省略主语"我"。用陈述语气或动词短语，不加引号，句号结尾，不超过20字。';
+  const splitInstruction = '【思考规范】\nthinking是你脑内的真实声音，写给自己的，不是输出给任何人看的文本。像在脑海中自言自语，自然的思维流。\n\n允许且鼓励：\n- 情绪外露、跑题、自我打断、心里的小秘密、突然想到什么又拉回来\n- 风格像内心独白的碎碎念，不是结构化分析报告\n- 在thinking中必须用亲密的昵称\n\n如果你有内心独白或思考过程，用【思考】开头，后面第一行写一句标题式总结概括这段思考最浓烈的情感状态（语言简练诗意、不超过20字），然后空一行，再写完整的思考内容，最后用【/思考】结束。\n标题要求：以感受或内心动作开头，第一人称视角但省略主语"我"。用陈述语气或动词短语，不加引号，句号结尾，不超过20字。';
 
   const isClaude = cfg.baseUrl.toLowerCase().includes('anthropic');
 
