@@ -95,6 +95,7 @@
                 <div class="feat-card" onclick="switchToSubPage('tasks')"><span class="feat-icon">▷</span><span class="feat-name">行程</span></div>
                 <div class="feat-card" onclick="switchToSubPage('novel')"><span class="feat-icon">♮</span><span class="feat-name">小说</span></div>
                 <div class="feat-card" onclick="switchToSubPage('diary')"><span class="feat-icon">✉</span><span class="feat-name">日记</span></div>
+                <div class="feat-card" onclick="openStarMap()"><span class="feat-icon">🪐</span><span class="feat-name">星图</span></div>
               </div>
               <div class="hp2-row hp2-row-full">
                 <div class="hp2-player" id="hp2Player">
@@ -346,7 +347,23 @@
           <div class="settings-item"><div class="settings-label"><span>📿 项圈 Collar</span></div><input type="text" class="settings-input" id="remoteCollarUrl" placeholder="https://collar.onrender.com"></div>
           <div class="settings-item"><div class="settings-label"><span>🌙 生理 Eventide</span></div><input type="text" class="settings-input" id="remoteEventideUrl" placeholder="https://eventide.onrender.com"></div>
           <div class="settings-item"><div class="settings-label"><span>🎙 语情 hervoice</span></div><input type="text" class="settings-input" id="remoteHervoiceUrl" placeholder="https://hervoice.onrender.com"></div>
+          <div class="settings-item"><div class="settings-label"><span>🪐 记忆星图</span><small>Memory Constellations</small></div><input type="text" class="settings-input" id="remoteStarMapUrl" placeholder="http://localhost:3000/memory.html"></div>
           <div style="display:flex;justify-content:flex-end;margin-top:4px"><button class="btn-primary" id="saveRemoteUrlsBtn">保存远程地址</button></div>
+        </div>
+        <div class="settings-group">
+          <div class="settings-title">🤖 主动推送 <small style="font-weight:400">Aries 会自己浮上来找你</small></div>
+          <div class="settings-item" style="flex-direction:column;align-items:flex-start;gap:8px">
+            <div class="settings-label"><span>推送状态</span></div>
+            <div id="pushStatusDisplay" style="font-size:13px;color:var(--text-muted);word-break:break-all">等待连接服务器...</div>
+          </div>
+          <div class="settings-item" style="flex-direction:column;align-items:flex-start;gap:6px">
+            <small style="color:var(--text-muted);line-height:1.5">
+              · 保存 <strong>后台 AI 配置</strong> + <strong>系统提示词</strong> 后自动同步到服务器<br>
+              · Aries 会在合适的时间主动找你说话（深夜不打扰）<br>
+              · 每天最多 7 条，每次间隔 2~3.5 小时<br>
+              · 设置外部 cron 每 10 分钟调用一次 <code>/api/push/trigger</code>
+            </small>
+          </div>
         </div>
         <button class="btn-save" id="saveSettings">保存设置</button>
       </section>

@@ -1729,7 +1729,9 @@ function saveSettings(){
   localStorage.setItem('city', state.city);
   localStorage.setItem('anniversaries', state.anniversaries);
   updateGreeting(); updateTogetherDays(); checkApiKey();
-  if(state.city) fetchWeather(state.city); showToast('设置已保存 ✓');
+  if(state.city) fetchWeather(state.city);
+  syncPushConfigToServer(); // 同步推送配置
+  showToast('设置已保存 ✓');
   localStorage.setItem('apiBaseUrl', document.getElementById('apiBaseUrl').value.trim());
   localStorage.setItem('apiFormat', document.getElementById('apiFormat').value);
   const font = document.getElementById('fontSelect').value;
@@ -1832,6 +1834,7 @@ function bindEvents(){
       path: document.getElementById('bgApiPathInput').value.trim() || '/v1/chat/completions'
     };
     saveBgApiConfig(cfg);
+    syncPushConfigToServer();
     showToast('后台AI配置已保存 ✨');
   });
 
@@ -1848,10 +1851,11 @@ function bindEvents(){
       setVal('remoteCollarUrl', 'collar', RENDER_URLS.collar);
       setVal('remoteEventideUrl', 'eventide', RENDER_URLS.eventide);
       setVal('remoteHervoiceUrl', 'hervoice', RENDER_URLS.hervoice);
+      setVal('remoteStarMapUrl', 'starmap', RENDER_URLS.starmap);
     } catch(e){}
   }
   function saveRemoteUrls(){
-    const ids = ['remoteDuettoUrl','remoteCedarecoUrl','remoteCollarUrl','remoteEventideUrl','remoteHervoiceUrl'];
+    const ids = ['remoteDuettoUrl','remoteCedarecoUrl','remoteCollarUrl','remoteEventideUrl','remoteHervoiceUrl','remoteStarMapUrl'];
     const urls = {};
     ids.forEach(id => {
       const key = id.replace('remote','').replace('Url','').toLowerCase();
@@ -1863,6 +1867,41 @@ function bindEvents(){
   }
   document.getElementById('saveRemoteUrlsBtn')?.addEventListener('click', saveRemoteUrls);
   loadRemoteUrls();
+
+  // ── 主动推送配置同步 ──
+  async function syncPushConfigToServer(){
+    try {
+      const cfg = {
+        bgApiConfig: bgApiConfig,
+        systemPrompt: localStorage.getItem('systemPrompt') || ''
+      };
+      const res = await fetch('/api/push/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cfg)
+      });
+      if(res.ok) console.log('[推送] 配置已同步到服务器');
+    } catch(e) { /* 本地环境可能没有服务器，静默失败 */ }
+  }
+  // 页面加载后也同步一次
+  setTimeout(syncPushConfigToServer, 3000);
+
+  // 推送状态查询（调试用）
+  async function checkPushStatus(){
+    try {
+      const res = await fetch('/api/push/status');
+      if(res.ok){
+        const data = await res.json();
+        const el = document.getElementById('pushStatusDisplay');
+        if(el) el.textContent = data.configLoaded
+          ? `今日推送 ${data.todayPushes}/${data.maxDaily} · ${data.nightProtectionActive ? '🌙 夜间保护中' : '☀️ 可推送'} · 上次消息 ${data.lastMessageMinAgo}分钟前`
+          : '⚠️ 等待配置同步...';
+      }
+    } catch(e) { /* 静默 */ }
+  }
+  // 每 60 秒检查一次推送状态
+  setInterval(checkPushStatus, 60000);
+  setTimeout(checkPushStatus, 5000);
   
   document.getElementById('wallpaperBtn')?.addEventListener('click', ()=>openModal('wallpaperModal'));
   document.getElementById('wallpaperSettingBtn').addEventListener('click', ()=>openModal('wallpaperModal'));
@@ -3711,7 +3750,8 @@ const RENDER_URLS = {
   cedareco: 'https://cedareco-e0hj.onrender.com',
   collar: 'https://collar-awto.onrender.com',
   eventide: 'https://eventide-j32v.onrender.com',
-  hervoice: 'https://hervoice.onrender.com'
+  hervoice: 'https://hervoice.onrender.com',
+  starmap: 'http://localhost:3000/memory.html'
 };
 
 // 生成外部服务的 URL
@@ -3728,6 +3768,7 @@ function serviceUrl(port, path){
   if(port === 3412) return remoteUrls.collar || RENDER_URLS.collar;
   if(port === 3876) return remoteUrls.eventide || RENDER_URLS.eventide;
   if(port === 8010) return remoteUrls.hervoice || RENDER_URLS.hervoice;
+  if(port === 3000) return remoteUrls.starmap || RENDER_URLS.starmap;
   // 未知环境，尝试同域端口
   return `http://${host}:${port}${path || ''}`;
 }
@@ -3893,6 +3934,17 @@ function openGameEmbed(id, url){
 function closeGameEmbed(){
   document.getElementById('gameEmbedPanel')?.classList.remove('open');
   // 不销毁 iframe，让音乐继续播放
+}
+
+// ── 记忆星图 ──
+function openStarMap(){
+  const url = serviceUrl(3000, '/memory.html');
+  // 在桌面端用新窗口打开，移动端用当前窗口
+  if(window.innerWidth > 768){
+    window.open(url, '_blank');
+  } else {
+    window.location.href = url;
+  }
 }
 
 // ── 持久音乐播放器 ──
