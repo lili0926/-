@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 
-const PORT = process.env.PORT || 80;
+const PORT = process.env.PORT || 3001;
 const ROOT = path.resolve(import.meta.dirname, '.');
 
 // ========== Supabase 配置 ==========
