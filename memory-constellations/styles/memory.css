@@ -1,0 +1,38 @@
+/* ========================================
+   记忆星图 v5 — 样式
+   ======================================== */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+    background: #020410; overflow: hidden;
+    font-family: 'Inter', 'PingFang SC', sans-serif;
+    color: #e8eaf6; width: 100vw; height: 100vh;
+    /* 禁止双击缩放 & 禁止拖动页面向下刷新 */
+    touch-action: none;
+    -webkit-overflow-scrolling: auto;
+}
+canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
+#mc { pointer-events: all; }
+
+/* ── 手机端自适应 ── */
+@media (max-width: 640px) {
+    .tb-title { display: none; }
+    #topbar { top: 12px; padding: 10px 14px; gap: 8px; border-radius: 30px; max-width: 94vw; overflow-x: auto; white-space: nowrap; }
+    .galaxy-pills { gap: 4px; }
+    .gpill { font-size: 13px; padding: 6px 14px; }
+    .tb-count { font-size: 12px; }
+    .stardust-btn { width: 34px; height: 34px; font-size: 16px; }
+    #breadcrumb { top: 68px; left: 12px; padding: 8px 14px; gap: 5px; }
+    .bc-item, .bc-sep { font-size: 13px; padding: 4px 6px; }
+    #panel { right: 10px; width: min(280px, calc(100vw - 20px)); padding: 16px; top: 50%; max-height: 70vh; overflow-y: auto; }
+    .p-title { font-size: 17px; }
+    .p-body { font-size: 14px; }
+    .p-cat { font-size: 11px; }
+    .p-date { font-size: 11px; }
+    .tag { font-size: 11px; padding: 3px 9px; }
+    .mag-val { font-size: 11px; }
+    .p-episode-content { font-size: 13px; }
+    #hint { display: none; }
+    #archlog { left: 10px; bottom: 10px; width: calc(100vw - 20px); }
+    #model-panel { left: 10px; bottom: 58px; width: calc(100vw - 20px); }
+}
