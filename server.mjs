@@ -13,58 +13,30 @@ const SUPABASE_URL = 'https://lqcuklhldvkwbkpftjzu.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_w13U8_JcT0amx_LVBm9dnA_CoA5xiow';
 const SUPABASE_REST = `${SUPABASE_URL}/rest/v1`;
 
-// ========== memory-constellations 会话缓存 ==========
-let mcCookie = null;
-let mcCookieTime = 0;
-const MC_BASE = 'http://localhost:3000';
-const MC_PASSWORD = 'aries888';
-
-async function loginMemoryConstellations() {
-  try {
-    const res = await fetch(`${MC_BASE}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: MC_PASSWORD }),
-      redirect: 'manual'
-    });
-    const setCookie = res.headers.get('set-cookie');
-    if (setCookie) {
-      mcCookie = setCookie.split(';')[0];
-      mcCookieTime = Date.now();
-      console.log('[MC] 登录成功');
-    }
-  } catch (e) {
-    console.log('[MC] 登录失败:', e.message);
-  }
-}
-
-async function queryMemoryConstellations(endpoint) {
-  if (!mcCookie || Date.now() - mcCookieTime > 3600000) {
-    await loginMemoryConstellations();
-  }
-  try {
-    const res = await fetch(`${MC_BASE}${endpoint}`, {
-      headers: { 'Cookie': mcCookie || '' }
-    });
-    if (res.status === 401) {
-      await loginMemoryConstellations();
-      const retry = await fetch(`${MC_BASE}${endpoint}`, {
-        headers: { 'Cookie': mcCookie || '' }
-      });
-      return retry.ok ? retry.json() : [];
-    }
-    return res.ok ? res.json() : [];
-  } catch (e) {
-    return [];
-  }
+// ========== memory-constellations 登录 ==========
+let mcloginCookie = null;
+async function ensureMCLogin() {
+  if (mcloginCookie) return mcloginCookie;
+  const r = await fetch('http://localhost:3000/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password: 'aries888' }),
+    redirect: 'manual'
+  });
+  const c = r.headers.get('set-cookie')?.split(';')[0];
+  if (c) mcloginCookie = c;
+  return c;
 }
 
 // ========== 记忆召回（转发到 memory-constellations） ==========
 async function recallFromMC(query, limit = 20) {
   try {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 5000);
     const res = await fetch(`http://localhost:3000/api/recall?q=${encodeURIComponent(query)}&limit=${limit}`, {
-      timeout: 3000
+      signal: ac.signal
     });
+    clearTimeout(timer);
     if (res.ok) {
       const data = await res.json();
       // 合并 Supabase 的心情数据（星图没有这部分）
@@ -203,6 +175,42 @@ async function handleRecall(req, res) {
   });
 }
 
+// ========== 同步记忆到星图（给 app.js organizeMemory 用） ==========
+async function handleSyncMemory(req, res) {
+  let body = '';
+  req.on('data', chunk => body += chunk);
+  req.on('end', async () => {
+    try {
+      const { title, content, tags } = JSON.parse(body);
+      if (!title || !content) {
+        res.writeHead(400); return res.end(JSON.stringify({ error: 'title and content required' }));
+      }
+      const cookie = await ensureMCLogin();
+      // 检查是否已存在（按标题去重）
+      const check = await fetch('http://localhost:3000/api/memory/api/memories?limit=100', {
+        headers: { 'Cookie': cookie || '' }
+      });
+      const existing = (check.ok ? await check.json() : {}).memories || [];
+      if (existing.some(e => e.title === title)) {
+        return res.end(JSON.stringify({ status: 'skipped', reason: 'exists' }));
+      }
+      const r = await fetch('http://localhost:3000/api/memory/api/memory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Cookie': cookie || '' },
+        body: JSON.stringify({ title, content, tags: tags || ['other'], status: 'permanent' })
+      });
+      if (r.ok) {
+        res.end(JSON.stringify({ status: 'ok' }));
+      } else {
+        const txt = await r.text();
+        res.writeHead(500); res.end(JSON.stringify({ error: txt.slice(0, 100) }));
+      }
+    } catch (err) {
+      res.writeHead(500); res.end(JSON.stringify({ error: err.message }));
+    }
+  });
+}
+
 // ========== 创建服务器 ==========
 const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -217,6 +225,9 @@ const server = http.createServer((req, res) => {
   // 路由
   if (req.method === 'POST' && req.url === '/api/recall') {
     return handleRecall(req, res);
+  }
+  if (req.method === 'POST' && req.url === '/api/sync-memory') {
+    return handleSyncMemory(req, res);
   }
   if (req.method === 'POST' && req.url.startsWith('/api/proxy')) {
     return handleProxy(req, res);

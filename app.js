@@ -1455,6 +1455,17 @@ async function organizeMemory(lastTime){
     }
 
     for(const item of items){
+      // 同步到 Memory Constellations（星图）
+      try {
+        const mcTitle = item.keyword || item.content?.slice(0, 20) || '记忆';
+        const mcContent = `${item.date ? '[' + item.date + '] ' : ''}${item.icon || ''} ${item.content || ''}`;
+        fetch('/api/sync-memory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: mcTitle, content: mcContent, tags: [item.category || 'other'] })
+        }).catch(() => {});
+      } catch(e) { /* 星图同步失败不影响 */ }
+
       if(item.category === "other"){
         const blobColors = ['blob-pink','blob-purple','blob-yellow','blob-mint','blob-peach','blob-blue','blob-cream'];
         const color = blobColors[Math.floor(Math.random()*blobColors.length)];
