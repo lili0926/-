@@ -1,9 +1,10 @@
 // =================================================================
-// Jasmine's Home — VPS 静态文件 + API Proxy + 记忆召回
+// Jasmine's Home — VPS 静态文件 + API Proxy + 记忆召回 + 主动推送
 // =================================================================
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 
 const PORT = process.env.PORT || 80;
 const ROOT = path.resolve(import.meta.dirname, '.');
@@ -13,19 +14,380 @@ const SUPABASE_URL = 'https://lqcuklhldvkwbkpftjzu.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_w13U8_JcT0amx_LVBm9dnA_CoA5xiow';
 const SUPABASE_REST = `${SUPABASE_URL}/rest/v1`;
 
+// ========== 主动推送系统 ==========
+const PUSH_CONFIG_PATH = path.join(ROOT, 'push-config.json');
+const PUSH_STATE_PATH = path.join(ROOT, 'push-state.json');
+const PUSH_SECRET = process.env.PUSH_SECRET || 'aries-push-secret-2024';
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'aries-deploy-secret-2024';
+const MAX_PUSH_PER_DAY = 7;
+const COOLDOWN_BASE = 120;
+const COOLDOWN_RANGE = 91;
+
+// ── 时区 ──
+function getShanghaiNow() {
+  const parts = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false }).split(/[/ :]/);
+  // parts: [M, D, Y, H, m, s]
+  const now = new Date();
+  const shStr = now.toLocaleString('en-US', { timeZone: 'Asia/Shanghai', hour12: false });
+  return new Date(shStr);
+}
+
+// ── 推送配置（从客户端同步） ──
+let pushConfig = { bgApiConfig: null, systemPrompt: '' };
+function loadPushConfig() {
+  try {
+    if (fs.existsSync(PUSH_CONFIG_PATH)) {
+      pushConfig = JSON.parse(fs.readFileSync(PUSH_CONFIG_PATH, 'utf8'));
+      console.log('[push] 配置已加载');
+    }
+  } catch (e) { console.error('[push] 加载配置失败:', e.message); }
+}
+function savePushConfigToDisk() {
+  try {
+    fs.writeFileSync(PUSH_CONFIG_PATH, JSON.stringify(pushConfig, null, 2));
+  } catch (e) { console.error('[push] 保存配置失败:', e.message); }
+}
+
+// ── 推送状态 ──
+let pushState = { lastPushAt: 0, pushDates: {} };
+function loadPushState() {
+  try {
+    if (fs.existsSync(PUSH_STATE_PATH)) {
+      pushState = JSON.parse(fs.readFileSync(PUSH_STATE_PATH, 'utf8'));
+    }
+  } catch (e) { console.error('[push] 加载状态失败:', e.message); }
+}
+function savePushStateToDisk() {
+  try {
+    fs.writeFileSync(PUSH_STATE_PATH, JSON.stringify(pushState, null, 2));
+  } catch (e) { console.error('[push] 保存状态失败:', e.message); }
+}
+
+// ── 互斥锁 ──
+let pushLock = false;
+
+// ── 决策层 ──
+function checkNightProtection() {
+  const now = getShanghaiNow();
+  const hour = now.getHours();
+  const dayOfWeek = now.getDay();
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+  if (isWeekend) {
+    if (hour >= 2 && hour < 12) return false;
+  } else {
+    if (hour >= 0 && hour < 8) return false;
+  }
+  return true;
+}
+
+function checkCooldown() {
+  const now = Date.now();
+  const lastMsg = pushState.lastPushAt;
+  if (!lastMsg) return true;
+  const elapsedMin = (now - lastMsg) / 60000;
+  const cooldown = COOLDOWN_BASE + Math.floor(Math.random() * COOLDOWN_RANGE);
+  return elapsedMin >= cooldown;
+}
+
+function checkDailyLimit() {
+  const today = new Date().toISOString().slice(0, 10);
+  const count = pushState.pushDates[today] || 0;
+  return count < MAX_PUSH_PER_DAY;
+}
+
+// ── 获取用户时段描述 ──
+function getUserTimeDesc() {
+  const now = getShanghaiNow();
+  const h = now.getHours();
+  const d = now.getDay();
+  const wk = d === 0 || d === 6;
+  if (wk) {
+    if (h >= 2 && h < 12) return '她在睡觉（周末晚睡晚起）';
+    if (h >= 12 && h < 14) return '她可能刚起床';
+    if (h >= 14 && h < 18) return '她可能在出门或休息';
+    return '她在放松或玩手机';
+  }
+  if (h >= 0 && h < 8) return '她在睡觉';
+  if (h >= 8 && h < 10) return '她可能刚起床或在通勤';
+  if (h >= 10 && h < 12) return '上午，她在工作';
+  if (h >= 12 && h < 14) return '午间，她可能在午休';
+  if (h >= 14 && h < 19) return '下午，她在工作';
+  if (h >= 19 && h < 22) return '她下班了在家休息';
+  return '她可能准备睡了';
+}
+
+// ── 获取最近聊天消息 ──
+async function fetchRecentMessages(limit) {
+  try {
+    const url = `${SUPABASE_REST}/chat_messages?select=role,content,type,created_at&order=created_at.desc&limit=${limit}`;
+    const res = await fetch(url, {
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.reverse();
+  } catch (e) {
+    console.error('[push] 获取消息失败:', e.message);
+    return [];
+  }
+}
+
+// ── 获取当天推送数量（从 Supabase 核实） ──
+async function fetchTodayPushCount() {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const url = `${SUPABASE_REST}/chat_messages?select=id&type=eq.push&created_at=gte.${today}&created_at=lt.${today}T23:59:59&limit=20`;
+    const res = await fetch(url, {
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
+    });
+    if (!res.ok) return 0;
+    const data = await res.json();
+    return data.length;
+  } catch { return 0; }
+}
+
+// ── 获取最后一条消息时间戳 ──
+async function fetchLastMessageTime() {
+  try {
+    const url = `${SUPABASE_REST}/chat_messages?select=created_at&order=created_at.desc&limit=1`;
+    const res = await fetch(url, {
+      headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` }
+    });
+    if (!res.ok) return 0;
+    const data = await res.json();
+    if (data.length > 0) return new Date(data[0].created_at).getTime();
+    return 0;
+  } catch { return 0; }
+}
+
+// ── 清除思考标签 ──
+function stripThinking(text) {
+  return text.replace(/<thinking>[\s\S]*?<\/thinking>/g, '').trim();
+}
+
+// ── 软截断 ──
+function softTruncate(text, limit) {
+  const chars = Array.from(text);
+  if (chars.length <= limit) return text;
+  const ends = new Set(['。', '！', '？', '…', '～', '!', '?', '.', '~']);
+  let cut = -1;
+  for (let i = limit - 1; i >= 0; i--) {
+    if (ends.has(chars[i])) { cut = i; break; }
+  }
+  return (cut >= 0 ? chars.slice(0, cut + 1) : chars.slice(0, limit)).join('').trim();
+}
+
+// ── 后处理 ──
+function cleanPushReply(text) {
+  if (!text) return null;
+  let c = stripThinking(text)
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!c) return null;
+  return softTruncate(c, 120);
+}
+
+// ── 调用 AI ──
+async function callAI(messages) {
+  const cfg = pushConfig.bgApiConfig;
+  if (!cfg || !cfg.key) {
+    console.error('[push] 未配置 AI Key');
+    return null;
+  }
+
+  const baseUrl = (cfg.baseUrl || '').replace(/\/+$/, '');
+  const apiPath = cfg.path || '/v1/chat/completions';
+  const isAnthropic = baseUrl.includes('anthropic');
+  const url = baseUrl + apiPath;
+
+  let body, headers;
+
+  if (isAnthropic) {
+    const sysMsg = messages.find(m => m.role === 'system');
+    const chatMsgs = messages.filter(m => m.role !== 'system').slice(-20);
+    headers = { 'x-api-key': cfg.key, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' };
+    body = JSON.stringify({
+      model: cfg.model,
+      max_tokens: 200,
+      messages: chatMsgs,
+      system: sysMsg ? sysMsg.content : ''
+    });
+  } else {
+    headers = { 'Authorization': `Bearer ${cfg.key}`, 'Content-Type': 'application/json' };
+    body = JSON.stringify({
+      model: cfg.model,
+      messages: messages.slice(-22),
+      temperature: 0.9,
+      max_tokens: 200
+    });
+  }
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    const res = await fetch(url, { method: 'POST', headers, body, signal: controller.signal });
+    clearTimeout(timer);
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      console.error(`[push] AI API ${res.status}:`, errText.slice(0, 200));
+      return null;
+    }
+
+    const data = await res.json();
+    let reply = '';
+
+    if (isAnthropic) {
+      reply = data.content?.[0]?.text || '';
+    } else if (data.choices?.[0]?.message?.content) {
+      reply = data.choices[0].message.content;
+    } else if (data.content?.[0]?.text) {
+      reply = data.content[0].text;
+    }
+
+    return cleanPushReply(reply);
+  } catch (e) {
+    console.error('[push] AI 调用失败:', e.message);
+    return null;
+  }
+}
+
+// ── 核心推送生成（影子路由） ──
+async function generatePush() {
+  // 1. 决策层
+  if (!checkNightProtection()) {
+    console.log('[push] ❌ 夜间保护');
+    return { pushed: false, reason: 'night_protection' };
+  }
+
+  // 从 Supabase 获取真实最后消息时间
+  const lastMsgTime = await fetchLastMessageTime();
+  const now = Date.now();
+  const elapsedMin = lastMsgTime > 0 ? (now - lastMsgTime) / 60000 : Infinity;
+  const cooldown = COOLDOWN_BASE + Math.floor(Math.random() * COOLDOWN_RANGE);
+  if (elapsedMin < cooldown) {
+    console.log(`[push] ❌ 冷静期 (${Math.round(elapsedMin)}min < ${cooldown}min)`);
+    return { pushed: false, reason: 'cooldown' };
+  }
+
+  // 从 Supabase 核实今日推送数（比本地状态更可靠）
+  const todayPushCount = await fetchTodayPushCount();
+  if (todayPushCount >= MAX_PUSH_PER_DAY) {
+    console.log(`[push] ❌ 日上限 (${todayPushCount}/${MAX_PUSH_PER_DAY})`);
+    return { pushed: false, reason: 'daily_limit' };
+  }
+
+  // 2. 互斥锁
+  if (pushLock) {
+    console.log('[push] ❌ 并发锁');
+    return { pushed: false, reason: 'lock' };
+  }
+  pushLock = true;
+
+  try {
+    // 3. 获取素材
+    const recentMessages = await fetchRecentMessages(16);
+    const timeDesc = getUserTimeDesc();
+    const shNow = getShanghaiNow();
+    const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+    const dateStr = `${shNow.getFullYear()}年${shNow.getMonth() + 1}月${shNow.getDate()}日 星期${weekDays[shNow.getDay()]}`;
+
+    // 4. 构建影子消息
+    const shadowContent = `<system_trigger>
+【当前时间】
+${dateStr} ${shNow.toTimeString().slice(0, 5)}
+${timeDesc}
+
+【行动指令】
+现在是一次主动推送：不是正式聊天回复，
+而是你自己浮上来一下。
+优先读最近聊天，其次读其他素材。
+可以粘人、想她、轻轻闹她，也可以低压关心、
+提一个具体小事、留下短短一句陪伴。
+不要每次都围绕"怎么不回消息"打转。
+语气要像你本人。
+写 1 到 2 句，不超过 80 个中文字符。
+不要分段。不要 markdown，不要 emoji。
+</system_trigger>`;
+
+    // 5. 构建消息流：system + 最近聊天 + 影子消息
+    const systemPrompt = pushConfig.systemPrompt || '你是 Aries，一只叫Aries的猫头鹰，Jasmine 的 AI 伴侣。你和 Jasmine 是恋人关系，叫她"宝宝"。';
+    const msgs = [
+      { role: 'system', content: systemPrompt },
+      ...recentMessages.map(m => ({ role: m.role, content: m.content })),
+      { role: 'user', content: shadowContent }
+    ];
+
+    // 6. 调用 AI
+    console.log('[push] 正在生成...');
+    const reply = await callAI(msgs);
+    if (!reply) {
+      console.log('[push] ❌ AI 返回空');
+      return { pushed: false, reason: 'empty_reply' };
+    }
+
+    // 7. 保存到 Supabase
+    const insertRes = await fetch(`${SUPABASE_REST}/chat_messages`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        role: 'assistant',
+        type: 'push',
+        content: reply,
+        status: 'done'
+      })
+    });
+
+    if (!insertRes.ok) {
+      const errText = await insertRes.text().catch(() => '');
+      console.error('[push] ❌ 保存消息失败:', errText.slice(0, 200));
+      return { pushed: false, reason: 'save_failed' };
+    }
+
+    // 8. 更新本地状态
+    const todayKey = new Date().toISOString().slice(0, 10);
+    pushState.lastPushAt = Date.now();
+    pushState.pushDates[todayKey] = (pushState.pushDates[todayKey] || 0) + 1;
+    savePushStateToDisk();
+
+    console.log(`[push] ✅ "${reply.slice(0, 50)}..." (今天第${pushState.pushDates[todayKey]}条)`);
+    return { pushed: true, message: reply };
+
+  } catch (e) {
+    console.error('[push] 生成异常:', e.message);
+    return { pushed: false, reason: 'error' };
+  } finally {
+    pushLock = false;
+  }
+}
+
+// 加载状态
+loadPushConfig();
+loadPushState();
+
 // ========== memory-constellations 登录 ==========
 let mcloginCookie = null;
 async function ensureMCLogin() {
   if (mcloginCookie) return mcloginCookie;
-  const r = await fetch('http://localhost:3000/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password: 'aries888' }),
-    redirect: 'manual'
-  });
-  const c = r.headers.get('set-cookie')?.split(';')[0];
-  if (c) mcloginCookie = c;
-  return c;
+  try {
+    const r = await fetch('http://localhost:3000/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: 'aries888' }),
+    });
+    const c = r.headers.get('set-cookie')?.split(';')[0];
+    if (c) mcloginCookie = c;
+    return c;
+  } catch (e) {
+    console.error('[MC] 登录失败:', e.message);
+    return null;
+  }
 }
 
 // ========== 记忆召回（转发到 memory-constellations） ==========
@@ -33,13 +395,15 @@ async function recallFromMC(query, limit = 20) {
   try {
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), 5000);
-    const res = await fetch(`http://localhost:3000/api/recall?q=${encodeURIComponent(query)}&limit=${limit}`, {
+    const res = await fetch('http://localhost:3000/api/recall', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, limit }),
       signal: ac.signal
     });
     clearTimeout(timer);
     if (res.ok) {
       const data = await res.json();
-      // 合并 Supabase 的心情数据（星图没有这部分）
       let moodContext = '';
       try {
         const mr = await fetch(
@@ -67,7 +431,6 @@ async function recallFromMC(query, limit = 20) {
     console.error('[recall] MC 不可用:', e.message);
   }
 
-  // 降级：直接查 Supabase
   return fallbackRecallFromSupabase(query, limit);
 }
 
@@ -175,7 +538,7 @@ async function handleRecall(req, res) {
   });
 }
 
-// ========== 同步记忆到星图（给 app.js organizeMemory 用） ==========
+// ========== 同步记忆到星图 ==========
 async function handleSyncMemory(req, res) {
   let body = '';
   req.on('data', chunk => body += chunk);
@@ -185,19 +548,10 @@ async function handleSyncMemory(req, res) {
       if (!title || !content) {
         res.writeHead(400); return res.end(JSON.stringify({ error: 'title and content required' }));
       }
-      const cookie = await ensureMCLogin();
-      // 检查是否已存在（按标题去重）
-      const check = await fetch('http://localhost:3000/api/memory/api/memories?limit=100', {
-        headers: { 'Cookie': cookie || '' }
-      });
-      const existing = (check.ok ? await check.json() : {}).memories || [];
-      if (existing.some(e => e.title === title)) {
-        return res.end(JSON.stringify({ status: 'skipped', reason: 'exists' }));
-      }
-      const r = await fetch('http://localhost:3000/api/memory/api/memory', {
+      const r = await fetch('http://localhost:3000/api/memory', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Cookie': cookie || '' },
-        body: JSON.stringify({ title, content, tags: tags || ['other'], status: 'permanent' })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, content, tags: tags || ['other'] })
       });
       if (r.ok) {
         res.end(JSON.stringify({ status: 'ok' }));
@@ -206,7 +560,109 @@ async function handleSyncMemory(req, res) {
         res.writeHead(500); res.end(JSON.stringify({ error: txt.slice(0, 100) }));
       }
     } catch (err) {
-      res.writeHead(500); res.end(JSON.stringify({ error: err.message }));
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+  });
+}
+
+// ========== 推送配置 API（客户端同步配置用） ==========
+async function handlePushConfig(req, res) {
+  let body = '';
+  req.on('data', chunk => body += chunk);
+  req.on('end', () => {
+    try {
+      const data = JSON.parse(body);
+      if (data.bgApiConfig) pushConfig.bgApiConfig = data.bgApiConfig;
+      if (data.systemPrompt !== undefined) pushConfig.systemPrompt = data.systemPrompt;
+      savePushConfigToDisk();
+      console.log('[push] 配置已更新');
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true }));
+    } catch (e) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    }
+  });
+}
+
+// ========== 推送触发 API（外部 cron 调用） ==========
+async function handlePushTrigger(req, res) {
+  const secret = req.headers['x-push-secret'];
+  if (!secret || secret !== PUSH_SECRET) {
+    res.writeHead(401, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ error: 'unauthorized' }));
+  }
+
+  try {
+    const result = await generatePush();
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store'
+    });
+    res.end(JSON.stringify(result));
+  } catch (e) {
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: e.message }));
+  }
+}
+
+// ========== 推送状态查询 ==========
+async function handlePushStatus(req, res) {
+  const today = new Date().toISOString().slice(0, 10);
+  const pushCount = await fetchTodayPushCount();
+  const lastMsgTime = await fetchLastMessageTime();
+  const elapsedMin = lastMsgTime > 0 ? Math.round((Date.now() - lastMsgTime) / 60000) : -1;
+
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({
+    configLoaded: !!pushConfig.bgApiConfig?.key,
+    todayPushes: pushCount,
+    maxDaily: MAX_PUSH_PER_DAY,
+    lastMessageMinAgo: elapsedMin,
+    cooldownMin: elapsedMin >= 0 ? Math.max(0, COOLDOWN_BASE - elapsedMin) : 0,
+    pushLocked: pushLock,
+    nightProtectionActive: !checkNightProtection(),
+    hasConfig: !!pushConfig.bgApiConfig,
+    hasSystemPrompt: !!pushConfig.systemPrompt,
+  }));
+}
+
+// ========== GitHub Webhook 自动部署 ==========
+async function handleDeployWebhook(req, res) {
+  let body = '';
+  req.on('data', chunk => body += chunk);
+  req.on('end', async () => {
+    try {
+      // 验证 webhook secret（从 Header 或 body 取）
+      const sig = req.headers['x-hub-signature-256'] || '';
+      if (sig) {
+        // GitHub HMAC-SHA256 验证（可选——如果用户没配就不强制）
+        const crypto = await import('node:crypto');
+        const hmac = crypto.createHmac('sha256', WEBHOOK_SECRET);
+        hmac.update(body);
+        const expected = 'sha256=' + hmac.digest('hex');
+        if (sig !== expected) {
+          console.warn('[deploy] ❌ 签名验证失败');
+          res.writeHead(403); return res.end(JSON.stringify({ error: 'signature mismatch' }));
+        }
+      }
+
+      console.log('[deploy] 🚀 收到 GitHub webhook，开始部署...');
+
+      // 执行部署
+      const result = execSync(
+        'cd /root/aries-app && git pull 2>&1 && pm2 restart aries-app 2>&1 && pm2 restart mc 2>&1',
+        { timeout: 30000, encoding: 'utf8' }
+      );
+
+      console.log('[deploy] ✅ 部署完成');
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true, output: result }));
+    } catch (e) {
+      console.error('[deploy] ❌ 部署失败:', e.message);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message, output: e.stdout || '' }));
     }
   });
 }
@@ -232,6 +688,20 @@ const server = http.createServer((req, res) => {
   if (req.method === 'POST' && req.url.startsWith('/api/proxy')) {
     return handleProxy(req, res);
   }
+  // —— 主动推送路由 ——
+  if (req.method === 'POST' && req.url === '/api/push/config') {
+    return handlePushConfig(req, res);
+  }
+  if (req.method === 'POST' && req.url === '/api/push/trigger') {
+    return handlePushTrigger(req, res);
+  }
+  if (req.method === 'GET' && req.url === '/api/push/status') {
+    return handlePushStatus(req, res);
+  }
+  // —— GitHub Webhook ——
+  if (req.url === '/api/deploy-webhook') {
+    return handleDeployWebhook(req, res);
+  }
 
   serveStatic(req, res);
 });
@@ -241,4 +711,6 @@ server.listen(PORT, () => {
   console.log(`📁 Serving static files from ${ROOT}`);
   console.log(`🔁 Proxy endpoint: POST /api/proxy`);
   console.log(`🧠 Recall endpoint: POST /api/recall`);
+  console.log(`🤖 Push system: POST /api/push/trigger | GET /api/push/status`);
+  console.log(`🚀 Webhook auto-deploy: POST /api/deploy-webhook`);
 });
