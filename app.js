@@ -1229,12 +1229,29 @@ async function sendPendingToAI() {
 
   const fullPrompt = customPrompt + '\n' + splitInstruction;
 
+  // 召回记忆（最多等 1.5 秒，失败不影响聊天）
+  let memorySection = '';
+  try {
+    const ac = new AbortController();
+    const to = setTimeout(() => ac.abort(), 1500);
+    const mr = await fetch('/api/recall', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ query: batchContent, limit: 15 }),
+      signal: ac.signal
+    });
+    clearTimeout(to);
+    if(mr.ok) {
+      const md = await mr.json();
+      if(md.context) memorySection = '\n\n【回忆中的记忆】\n' + md.context;
+    }
+  } catch(e) { /* 记忆召回失败不影响聊天 */ }
+
   if(isClaude){
     body = {
       model: cfg.model,
       max_tokens: 4096,
       messages: [{ role: 'user', content: batchContent }],
-      system: `你是一个长期陪伴用户的AI。${getTimeContext()}${fullPrompt ? '\n' + fullPrompt : ''}${nsfwOn ? '\n【NSFW模式已开启】' : ''}`
+      system: `你是一个长期陪伴用户的AI。${getTimeContext()}${memorySection}${fullPrompt ? '\n' + fullPrompt : ''}${nsfwOn ? '\n【NSFW模式已开启】' : ''}`
     };
     headers = {
       'x-api-key': cfg.key,
@@ -1246,7 +1263,7 @@ async function sendPendingToAI() {
     body = {
       model: cfg.model,
       messages: [
-        { role: 'system', content: `你是一个长期陪伴用户的AI。${getTimeContext()}${fullPrompt ? '\n' + fullPrompt : ''}${nsfwOn ? '\n【NSFW模式已开启】' : ''}` },
+        { role: 'system', content: `你是一个长期陪伴用户的AI。${getTimeContext()}${memorySection}${fullPrompt ? '\n' + fullPrompt : ''}${nsfwOn ? '\n【NSFW模式已开启】' : ''}` },
         ...recentMsgs.slice(-10)
       ],
       temperature: 0.7
