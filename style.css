@@ -1474,7 +1474,7 @@ body.preset-sketch #page-settings .settings-group:first-child{padding-top:28px}
 /* 手绘风：壁纸任然可见，底色微透保留纸感 */
 
 /* ═══ 相册 ═══ */
-#page-album{padding:16px;display:flex;flex-direction:column;gap:12px}
+#page-album{padding:16px;flex-direction:column;gap:12px}
 .album-header{display:flex;justify-content:space-between;align-items:center}
 .album-header h2{font-size:16px;font-weight:500;margin:0}
 .album-actions{display:flex;gap:8px;align-items:center}
@@ -1495,3 +1495,22 @@ body.preset-sketch #page-settings .settings-group:first-child{padding-top:28px}
 .album-cat-row .cat-del{background:none;border:none;color:rgba(200,80,80,0.6);cursor:pointer;font-size:13px;padding:2px 6px;border-radius:4px}
 .album-cat-row .cat-del:hover{background:rgba(200,80,80,0.15)}
 .album-note{font-size:12px;opacity:0.6;word-break:break-all}
+
+/* ═══ 邮局 ═══ */
+#page-letter{padding:16px;flex-direction:column;gap:12px}
+.letter-header{display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.letter-header h2{font-size:16px;font-weight:500;margin:0}
+.letter-actions{display:flex;gap:8px;align-items:center}
+.letter-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-bottom:60px;align-content:start}
+.letter-empty{text-align:center;padding:60px 20px;opacity:0.4;font-size:14px}
+.letter-item{display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-radius:10px;background:var(--bg-card,rgba(255,255,255,0.04));border:1px solid var(--border,rgba(255,255,255,0.08));cursor:pointer;transition:all .2s}
+.letter-item:hover{border-color:var(--accent,rgba(120,140,255,0.3));background:var(--bg-card,rgba(255,255,255,0.07))}
+.letter-item-unread{border-left:3px solid var(--accent,#8ab4ff);background:var(--bg-card,rgba(120,140,255,0.06))}
+.letter-item-title{font-size:14px;font-weight:500;display:flex;align-items:center;gap:6px}
+.letter-item-unread-badge{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent,#8ab4ff);flex-shrink:0}
+.letter-item-preview{font-size:12px;opacity:0.6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.letter-item-meta{display:flex;justify-content:space-between;font-size:11px;opacity:0.4;margin-top:2px}
+.letter-detail-meta{display:flex;justify-content:space-between;font-size:12px;opacity:0.6;margin-bottom:12px;padding:0 4px}
+.letter-detail-content{white-space:pre-wrap;line-height:1.9;font-size:14px;padding:4px;max-height:60vh;overflow-y:auto;}
+.letter-import-textarea{width:100%;min-height:200px;border-radius:8px;border:1px solid var(--border,rgba(255,255,255,0.1));background:var(--bg-card,rgba(255,255,255,0.03));color:var(--text);padding:12px;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box}
+.letter-import-textarea:focus{outline:none;border-color:var(--accent,rgba(120,140,255,0.4))}

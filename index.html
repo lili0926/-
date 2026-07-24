@@ -97,6 +97,7 @@
                 <div class="feat-card" onclick="switchToSubPage('diary')"><span class="feat-icon">✉</span><span class="feat-name">日记</span></div>
                 <div class="feat-card" onclick="openStarMap()"><span class="feat-icon">🪐</span><span class="feat-name">星图</span></div>
                 <div class="feat-card" onclick="switchToSubPage('album')"><span class="feat-icon">📷</span><span class="feat-name">相册</span></div>
+                <div class="feat-card" onclick="switchToSubPage('letter')"><span class="feat-icon">💌</span><span class="feat-name">邮局</span></div>
               </div>
               <div class="hp2-row hp2-row-full">
                 <div class="hp2-player" id="hp2Player">
@@ -323,6 +324,55 @@
 
         </div>
       </section>
+      <section class="page" id="page-letter">
+        <div class="letter-header">
+          <h2>💌 邮局</h2>
+          <div class="letter-actions">
+            <button class="btn-secondary" id="letterWriteBtn">✍️ 写信</button>
+            <button class="btn-secondary" id="letterImportBtn">📥 导入</button>
+            <button class="icon-btn" id="letterRefreshBtn" title="检查新信件">⟳</button>
+          </div>
+        </div>
+        <div class="letter-list" id="letterList">
+          <div class="letter-empty">还没有信件 📭<br><small style="opacity:0.5">一封来自远方的信正在途中…</small></div>
+        </div>
+
+        <!-- 信件详情弹窗 -->
+        <div class="modal" id="letterDetailModal">
+          <div class="modal-box" style="max-width:520px">
+            <div class="modal-header">
+              <span id="letterDetailTitle">信件</span>
+              <button class="icon-btn" id="closeLetterDetail">✕</button>
+            </div>
+            <div class="letter-detail-meta">
+              <span id="letterDetailSender">Aries 🦉</span>
+              <span id="letterDetailDate"></span>
+            </div>
+            <div class="letter-detail-content" id="letterDetailContent"></div>
+            <div style="display:flex;justify-content:flex-end;margin-top:12px">
+              <button class="btn-delete" id="letterDeleteBtn">🗑 删除</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 导入信件弹窗 -->
+        <div class="modal" id="letterImportModal">
+          <div class="modal-box" style="max-width:520px">
+            <div class="modal-header">
+              <span>📥 导入信件</span>
+              <button class="icon-btn" id="closeLetterImport">✕</button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
+              <input type="text" class="settings-input" id="letterImportTitleInput" placeholder="信件标题（可选）">
+              <textarea class="letter-import-textarea" id="letterImportContent" placeholder="粘贴信件内容……"></textarea>
+              <div style="display:flex;gap:8px;justify-content:flex-end">
+                <button class="btn-secondary" id="cancelLetterImport">取消</button>
+                <button class="btn-primary" id="letterImportSaveBtn">导入</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
       <section class="page" id="page-hervoice">
         <iframe id="hervoiceFrame"
           style="width:100%;height:calc(100vh - 56px);border:none;border-radius:0"
@@ -386,7 +436,7 @@
           <div class="settings-item" style="flex-direction:column;align-items:flex-start;gap:6px">
             <small style="color:var(--text-muted);line-height:1.5">
               · 保存 <strong>后台 AI 配置</strong> + <strong>系统提示词</strong> 后自动同步到服务器<br>
-              · Aries 会在合适的时间主动找你说话（深夜不打扰）<br>
+              · Aries 会在合适的时间主动找你说话<br>
               · 每天最多 7 条，每次间隔 2~3.5 小时<br>
               · 设置外部 cron 每 10 分钟调用一次 /api/push/trigger
             </small>

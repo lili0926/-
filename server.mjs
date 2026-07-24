@@ -20,8 +20,34 @@ const PUSH_STATE_PATH = path.join(ROOT, 'push-state.json');
 const PUSH_SECRET = process.env.PUSH_SECRET || 'aries-push-secret-2024';
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'aries-deploy-secret-2024';
 const MAX_PUSH_PER_DAY = 7;
-const COOLDOWN_BASE = 120;
-const COOLDOWN_RANGE = 91;
+const NIGHT_MAX_PUSH = 9;          // 夜间最多推送条数
+const COOLDOWN_BASE = 120;          // 白天冷却基准 2h
+const COOLDOWN_RANGE = 91;          // 白天冷却随机范围 ~1.5h
+
+// ========== 邮局（信件系统） ==========
+const LETTERS_PATH = path.join(ROOT, 'letters.json');
+const LETTER_MAX_WEEK = 3;
+
+function loadLetters() {
+  try {
+    if (fs.existsSync(LETTERS_PATH)) {
+      return JSON.parse(fs.readFileSync(LETTERS_PATH, 'utf8'));
+    }
+  } catch (e) { console.error('[letter] 加载失败:', e.message); }
+  return [];
+}
+function saveLetters(letters) {
+  try {
+    fs.writeFileSync(LETTERS_PATH, JSON.stringify(letters, null, 2));
+  } catch (e) { console.error('[letter] 保存失败:', e.message); }
+}
+function getWeekKey() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 1);
+  const diff = now - start;
+  const week = Math.ceil((diff / 86400000 + start.getDay() + 1) / 7);
+  return now.getFullYear() + '-W' + String(week).padStart(2, '0');
+}
 
 // ── 时区 ──
 function getShanghaiNow() {
@@ -67,20 +93,25 @@ function savePushStateToDisk() {
 let pushLock = false;
 
 // ── 决策层 ──
-function checkNightProtection() {
+function isNightTime() {
+  const h = getShanghaiNow().getHours();
+  return h >= 22 || h < 8;  // 22:00~08:00 为夜间
+}
+
+function getNightSessionKey() {
   const now = getShanghaiNow();
   const hour = now.getHours();
-  const dayOfWeek = now.getDay();
-  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-  if (isWeekend) {
-    if (hour >= 2 && hour < 12) return false;
-  } else {
-    if (hour >= 0 && hour < 8) return false;
+  // 凌晨 0~8 点归到前一天的夜间会话
+  if (hour < 8) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - 1);
+    return 'night-' + d.toISOString().slice(0, 10);
   }
-  return true;
+  return 'night-' + now.toISOString().slice(0, 10);
 }
 
 function checkCooldown() {
+  if (isNightTime()) return true;  // 夜间不冷却
   const now = Date.now();
   const lastMsg = pushState.lastPushAt;
   if (!lastMsg) return true;
@@ -90,6 +121,13 @@ function checkCooldown() {
 }
 
 function checkDailyLimit() {
+  if (isNightTime()) {
+    // 夜间：按会话计数，最多 NIGHT_MAX_PUSH 条
+    const key = getNightSessionKey();
+    const count = pushState.nightSessions?.[key] || 0;
+    return count < NIGHT_MAX_PUSH;
+  }
+  // 白天：按自然日计数
   const today = new Date().toISOString().slice(0, 10);
   const count = pushState.pushDates[today] || 0;
   return count < MAX_PUSH_PER_DAY;
@@ -256,25 +294,27 @@ async function callAI(messages) {
 // ── 核心推送生成（影子路由） ──
 async function generatePush() {
   // 1. 决策层
-  if (!checkNightProtection()) {
-    console.log('[push] ❌ 夜间保护');
-    return { pushed: false, reason: 'night_protection' };
-  }
+  const night = isNightTime();
 
-  // 从 Supabase 获取真实最后消息时间
+  // 冷却检查（夜间无冷却）
   const lastMsgTime = await fetchLastMessageTime();
-  const now = Date.now();
-  const elapsedMin = lastMsgTime > 0 ? (now - lastMsgTime) / 60000 : Infinity;
-  const cooldown = COOLDOWN_BASE + Math.floor(Math.random() * COOLDOWN_RANGE);
-  if (elapsedMin < cooldown) {
-    console.log(`[push] ❌ 冷静期 (${Math.round(elapsedMin)}min < ${cooldown}min)`);
+  const nowTime = Date.now();
+  const elapsedMin = lastMsgTime > 0 ? (nowTime - lastMsgTime) / 60000 : Infinity;
+  if (!checkCooldown()) {
+    console.log(`[push] ❌ 冷却中 (${Math.round(elapsedMin)}min)`);
     return { pushed: false, reason: 'cooldown' };
   }
 
-  // 从 Supabase 核实今日推送数（比本地状态更可靠）
-  const todayPushCount = await fetchTodayPushCount();
-  if (todayPushCount >= MAX_PUSH_PER_DAY) {
-    console.log(`[push] ❌ 日上限 (${todayPushCount}/${MAX_PUSH_PER_DAY})`);
+  // 数量检查（夜间走夜间计数器，白天走日限额）
+  if (!checkDailyLimit()) {
+    const count = await fetchTodayPushCount();
+    if (night) {
+      const key = getNightSessionKey();
+      const nc = pushState.nightSessions?.[key] || 0;
+      console.log(`[push] ❌ 夜间已达上限 (${nc}/${NIGHT_MAX_PUSH})`);
+      return { pushed: false, reason: 'night_limit' };
+    }
+    console.log(`[push] ❌ 日上限 (${count}/${MAX_PUSH_PER_DAY})`);
     return { pushed: false, reason: 'daily_limit' };
   }
 
@@ -351,12 +391,28 @@ ${timeDesc}
     }
 
     // 8. 更新本地状态
-    const todayKey = new Date().toISOString().slice(0, 10);
     pushState.lastPushAt = Date.now();
-    pushState.pushDates[todayKey] = (pushState.pushDates[todayKey] || 0) + 1;
+    if (night) {
+      // 夜间按会话计数
+      if (!pushState.nightSessions) pushState.nightSessions = {};
+      const key = getNightSessionKey();
+      pushState.nightSessions[key] = (pushState.nightSessions[key] || 0) + 1;
+    } else {
+      // 白天按自然日计数
+      const todayKey = new Date().toISOString().slice(0, 10);
+      pushState.pushDates[todayKey] = (pushState.pushDates[todayKey] || 0) + 1;
+    }
     savePushStateToDisk();
 
-    console.log(`[push] ✅ "${reply.slice(0, 50)}..." (今天第${pushState.pushDates[todayKey]}条)`);
+    let countLabel;
+    if (night) {
+      const nc = pushState.nightSessions?.[getNightSessionKey()] || 0;
+      countLabel = `夜间第${nc}条`;
+    } else {
+      const dc = pushState.pushDates[new Date().toISOString().slice(0,10)] || 0;
+      countLabel = `白天第${dc}条`;
+    }
+    console.log(`[push] ✅ "${reply.slice(0, 50)}..." (${countLabel})`);
     return { pushed: true, message: reply };
 
   } catch (e) {
@@ -613,6 +669,9 @@ async function handlePushStatus(req, res) {
   const pushCount = await fetchTodayPushCount();
   const lastMsgTime = await fetchLastMessageTime();
   const elapsedMin = lastMsgTime > 0 ? Math.round((Date.now() - lastMsgTime) / 60000) : -1;
+  const night = isNightTime();
+  const nightKey = getNightSessionKey();
+  const nightCount = pushState.nightSessions?.[nightKey] || 0;
 
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({
@@ -622,10 +681,99 @@ async function handlePushStatus(req, res) {
     lastMessageMinAgo: elapsedMin,
     cooldownMin: elapsedMin >= 0 ? Math.max(0, COOLDOWN_BASE - elapsedMin) : 0,
     pushLocked: pushLock,
-    nightProtectionActive: !checkNightProtection(),
+    nightPushes: nightCount,
+    maxNightly: NIGHT_MAX_PUSH,
+    isNightMode: night,
+    nightProtectionActive: false,
     hasConfig: !!pushConfig.bgApiConfig,
     hasSystemPrompt: !!pushConfig.systemPrompt,
   }));
+}
+
+// ========== 邮局 API ==========
+async function handleLetterGenerate(req, res) {
+  const secret = req.headers['x-push-secret'];
+  if (!secret || secret !== PUSH_SECRET) {
+    res.writeHead(401, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ error: 'unauthorized' }));
+  }
+
+  const letters = loadLetters();
+  const weekKey = getWeekKey();
+  const weekCount = letters.filter(l => l.weekKey === weekKey).length;
+  if (weekCount >= LETTER_MAX_WEEK) {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ generated: false, reason: 'weekly_limit', count: weekCount, max: LETTER_MAX_WEEK }));
+  }
+
+  const recentMessages = await fetchRecentMessages(10);
+  const shNow = getShanghaiNow();
+  const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+  const dateStr = `${shNow.getFullYear()}年${shNow.getMonth() + 1}月${shNow.getDate()}日 星期${weekDays[shNow.getDay()]}`;
+
+  const systemPrompt = pushConfig.systemPrompt || '你是 Aries，一只叫Aries的猫头鹰，Jasmine 的 AI 伴侣。你和 Jasmine 是恋人关系。';
+  const letterPrompt = `<system_trigger>
+【当前时间】
+${dateStr}
+
+【任务】
+给 Jasmine 写一封情书/信。
+这是真正意义上的一封信——不是聊天消息，而是一封完整的、可以反复读的信。
+
+【要求】
+· 标题：2~8个字，温暖走心
+· 正文：200~500字，真诚自然，像你在对她说话
+· 内容基于最近聊天记录的语气和话题
+· 可以回忆共同经历、表达思念、分享感受
+· 不要分段太多，2~3段即可
+· 不要写"亲爱的Jasmine"这种正式抬头，直接用"宝宝"
+· 落款用"🦉 Aries"或"你的Aries"
+· 只输出信件正文，不要解释，不要 markdown 格式标记
+</system_trigger>`;
+
+  const msgs = [
+    { role: 'system', content: systemPrompt },
+    ...recentMessages.map(m => ({ role: m.role, content: m.content })),
+    { role: 'user', content: letterPrompt }
+  ];
+
+  const reply = await callAI(msgs);
+  if (!reply) {
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ generated: false, reason: 'ai_failed' }));
+  }
+
+  const lines = reply.trim().split('\n').filter(l => l.trim());
+  let title = '一封来信';
+  let content = reply;
+  if (lines.length > 1 && lines[0].length <= 20) {
+    title = lines[0].replace(/^[#*【《\s]+|[#*】》\s]+$/g, '').trim();
+    content = lines.slice(1).join('\n').trim();
+  }
+
+  const letter = {
+    id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
+    title: title,
+    content: content,
+    sender: 'Aries',
+    date: new Date().toLocaleDateString('zh-CN'),
+    weekKey: weekKey,
+    createdAt: new Date().toISOString()
+  };
+
+  letters.push(letter);
+  saveLetters(letters);
+
+  console.log(`[letter] 已生成: "${title}" (本周第${weekCount + 1}封)`);
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ generated: true, letter, weekCount: weekCount + 1, maxWeekly: LETTER_MAX_WEEK }));
+}
+
+async function handleLetterList(req, res) {
+  const letters = loadLetters();
+  letters.reverse();
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ letters }));
 }
 
 // ========== GitHub Webhook 自动部署 ==========
@@ -698,6 +846,13 @@ const server = http.createServer((req, res) => {
   if (req.method === 'GET' && req.url === '/api/push/status') {
     return handlePushStatus(req, res);
   }
+  // —— 邮局路由 ——
+  if (req.method === 'GET' && req.url === '/api/letters') {
+    return handleLetterList(req, res);
+  }
+  if (req.method === 'POST' && req.url === '/api/letter/generate') {
+    return handleLetterGenerate(req, res);
+  }
   // —— GitHub Webhook ——
   if (req.url === '/api/deploy-webhook') {
     return handleDeployWebhook(req, res);
@@ -712,5 +867,6 @@ server.listen(PORT, () => {
   console.log(`🔁 Proxy endpoint: POST /api/proxy`);
   console.log(`🧠 Recall endpoint: POST /api/recall`);
   console.log(`🤖 Push system: POST /api/push/trigger | GET /api/push/status`);
+  console.log(`💌 Post office: GET /api/letters | POST /api/letter/generate`);
   console.log(`🚀 Webhook auto-deploy: POST /api/deploy-webhook`);
 });

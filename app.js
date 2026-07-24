@@ -605,6 +605,8 @@ const state = {
   diaries: JSON.parse(localStorage.getItem('diaries') || '[]'),
   tasks: JSON.parse(localStorage.getItem('tasks') || '[]'),
   currentDiaryId: null,
+  letters: JSON.parse(localStorage.getItem('letters') || '[]'),
+  serverLetters: [],
   chatHistory: [],
   thinkingColor: localStorage.getItem('thinkingColor') || '#7c5cbf',
   bubbleAlpha: parseFloat(localStorage.getItem('bubbleAlpha') || '0.10'),
@@ -1778,6 +1780,7 @@ function switchToSubPage(page){
   if(page === 'moments'){ loadMoments(); }
   if(page === 'diary'){ renderDiaries(); }
   if(page === 'album'){ renderAlbum(); }
+  if(page === 'letter'){ renderLetters(); }
 }
 
 // ====== 主页三面划页 ======
@@ -1895,7 +1898,9 @@ function bindEvents(){
         const data = await res.json();
         const el = document.getElementById('pushStatusDisplay');
         if(el) el.textContent = data.configLoaded
-          ? `今日推送 ${data.todayPushes}/${data.maxDaily} · ${data.nightProtectionActive ? '🌙 夜间保护中' : '☀️ 可推送'} · 上次消息 ${data.lastMessageMinAgo}分钟前`
+          ? (data.isNightMode
+            ? `🌙 夜间推送 ${data.nightPushes}/${data.maxNightly} · 上次消息 ${data.lastMessageMinAgo}分钟前`
+            : `☀️ 日间推送 ${data.todayPushes}/${data.maxDaily} · 上次消息 ${data.lastMessageMinAgo}分钟前`)
           : '⚠️ 等待配置同步...';
       }
     } catch(e) { /* 静默 */ }
@@ -4091,6 +4096,181 @@ function renderAlbumCatList(){
   });
 }
 
+// ── 邮局 ──
+function saveLetterState(){
+  localStorage.setItem('letters', JSON.stringify(state.letters));
+}
+function initLetterReader(){
+  if(!state.letterReadIds) state.letterReadIds = new Set(JSON.parse(localStorage.getItem('letterReadIds') || '[]'));
+  if(!state.serverLetterIds) state.serverLetterIds = new Set();
+}
+function saveLetterReadState(){
+  localStorage.setItem('letterReadIds', JSON.stringify([...state.letterReadIds]));
+}
+function renderLetters(){
+  initLetterReader();
+  const list = document.getElementById('letterList');
+  if(!list) return;
+
+  // 合并服务端与本地信件
+  const merged = [
+    ...(state.serverLetters || []).map(l => ({...l, source: 'server', read: state.letterReadIds.has(l.id)})),
+    ...state.letters.filter(l => l.source !== 'server' || !state.serverLetters.find(sl => sl.id === l.id))
+  ];
+
+  const seen = new Set();
+  const all = [];
+  for(const l of merged){
+    if(!seen.has(l.id)){ seen.add(l.id); all.push(l); }
+  }
+  all.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  if(all.length === 0){
+    list.innerHTML = '<div class="letter-empty">还没有信件 📭<br><small style="opacity:0.5">一封来自远方的信正在途中…</small></div>';
+    return;
+  }
+
+  list.innerHTML = all.map(l => {
+    const isUnread = !l.read;
+    return '<div class="letter-item' + (isUnread ? ' letter-item-unread' : '') + '" data-id="' + l.id + '">' +
+      '<div class="letter-item-title">' +
+      (isUnread ? '<span class="letter-item-unread-badge"></span>' : '') +
+      escHtml(l.title || '无标题') +
+      '</div>' +
+      '<div class="letter-item-preview">' + escHtml(l.content || '').slice(0, 80) + '</div>' +
+      '<div class="letter-item-meta">' +
+      '<span>' + escHtml(l.sender || 'Aries') + '</span>' +
+      '<span>' + (l.date || '') + (l.imported ? ' · 导入' : '') + '</span>' +
+      '</div></div>';
+  }).join('');
+
+  list.querySelectorAll('.letter-item').forEach(el => {
+    el.addEventListener('click', function(){ openLetter(this.dataset.id); });
+  });
+}
+
+function openLetter(id){
+  let letter = state.serverLetters?.find(l => l.id === id);
+  if(!letter) letter = state.letters.find(l => l.id === id);
+  if(!letter) return;
+
+  state.letterReadIds.add(id);
+  saveLetterReadState();
+
+  document.getElementById('letterDetailTitle').textContent = letter.title || '无标题';
+  document.getElementById('letterDetailSender').textContent = letter.sender || 'Aries';
+  document.getElementById('letterDetailDate').textContent = letter.date || '';
+
+  let content = escHtml(letter.content || '');
+  content = content.replace(/\n/g, '<br>');
+  content = content.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" style="color:var(--accent)">$1</a>');
+  document.getElementById('letterDetailContent').innerHTML = content;
+
+  document.getElementById('letterDeleteBtn').dataset.id = id;
+  openModal('letterDetailModal');
+  renderLetters();
+}
+
+function deleteLetter(id){
+  if(!confirm('确定删除这封信吗？')) return;
+  state.letters = state.letters.filter(l => l.id !== id);
+  state.serverLetters = (state.serverLetters || []).filter(l => l.id !== id);
+  saveLetterState();
+  closeModal('letterDetailModal');
+  renderLetters();
+}
+
+function importLetter(){
+  const title = document.getElementById('letterImportTitleInput').value.trim();
+  const content = document.getElementById('letterImportContent').value.trim();
+  if(!content){
+    showToast('请填写信件内容');
+    return;
+  }
+  const letter = {
+    id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
+    title: title || '未命名信件',
+    content: content,
+    sender: 'Jasmine',
+    date: new Date().toLocaleDateString('zh-CN'),
+    read: true,
+    imported: true,
+    source: 'import'
+  };
+  state.letters.push(letter);
+  saveLetterState();
+
+  document.getElementById('letterImportTitleInput').value = '';
+  document.getElementById('letterImportContent').value = '';
+  closeModal('letterImportModal');
+  renderLetters();
+  showToast('信件已导入');
+}
+
+async function fetchServerLetters(){
+  try {
+    const res = await fetch('/api/letters');
+    if(!res.ok) return;
+    const data = await res.json();
+    const letters = data.letters || data || [];
+    if(Array.isArray(letters) && letters.length){
+      state.serverLetters = letters.map(l => ({
+        ...l, source: 'server',
+        sender: l.sender || 'Aries',
+        date: l.date || new Date().toLocaleDateString('zh-CN')
+      }));
+      renderLetters();
+    }
+  } catch(e) { /* 静默 */ }
+}
+
+function initLetterUI(){
+  document.getElementById('letterImportBtn')?.addEventListener('click', function(){ openModal('letterImportModal'); });
+  document.getElementById('closeLetterDetail')?.addEventListener('click', function(){ closeModal('letterDetailModal'); });
+  document.getElementById('closeLetterImport')?.addEventListener('click', function(){ closeModal('letterImportModal'); });
+  document.getElementById('cancelLetterImport')?.addEventListener('click', function(){
+    closeModal('letterImportModal');
+    document.getElementById('letterImportTitleInput').value = '';
+    document.getElementById('letterImportContent').value = '';
+  });
+  document.getElementById('letterImportSaveBtn')?.addEventListener('click', importLetter);
+  document.getElementById('letterDeleteBtn')?.addEventListener('click', function(){ deleteLetter(this.dataset.id); });
+  document.getElementById('letterRefreshBtn')?.addEventListener('click', function(){ fetchServerLetters(); showToast('正在检查新信件'); });
+  document.getElementById('letterWriteBtn')?.addEventListener('click', triggerLetterGeneration);
+
+  // 延时从服务端拉取（仅一次）
+  if(!window._letterInited){
+    window._letterInited = true;
+    setTimeout(fetchServerLetters, 2000);
+  }
+}
+
+async function triggerLetterGeneration(){
+  showToast('Aries 正在写信… ✍️');
+  try {
+    const res = await fetch('/api/letter/generate', {
+      method: 'POST',
+      headers: { 'x-push-secret': 'aries-push-secret-2024' }
+    });
+    if(!res.ok){
+      showToast('写信失败，服务器未响应');
+      return;
+    }
+    const data = await res.json();
+    if(data.generated){
+      // 重新从服务端拉取
+      await fetchServerLetters();
+      showToast('收到新信件 💌');
+    } else if(data.reason === 'weekly_limit'){
+      showToast('本周信件已够啦（' + data.count + '/' + data.max + '）');
+    } else {
+      showToast('写信失败，请稍后再试');
+    }
+  } catch(e) {
+    showToast('写信失败（无法连接服务器）');
+  }
+}
+
 // ── 持久音乐播放器 ──
 function showPersistentPlayer(gameName){
   const bar = document.getElementById('persistentPlayerBar');
@@ -4187,3 +4367,4 @@ function initHervoiceFrame(){
 }
 initHervoiceFrame();
 initAlbumUI();
+initLetterUI();
