@@ -817,6 +817,32 @@ async function handleDeployWebhook(req, res) {
   });
 }
 
+// ========== 星图代理 ==========
+function serveMCPipe(req, res) {
+  const targetUrl = 'http://localhost:3000' + req.url;
+  const options = {
+    hostname: 'localhost',
+    port: 3000,
+    path: req.url,
+    method: req.method,
+    headers: { ...req.headers, host: 'localhost:3000' }
+  };
+  delete options.headers['x-forwarded-for'];
+  const proxyReq = http.request(options, proxyRes => {
+    res.writeHead(proxyRes.statusCode, proxyRes.headers);
+    proxyRes.pipe(res);
+  });
+  proxyReq.on('error', () => {
+    res.writeHead(502, { 'Content-Type': 'text/plain' });
+    res.end('星图服务不可用');
+  });
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    req.pipe(proxyReq);
+  } else {
+    proxyReq.end();
+  }
+}
+
 // ========== 创建服务器 ==========
 const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -858,6 +884,11 @@ const server = http.createServer((req, res) => {
   // —— GitHub Webhook ——
   if (req.url === '/api/deploy-webhook') {
     return handleDeployWebhook(req, res);
+  }
+
+  // —— 星图代理（透传 mc 的静态和API） ——
+  if (req.url.startsWith('/api/memory') || req.url === '/memory.html' || req.url.startsWith('/games/') || req.url.startsWith('/js/') || req.url.startsWith('/styles/') || req.url.startsWith('/utils/') || req.url === '/login.html' || req.url.startsWith('/services/')) {
+    return serveMCPipe(req, res);
   }
 
   serveStatic(req, res);
