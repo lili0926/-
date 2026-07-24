@@ -692,8 +692,7 @@ function today() { return new Date().toISOString().slice(0,10); }
 // ====== 初始化 ======
 function init() {
   applyTheme(state.theme);
-  applyWallpaper(state.wallpaper);
-  document.body.classList.add('has-wallpaper');
+  applyWallpaper(state.wallpaper);  // applyWallpaper 内部已处理 has-wallpaper 类
   applyOverlay(state.overlayOpacity);
   applyThinkingColor(state.thinkingColor);
   applyBubbleAlpha(state.bubbleAlpha);
@@ -782,15 +781,19 @@ const GRADIENTS = {
 
 function applyWallpaper(wp) {
   const el = document.getElementById('wallpaper');
-  if (!wp || wp === 'none') { 
+  if (!el) return;
+  if (!wp || wp === 'none') {
     el.style.backgroundImage=''; document.body.classList.remove('has-wallpaper');
-  } else if (GRADIENTS[wp]) { 
+  } else if (GRADIENTS[wp]) {
     el.style.backgroundImage=GRADIENTS[wp]; document.body.classList.add('has-wallpaper');
-  } else if (wp.startsWith('data:')) { 
-    el.style.backgroundImage=`url(${wp})`; document.body.classList.add('has-wallpaper'); 
+  } else if (wp.startsWith('data:') || wp.startsWith('http') || wp.startsWith('/')) {
+    el.style.backgroundImage=`url(${wp})`; document.body.classList.add('has-wallpaper');
   }
-  state.wallpaper = wp; 
-  if (!wp.startsWith('data:')) localStorage.setItem('wallpaper', wp);
+  state.wallpaper = wp;
+  localStorage.setItem('wallpaper', wp);
+  if (wp.startsWith('data:')) {
+    localStorage.setItem('wallpaper-custom', wp);
+  }
 }
 
 function applyOverlay(val) {
@@ -2403,8 +2406,10 @@ function bindEvents(){
   if (delBtn) delBtn.addEventListener('click', deleteDiary);
 }
 
+// 自定义壁纸优先：如果 wallpaper-custom 存在且 wallpaper 是 data:，用它
 const _customWp=localStorage.getItem('wallpaper-custom');
-if(_customWp&&(state.wallpaper==='none'||!state.wallpaper)) state.wallpaper=_customWp;
+const _savedWp=localStorage.getItem('wallpaper');
+if(_customWp && (!_savedWp || _savedWp === 'none' || _savedWp.startsWith('data:'))) state.wallpaper=_customWp;
 window.addEventListener('DOMContentLoaded', () => { init(); });
 window.setFontColor = setFontColor;
 
