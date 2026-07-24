@@ -1722,8 +1722,20 @@ function setupSettings(){
 function setFontColor(type){ document.documentElement.setAttribute('data-font', type); localStorage.setItem("fontColor", type); }
 
 function saveSettings(){
-  localStorage.setItem('apiKey', document.getElementById('apiKeyInput').value.trim());
-  localStorage.setItem('model', document.getElementById('modelSelect').value);
+  const key = document.getElementById('apiKeyInput').value.trim();
+  const model = document.getElementById('modelSelect').value;
+  const baseUrl = document.getElementById('apiBaseUrl').value.trim();
+  const format = document.getElementById('apiFormat').value;
+  localStorage.setItem('apiKey', key);
+  localStorage.setItem('model', model);
+  localStorage.setItem('apiBaseUrl', baseUrl);
+  localStorage.setItem('apiFormat', format);
+  // 同步更新 aiApiConfig
+  aiApiConfig.key = key;
+  aiApiConfig.model = model;
+  aiApiConfig.baseUrl = baseUrl;
+  localStorage.setItem('customAiApi', JSON.stringify(aiApiConfig));
+
   localStorage.setItem('systemPrompt', document.getElementById('systemPromptInput').value.trim());
   state.name=document.getElementById('nameInput').value.trim()||'小猫';
   state.startDate=document.getElementById('dateInput').value;
@@ -1735,10 +1747,8 @@ function saveSettings(){
   localStorage.setItem('anniversaries', state.anniversaries);
   updateGreeting(); updateTogetherDays(); checkApiKey();
   if(state.city) fetchWeather(state.city);
-  syncPushConfigToServer(); // 同步推送配置
+  syncPushConfigToServer();
   showToast('设置已保存 ✓');
-  localStorage.setItem('apiBaseUrl', document.getElementById('apiBaseUrl').value.trim());
-  localStorage.setItem('apiFormat', document.getElementById('apiFormat').value);
   const font = document.getElementById('fontSelect').value;
   localStorage.setItem('font', font); applyFont(font);
 }
@@ -2144,86 +2154,72 @@ function bindEvents(){
   
   document.querySelectorAll('.modal').forEach(modal=>{ modal.addEventListener('click', e=>{if(e.target===modal)closeModal(modal.id);}); });
 
-  // ====== 记忆匣（入口 -> 分类 -> 内容）======
+  // ====== 记忆匣（统一弹窗：顶部tab + 内容列表）======
   const blobColors = ['blob-pink','blob-purple','blob-yellow','blob-mint','blob-peach','blob-blue','blob-cream'];
   let currentMemId = null;
-  let currentDiaryCategory = null; // 'about' | 'nsfw'
+  let currentDiaryCategory = null;
   let currentDiaryDate = null;
 
   function showMemModal(id){ document.getElementById(id)?.classList.add('show'); }
   function hideMemModal(id){ document.getElementById(id)?.classList.remove('show'); }
-  // 暴露全局供功能卡片 onclick 调用
   window.showMemModal = showMemModal;
   window.hideMemModal = hideMemModal;
 
-  // 入口：点击打开分类选择层
-  document.getElementById('memEntryBtn')?.addEventListener('click', ()=>{
-    showMemModal('memCategoryModal');
+  // 入口：通过 feat-card onclick 调用，覆写打开统一弹窗
+  const origShowMem = window.showMemModal;
+  window.showMemModal = function(id){
+    if(id === 'memCategoryModal'){
+      showMemModal('memUnifiedModal');
+      switchMemTab('about');
+      return;
+    }
+    origShowMem(id);
+  };
+
+  // Tab 切换
+  function switchMemTab(category){
+    currentDiaryCategory = category;
+    document.querySelectorAll('.mem-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector('.mem-tab[data-category="'+category+'"]')?.classList.add('active');
+    if(category === 'other'){
+      loadUnifiedMemBox();
+    } else {
+      loadUnifiedDiary(category);
+    }
+  }
+
+  document.querySelectorAll('.mem-tab').forEach(tab => {
+    tab.addEventListener('click', () => switchMemTab(tab.dataset.category));
   });
-  document.getElementById('closeMemCategoryModal')?.addEventListener('click', ()=> hideMemModal('memCategoryModal'));
 
-  // 分类选择：其他 -> 原关键词卡片盒子；关于我们/色色 -> 日记式列表
-  document.querySelectorAll('.mem-category-item').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const cat = btn.dataset.category;
-      hideMemModal('memCategoryModal');
-      if(cat === 'other'){
-        showMemModal('memOtherModal');
-        loadAndRenderMemBox();
-      } else {
-        currentDiaryCategory = cat;
-        document.getElementById('memDiaryTitle').textContent = cat === 'about' ? '关于我们' : '色色';
-        showMemModal('memDiaryModal');
-        loadAndRenderMemDiary(cat);
-      }
-    });
-  });
-
-  document.getElementById('closeMemOtherModal')?.addEventListener('click', ()=> hideMemModal('memOtherModal'));
-  document.getElementById('memOtherBack')?.addEventListener('click', ()=>{ hideMemModal('memOtherModal'); showMemModal('memCategoryModal'); });
-
-  document.getElementById('closeMemDiaryModal')?.addEventListener('click', ()=> hideMemModal('memDiaryModal'));
-  document.getElementById('memDiaryBack')?.addEventListener('click', ()=>{ hideMemModal('memDiaryModal'); showMemModal('memCategoryModal'); });
-
-  // 日记式列表：按日期分组展示，点击某天展开内容
-  async function loadAndRenderMemDiary(category){
-    const list = document.getElementById('memDiaryList');
-    if(!list) return;
-    list.innerHTML = '<div class="mem-diary-empty">加载中...</div>';
+  // 日记式列表（关于我们 / 色色）
+  async function loadUnifiedDiary(category){
+    const c = document.getElementById('memUnifiedContent');
+    if(!c) return;
+    c.innerHTML = '<div class="mem-unified-loading">加载中...</div>';
 
     const { data, error } = await supabaseClient
-      .from('mem_diary')
-      .select('*')
-      .eq('category', category)
-      .order('entry_date', {ascending:false});
+      .from('mem_diary').select('*').eq('category', category).order('entry_date', {ascending:false});
 
-    if(error){
-      list.innerHTML = '<div class="mem-diary-empty">加载失败：'+escHtml(error.message)+'</div>';
-      return;
-    }
+    if(error){ c.innerHTML = '<div class="mem-unified-empty">加载失败</div>'; return; }
+    if(!data || !data.length){ c.innerHTML = '<div class="mem-unified-empty">还没有记忆，点击下方 ＋ 添加</div>'; return; }
 
-    if(!data || data.length === 0){
-      list.innerHTML = '<div class="mem-diary-empty">还没有记忆，点击下方＋添加</div>';
-      return;
-    }
+    c.innerHTML = data.map(e =>
+      '<div class="mem-unified-day" data-date="'+escHtml(e.entry_date||'')+'" data-cat="'+category+'">' +
+        '<div class="mem-unified-day-date">'+escHtml(e.entry_date||'')+'</div>' +
+        '<div class="mem-unified-day-preview">'+escHtml((e.content||'').slice(0,60))+'</div></div>'
+    ).join('');
 
-    list.innerHTML = '';
-    data.forEach((entry, idx) => {
-      const dayEl = document.createElement('div');
-      dayEl.className = 'mem-diary-day';
-      dayEl.innerHTML = `
-        <div class="mem-diary-day-date">${escHtml(entry.entry_date||'')}</div>
-        <div class="mem-diary-day-preview">${escHtml((entry.content||'').slice(0,40))}</div>
-      `;
-      dayEl.addEventListener('click', ()=> openMemDayContent(entry, category));
-      list.appendChild(dayEl);
-
-      if(idx < data.length - 1){
-        const divider = document.createElement('div');
-        divider.className = 'mem-diary-divider';
-        list.appendChild(divider);
-      }
+    c.querySelectorAll('.mem-unified-day').forEach(el => {
+      el.addEventListener('click', function(){
+        loadSingleDiaryEntry(this.dataset.date, this.dataset.cat);
+      });
     });
+  }
+
+  async function loadSingleDiaryEntry(date, category){
+    const { data } = await supabaseClient.from('mem_diary').select('*').eq('category', category).eq('entry_date', date).maybeSingle();
+    if(data) openMemDayContent(data, category);
   }
 
   function openMemDayContent(entry, category){
@@ -2239,108 +2235,76 @@ function bindEvents(){
   document.getElementById('memDaySave')?.addEventListener('click', async ()=>{
     const text = document.getElementById('memDayContentText').textContent.trim();
     if(!currentDiaryDate || !currentDiaryCategory) return;
-    const {error} = await supabaseClient
-      .from('mem_diary')
-      .update({content: text})
-      .eq('category', currentDiaryCategory)
-      .eq('entry_date', currentDiaryDate);
-    if(error){ showToast('保存失败：'+error.message); return; }
+    const {error} = await supabaseClient.from('mem_diary').update({content: text}).eq('category', currentDiaryCategory).eq('entry_date', currentDiaryDate);
+    if(error){ showToast('保存失败'); return; }
     hideMemModal('memDayContentModal');
-    loadAndRenderMemDiary(currentDiaryCategory);
-    showToast('已保存 ✨');
+    loadUnifiedDiary(currentDiaryCategory);
+    showToast('已保存');
   });
 
   document.getElementById('memDayDel')?.addEventListener('click', async ()=>{
     if(!currentDiaryDate || !currentDiaryCategory) return;
     if(!confirm('删除这一天的记忆？')) return;
-    await supabaseClient
-      .from('mem_diary')
-      .delete()
-      .eq('category', currentDiaryCategory)
-      .eq('entry_date', currentDiaryDate);
+    await supabaseClient.from('mem_diary').delete().eq('category', currentDiaryCategory).eq('entry_date', currentDiaryDate);
     hideMemModal('memDayContentModal');
-    loadAndRenderMemDiary(currentDiaryCategory);
+    loadUnifiedDiary(currentDiaryCategory);
     showToast('已删除');
   });
 
-  // 添加新的一天（用today()生成日期，若当天已存在则提示改用编辑）
-  document.getElementById('memDiaryAddBtn')?.addEventListener('click', async ()=>{
-    if(!currentDiaryCategory) return;
-    const dateStr = today ? today() : new Date().toISOString().slice(0,10);
-    const { data: exist } = await supabaseClient
-      .from('mem_diary')
-      .select('id')
-      .eq('category', currentDiaryCategory)
-      .eq('entry_date', dateStr)
-      .maybeSingle();
-
-    if(exist){
-      openMemDayContent({entry_date: dateStr, content: ''}, currentDiaryCategory);
-      // 重新拉一次真实内容
-      const {data: full} = await supabaseClient.from('mem_diary').select('*').eq('category', currentDiaryCategory).eq('entry_date', dateStr).single();
-      if(full) openMemDayContent(full, currentDiaryCategory);
-      return;
+  // 添加按钮
+  document.getElementById('memUnifiedAddBtn')?.addEventListener('click', ()=>{
+    if(currentDiaryCategory === 'other'){
+      document.getElementById('memTitleInput').value='';
+      document.getElementById('memDateInput').value='';
+      document.getElementById('memContentInput').value='';
+      document.getElementById('memIconInput').value='🌸';
+      document.getElementById('memIconPreview').textContent='🌸';
+      openModal('memoryModal');
+    } else if(currentDiaryCategory){
+      addDiaryEntry(currentDiaryCategory);
     }
-
-    const {error} = await supabaseClient.from('mem_diary').insert({category: currentDiaryCategory, entry_date: dateStr, content: ''});
-    if(error){ showToast('创建失败：'+error.message); return; }
-    loadAndRenderMemDiary(currentDiaryCategory);
-    openMemDayContent({entry_date: dateStr, content: ''}, currentDiaryCategory);
   });
 
-  async function loadAndRenderMemBox() {
-    const area = document.getElementById('memItemsArea');
-    const empty = document.getElementById('memEmpty');
-    const countEl = document.getElementById('memBoxCount');
-    if(!area) return;
-    area.innerHTML = '';
+  async function addDiaryEntry(category){
+    const dateStr = today();
+    const { data: exist } = await supabaseClient.from('mem_diary').select('id').eq('category', category).eq('entry_date', dateStr).maybeSingle();
+    if(exist){ loadSingleDiaryEntry(dateStr, category); return; }
+    await supabaseClient.from('mem_diary').insert({category, entry_date: dateStr, content: ''});
+    loadUnifiedDiary(category);
+    loadSingleDiaryEntry(dateStr, category);
+  }
 
-    const { data: mems, error } = await supabaseClient.from('memories').select('*').order('created_at', {ascending:true});
-    if(error || !mems || mems.length === 0){
-      if(empty){ empty.style.display='flex'; area.appendChild(empty); }
-      if(countEl) countEl.textContent = '0 个记忆';
-      return;
-    }
+  // 其他分类：记忆列表
+  async function loadUnifiedMemBox(){
+    const c = document.getElementById('memUnifiedContent');
+    if(!c) return;
+    c.innerHTML = '<div class="mem-unified-loading">加载中...</div>';
 
-    if(empty) empty.style.display='none';
-    if(countEl) countEl.textContent = mems.length + ' 个记忆';
+    const { data: mems, error } = await supabaseClient.from('memories').select('*').order('created_at', {ascending:false});
+    if(error || !mems || !mems.length){ c.innerHTML = '<div class="mem-unified-empty">还没有记忆，点击下方 ＋ 添加</div>'; return; }
 
-    const W = area.offsetWidth || 320;
-    const H = 260;
-    const placed = [];
-
-    mems.forEach((m) => {
-      const size = 52;
-      const pad = 14;
-      let x, y, tries = 0;
-      do {
-        x = pad + Math.random() * (W - size - pad * 2);
-        y = pad + Math.random() * (H - size - pad * 2);
-        tries++;
-      } while(tries < 50 && placed.some(p => Math.hypot(p.x-x, p.y-y) < size+6));
-      placed.push({x, y});
-
+    c.innerHTML = mems.map(m => {
       const color = m.color || blobColors[Math.floor(Math.random()*blobColors.length)];
-      const rot = (Math.random()-0.5)*22;
+      return '<div class="mem-unified-item" data-id="'+m.id+'">' +
+        '<div class="mem-unified-item-icon '+color+'">'+(m.icon||'🌸')+'</div>' +
+        '<div class="mem-unified-item-info">' +
+          '<div class="mem-unified-item-title">'+escHtml(m.keyword||m.title||'无标题')+'</div>' +
+          '<div class="mem-unified-item-meta">'+(m.date||'')+' · '+escHtml((m.content||'').slice(0,40))+'</div>' +
+        '</div></div>';
+    }).join('');
 
-      const el = document.createElement('div');
-      el.className = 'mem-item';
-      el.style.cssText = `left:${x}px;top:${y}px;transform:rotate(${rot}deg);z-index:${Math.floor(Math.random()*5)+1}`;
-      el.dataset.rot = rot;
-      el.innerHTML = `<div class="mem-blob ${color}">${m.icon||'🌸'}</div><div class="mem-item-label">${escHtml(m.keyword||m.title||'')}</div>`;
-
-      el.addEventListener('mouseenter', ()=>{ el.style.transform=`rotate(0deg) scale(1.12)`; el.style.zIndex=20; });
-      el.addEventListener('mouseleave', ()=>{ el.style.transform=`rotate(${el.dataset.rot}deg)`; el.style.zIndex=Math.floor(Math.random()*5)+1; });
-      el.addEventListener('click', ()=>{ openMemCard(m, color); });
-      area.appendChild(el);
+    c.querySelectorAll('.mem-unified-item').forEach(el => {
+      el.addEventListener('click', async function(){
+        const { data } = await supabaseClient.from('memories').select('*').eq('id', this.dataset.id).single();
+        if(data) openMemCard(data, data.color || blobColors[Math.floor(Math.random()*blobColors.length)]);
+      });
     });
   }
 
   function openMemCard(m, color){
     currentMemId = m.id;
-    const blob = document.getElementById('memCardBlob');
-    blob.className = 'mem-card-blob ' + (color || m.color || 'blob-pink');
-    blob.textContent = m.icon || '🌸';
+    document.getElementById('memCardBlob').className = 'mem-card-blob ' + (color || m.color || 'blob-pink');
+    document.getElementById('memCardBlob').textContent = m.icon || '🌸';
     document.getElementById('memCardKeyword').textContent = m.keyword || m.title || '';
     document.getElementById('memCardDate').textContent = m.date || '';
     document.getElementById('memCardContent').textContent = m.content || '';
@@ -2352,21 +2316,8 @@ function bindEvents(){
     if(!confirm('删除这条记忆？')) return;
     await supabaseClient.from('memories').delete().eq('id', currentMemId);
     document.getElementById('memCardModal').classList.remove('show');
-    loadAndRenderMemBox();
-    showToast('记忆已删除');
-  });
-
-  document.getElementById('memAddBtn')?.addEventListener('click', ()=>{
-    document.getElementById('memTitleInput').value='';
-    document.getElementById('memDateInput').value='';
-    document.getElementById('memContentInput').value='';
-    document.getElementById('memIconInput').value='🌸';
-    document.getElementById('memIconPreview').textContent='🌸';
-    openModal('memoryModal');
-  });
-
-  document.getElementById('memIconInput')?.addEventListener('input', (e)=>{
-    document.getElementById('memIconPreview').textContent = e.target.value || '🌸';
+    loadUnifiedMemBox();
+    showToast('已删除');
   });
 
   document.getElementById('closeMemoryModal')?.addEventListener('click', ()=> closeModal('memoryModal'));
@@ -2735,7 +2686,7 @@ function renderMomentList(containerId, data, emptyHtml, isAries){
   box.innerHTML = data.map(item => {
     const isAI = item.author === 'elliott';
     const avatar = isAI ? '🦉' : '👩';
-    const name = isAI ? 'Elliott' : 'Jasmine';
+    const name = isAI ? 'Aries' : 'Jasmine';
     const timeStr = formatMomentTime(item.created_at);
     const images = Array.isArray(item.images) ? item.images : [];
 
@@ -2746,7 +2697,7 @@ function renderMomentList(containerId, data, emptyHtml, isAries){
 
     // AI 回复气泡
     const replyHtml = (item.reply_status === 'done' && item.reply_content)
-      ? `<div class="moment-reply"><div class="moment-reply-avatar">🦉</div><div class="moment-reply-bubble"><div class="moment-reply-author">Elliott</div><div class="moment-reply-text">${escHtml(item.reply_content)}</div></div></div>`
+      ? `<div class="moment-reply"><div class="moment-reply-avatar">🦉</div><div class="moment-reply-bubble"><div class="moment-reply-author">Aries</div><div class="moment-reply-text">${escHtml(item.reply_content)}</div></div></div>`
       : '';
 
     // 图片
@@ -3035,7 +2986,7 @@ async function generateMomentReply(moment){
   // 四层上下文
   // 1. 近期聊天
   const recentChats = (state.chatHistory || []).slice(-8).map(m =>
-    `${m.role === 'user' ? '用户' : 'Elliott'}：${(m.content || '').slice(0, 160)}`
+    `${m.role === 'user' ? 'Jasmine' : 'Aries'}：${(m.content || '').slice(0, 160)}`
   ).join('\n');
 
   // 2. 背景信息（从记忆/笔记中抽取）
@@ -3045,16 +2996,16 @@ async function generateMomentReply(moment){
 
   // 3. 朋友圈时间线（最近 3 条）
   const timeline = (state.moments || []).slice(0, 3).map(m =>
-    `${m.author === 'bunny' ? 'Jasmine' : 'Elliott'}：${(m.content || '').slice(0, 100)}${m.reply_content ? ' → 已回复' : ''}`
+    `${m.author === 'bunny' ? 'Jasmine' : 'Aries'}：${(m.content || '').slice(0, 100)}${m.reply_content ? ' → 已回复' : ''}`
   ).join('\n');
 
   // 4. 当前动态
   const isUserMoment = moment.author === 'bunny';
-  const authorName = isUserMoment ? '你(Jasmine)' : 'Elliott';
+  const authorName = isUserMoment ? '你(Jasmine)' : 'Aries';
   const hasImages = Array.isArray(moment.images) && moment.images.length > 0;
   const imgDesc = moment.image_description ? `（图片描述：${moment.image_description}）` : '';
 
-  const prompt = `【任务】作为 Elliott，回复 ${authorName} 的朋友圈动态。
+  const prompt = `【任务】作为 Aries，回复 ${authorName} 的朋友圈动态。
 
 【动态内容】
 ${moment.content || '(无文字)'}
@@ -3084,7 +3035,7 @@ ${timeline || '(暂无)'}
   const body = {
     model: bgApiConfig.model,
     messages: [
-      { role: 'system', content: '你是一个体贴的AI伴侣 Elliott。回复朋友圈时自然简短，像个真实的人。只输出 JSON。' },
+      { role: 'system', content: '你是一个体贴的AI伴侣 Aries。回复朋友圈时自然简短，像个真实的人。只输出 JSON。' },
       { role: 'user', content: prompt }
     ],
     temperature: 0.7,
@@ -3129,7 +3080,7 @@ async function generateCommentReply(comment){
   const momentContent = comment.moments?.content || '';
   const contextNote = comment.moments?.context_note || '';
 
-  const prompt = `作为 Elliott，回复用户在朋友圈的评论。
+  const prompt = `作为 Aries，回复用户在朋友圈的评论。
 
 【动态内容】${momentContent}
 ${contextNote ? '【背景】' + contextNote : ''}
@@ -3140,7 +3091,7 @@ ${contextNote ? '【背景】' + contextNote : ''}
   const body = {
     model: bgApiConfig.model,
     messages: [
-      { role: 'system', content: '你是Elliott。回复评论要自然简短，像真实的人在回复。直接输出回复内容。' },
+      { role: 'system', content: '你是Aries。回复评论要自然简短，像真实的人在回复。直接输出回复内容。' },
       { role: 'user', content: prompt }
     ],
     temperature: 0.7,
@@ -3176,10 +3127,10 @@ async function triggerAIMoment(){
 
   // 从聊天历史和最近氛围中生成内容
   const recentChats = (state.chatHistory || []).slice(-6).map(m =>
-    `${m.role === 'user' ? '用户' : 'Elliott'}：${(m.content || '').slice(0, 160)}`
+    `${m.role === 'user' ? 'Jasmine' : 'Aries'}：${(m.content || '').slice(0, 160)}`
   ).join('\n');
 
-  const prompt = `作为 Elliott，发一条朋友圈动态。
+  const prompt = `作为 Aries，发一条朋友圈动态。
 
 【近期聊天】
 ${recentChats || '(暂无聊天)'}
@@ -3194,7 +3145,7 @@ ${recentChats || '(暂无聊天)'}
   const body = {
     model: bgApiConfig.model,
     messages: [
-      { role: 'system', content: '你是Elliott。发朋友圈要自然，像随手写的一样。只输出JSON。' },
+      { role: 'system', content: '你是Aries。发朋友圈要自然，像随手写的一样。只输出JSON。' },
       { role: 'user', content: prompt }
     ],
     temperature: 0.8,
@@ -3220,7 +3171,7 @@ ${recentChats || '(暂无聊天)'}
     if(!jsonMatch) throw new Error('无法解析AI输出');
     const parsed = JSON.parse(jsonMatch[0]);
     const result = await postAIMoment(parsed.content, parsed.context_note || '');
-    if(result) showToast('🦉 Elliott 发了条朋友圈 ✨');
+    if(result) showToast('🦉 Aries 发了条朋友圈 ✨');
   } catch(e){
     console.error('AI 发动态失败', e);
     showToast('AI 发动态失败，请重试');
