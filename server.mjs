@@ -4,10 +4,12 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 
 const PORT = process.env.PORT || 3001;
-const ROOT = path.resolve(import.meta.dirname, '.');
+const __filename = fileURLToPath(import.meta.url);
+const ROOT = path.dirname(__filename);
 
 // ========== Supabase 配置 ==========
 const SUPABASE_URL = 'https://lqcuklhldvkwbkpftjzu.supabase.co';
