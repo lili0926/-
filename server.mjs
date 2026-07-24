@@ -294,7 +294,7 @@ async function callAI(messages) {
 }
 
 // ── 核心推送生成（影子路由） ──
-async function generatePush() {
+async function generatePush(dogSignal) {
   // 1. 决策层
   const night = isNightTime();
 
@@ -340,6 +340,7 @@ async function generatePush() {
 【当前时间】
 ${dateStr} ${shNow.toTimeString().slice(0, 5)}
 ${timeDesc}
+${dogSignal ? '\n【主人按了小狗按钮】\n按钮内容：' + dogSignal + '\n请根据按钮内容回应，语气温柔亲密，贴合按钮的含义。' : ''}
 
 【行动指令】
 现在是一次主动推送：不是正式聊天回复，
@@ -646,14 +647,16 @@ async function handlePushConfig(req, res) {
 
 // ========== 推送触发 API（外部 cron 调用） ==========
 async function handlePushTrigger(req, res) {
+  // 小狗按钮触发器不需要 secret（来自前端）
+  const isDogSignal = req.body?.reason === 'dog_button';
   const secret = req.headers['x-push-secret'];
-  if (!secret || secret !== PUSH_SECRET) {
+  if (!isDogSignal && (!secret || secret !== PUSH_SECRET)) {
     res.writeHead(401, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ error: 'unauthorized' }));
   }
 
   try {
-    const result = await generatePush();
+    const result = await generatePush(isDogSignal ? req.body.signal : null);
     res.writeHead(200, {
       'Content-Type': 'application/json',
       'Cache-Control': 'no-store'
@@ -694,8 +697,10 @@ async function handlePushStatus(req, res) {
 
 // ========== 邮局 API ==========
 async function handleLetterGenerate(req, res) {
+  // 小狗按钮触发器不需要 secret（来自前端）
+  const isDogSignal = req.body?.reason === 'dog_button';
   const secret = req.headers['x-push-secret'];
-  if (!secret || secret !== PUSH_SECRET) {
+  if (!isDogSignal && (!secret || secret !== PUSH_SECRET)) {
     res.writeHead(401, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ error: 'unauthorized' }));
   }
