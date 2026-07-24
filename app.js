@@ -3713,7 +3713,7 @@ const RENDER_URLS = {
   collar: 'https://collar-awto.onrender.com',
   eventide: 'https://eventide-j32v.onrender.com',
   hervoice: 'https://hervoice.onrender.com',
-  starmap: 'http://localhost:3000/memory.html'
+  starmap: 'http://localhost:3000/memory.html', // 会被动态替换为当前域名
 };
 
 // 生成外部服务的 URL
@@ -3730,7 +3730,7 @@ function serviceUrl(port, path){
   if(port === 3412) return remoteUrls.collar || RENDER_URLS.collar;
   if(port === 3876) return remoteUrls.eventide || RENDER_URLS.eventide;
   if(port === 8010) return remoteUrls.hervoice || RENDER_URLS.hervoice;
-  if(port === 3000) return remoteUrls.starmap || RENDER_URLS.starmap;
+  if(port === 3000) return (remoteUrls.starmap || RENDER_URLS.starmap).replace('http://localhost:3000', window.location.origin);
   // 未知环境，尝试同域端口
   return `http://${host}:${port}${path || ''}`;
 }
