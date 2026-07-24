@@ -607,6 +607,9 @@ const state = {
   currentDiaryId: null,
   letters: JSON.parse(localStorage.getItem('letters') || '[]'),
   serverLetters: [],
+  albumPhotos: JSON.parse(localStorage.getItem('albumPhotos') || '{}'),
+  albumCats: JSON.parse(localStorage.getItem('albumCats') || '["默认"]'),
+  albumCurCat: '默认',
   chatHistory: [],
   thinkingColor: localStorage.getItem('thinkingColor') || '#7c5cbf',
   bubbleAlpha: parseFloat(localStorage.getItem('bubbleAlpha') || '0.10'),
@@ -1187,6 +1190,7 @@ async function sendMessage() {
   addChatMessage('user', content, "");
   scrollChatBottom();
   state.chatHistory.push({role:'user', content, thinking:"", time:new Date().toISOString()});
+  localStorage.setItem('chatHistory', JSON.stringify(state.chatHistory));
   favorability.add(1);
 
   // 保存到 Supabase
@@ -1717,6 +1721,11 @@ function setupSettings(){
   document.getElementById('apiBaseUrl').value = localStorage.getItem('apiBaseUrl') || '';
   document.getElementById('apiFormat').value = localStorage.getItem('apiFormat') || 'anthropic';
   document.getElementById('fontSelect').value = localStorage.getItem('font') || 'default';
+  document.getElementById('fontSelect').addEventListener('change', ()=>{
+    const f = document.getElementById('fontSelect').value;
+    localStorage.setItem('font', f);
+    applyFont(f);
+  });
 }
 
 function setFontColor(type){ document.documentElement.setAttribute('data-font', type); localStorage.setItem("fontColor", type); }
@@ -2610,19 +2619,10 @@ table:"chat_messages"
 },
 (payload)=>{
 let msg=payload.new;
-if(msg.role==="assistant"){
-  // 去重：所有气泡中已有相同内容则跳过（避免 sendPendingToAI 批量存 Supabase 后重复渲染）
-  const box=document.getElementById("chatMessages");
-  if(box){
-    let dup=false;
-    box.querySelectorAll(".bubble").forEach(b=>{if(b.innerText===msg.content)dup=true;});
-    if(dup) return;
-  }
-addChatMessage(
-"assistant",
-msg.content,
-msg.thinking || ""
-);
+if(msg.role==="assistant" && msg.type !== "chat"){
+  // 非 chat 类型的助手消息（如 push 推送），需要渲染
+  // chat 类型的已由客户端直接渲染，跳过避免重复
+  addChatMessage("assistant", msg.content, msg.thinking || "");
 }
 })
 .subscribe();
@@ -3713,7 +3713,7 @@ const RENDER_URLS = {
   collar: 'https://collar-awto.onrender.com',
   eventide: 'https://eventide-j32v.onrender.com',
   hervoice: 'https://hervoice.onrender.com',
-  starmap: 'http://localhost:3000/memory.html'
+  starmap: 'http://localhost:3000/memory.html', // 会被动态替换为当前域名
 };
 
 // 生成外部服务的 URL
@@ -3730,7 +3730,7 @@ function serviceUrl(port, path){
   if(port === 3412) return remoteUrls.collar || RENDER_URLS.collar;
   if(port === 3876) return remoteUrls.eventide || RENDER_URLS.eventide;
   if(port === 8010) return remoteUrls.hervoice || RENDER_URLS.hervoice;
-  if(port === 3000) return remoteUrls.starmap || RENDER_URLS.starmap;
+  if(port === 3000) return (remoteUrls.starmap || RENDER_URLS.starmap).replace('http://localhost:3000', window.location.origin);
   // 未知环境，尝试同域端口
   return `http://${host}:${port}${path || ''}`;
 }
@@ -3911,13 +3911,23 @@ function openStarMap(){
 
 // ── 相册 ──
 function initAlbumState(){
-  state.albumPhotos = JSON.parse(localStorage.getItem('albumPhotos') || '{}');
-  state.albumCats = JSON.parse(localStorage.getItem('albumCats') || '["默认"]');
-  state.albumCurCat = '默认';
+  // 如果 state 中已有（从 localStorage 读取的），保留；否则从 localStorage 读
+  if(!state.albumPhotos || Object.keys(state.albumPhotos).length === 0){
+    state.albumPhotos = JSON.parse(localStorage.getItem('albumPhotos') || '{}');
+  }
+  if(!state.albumCats || state.albumCats.length === 0){
+    state.albumCats = JSON.parse(localStorage.getItem('albumCats') || '["默认"]');
+  }
+  state.albumCurCat = state.albumCurCat || '默认';
 }
 function saveAlbumState(){
-  localStorage.setItem('albumPhotos', JSON.stringify(state.albumPhotos));
-  localStorage.setItem('albumCats', JSON.stringify(state.albumCats));
+  try {
+    localStorage.setItem('albumPhotos', JSON.stringify(state.albumPhotos));
+    localStorage.setItem('albumCats', JSON.stringify(state.albumCats));
+  } catch(e) {
+    console.error('相册保存失败（可能存储空间不足）:', e.message);
+    showToast('照片太多，保存失败了');
+  }
 }
 function renderAlbum(){
   initAlbumState();
