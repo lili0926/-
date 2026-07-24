@@ -28,7 +28,7 @@ function toShanghaiHHMM(utcStr) {
 // POST /api/memory - 新增记忆
 router.post('/api/memory', requireAuth, async (req, res) => {
     const db = getDb();
-    const { title, content, tags, status, valid_from, valid_to } = req.body;
+    const { title, content, tags, status, valid_from, valid_to, valence, arousal, importance, pinned, domain, visibility, summary, one_line, source, resolved, visible_to, exclude_from } = req.body;
     console.log('📥 收到的请求数据:', { title, content, tags, status });
     
     try {
@@ -107,7 +107,7 @@ router.post('/api/memory', requireAuth, async (req, res) => {
 router.put('/api/memory/:id', requireAuth, async (req, res) => {
     const db = getDb();
     const memoryId = req.params.id;
-    const { title, content, tags, status, valid_from, valid_to } = req.body;
+    const { title, content, tags, status, valid_from, valid_to, valence, arousal, importance, pinned, domain, visibility, summary, one_line, source, resolved, visible_to, exclude_from } = req.body;
     
     try {
         const oldMemory = db.prepare(`SELECT * FROM memories WHERE id = ?`).get(memoryId);

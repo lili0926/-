@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>记忆星图 · Memory Constellations</title>
+<style>
+/* ═══════════════════════════════════════════════
+   Memory Constellations — 情感坐标星图
+   借鉴 InternalBeyond by Sui
+   ═══════════════════════════════════════════════ */
+:root {
+  --bg-deep:#181e32; --bg-mid:#263050;
+  --mist:#8895b4; --silver:#b2c0d8; --light:#cdd6ea; --pale:#e2e9f5; --white:#eff2fa;
+  --accent:#5080b0; --accent-light:#72a8d8;
+  --glass-bg:rgba(155,180,218,0.1); --glass-border:rgba(165,188,230,0.2); --glass-shadow:rgba(0,0,0,0.18);
+  --text-primary:#e0e6f2; --text-secondary:#adb8d0; --text-muted:#7e90b2;
+  --transition:cubic-bezier(0.4,0,0.2,1);
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:16px;scroll-behavior:smooth}
+body{font-family:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;font-weight:300;
+  background:var(--bg-deep);color:var(--text-primary);min-height:100vh;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:0;
+  background:radial-gradient(ellipse 80% 36% at 50% 90%,rgba(26,37,56,0.22) 0%,transparent 70%),
+    linear-gradient(to bottom,rgba(26,37,48,0.1),rgba(26,37,48,0) 25%,rgba(26,37,48,0.05) 50%,rgba(26,37,48,0.22) 80%,rgba(26,37,48,0.38) 100%);
+  pointer-events:none}
+
+/* ── Login Overlay ── */
+#login-overlay{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
+  background:rgba(15,41,95,0.52);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px)}
+#login-box{background:rgba(135,168,218,0.13);border:1px solid rgba(155,185,232,0.24);border-radius:16px;
+  padding:40px;text-align:center;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  box-shadow:0 8px 40px rgba(0,0,0,0.3);max-width:360px;width:90%}
+#login-box h2{font-family:'Cormorant Garamond',serif;font-weight:300;font-size:1.6rem;letter-spacing:0.1em;margin-bottom:24px;color:var(--pale)}
+#login-box input{width:100%;padding:10px 14px;border:1px solid var(--glass-border);border-radius:8px;
+  background:rgba(175,195,228,0.06);color:var(--text-primary);font-size:0.9rem;margin-bottom:12px;outline:none}
+#login-box input:focus{border-color:var(--accent-light)}
+#login-box button{padding:10px 32px;border-radius:8px;border:1px solid rgba(200,220,245,0.42);
+  background:rgba(200,220,245,0.13);color:rgba(236,244,255,0.96);cursor:pointer;
+  font-size:0.9rem;letter-spacing:0.1em;transition:all 0.3s;margin-top:8px}
+#login-box button:hover{background:rgba(200,220,245,0.22);border-color:rgba(220,235,255,0.6)}
+#login-error{color:#e88;font-size:0.8rem;margin-top:8px;display:none}
+
+/* ── Top Bar ── */
+#topbar{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;gap:20px;
+  padding:8px 28px;height:48px;background:rgba(24,30,50,0.75);
+  backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  border-bottom:1px solid rgba(175,195,228,0.12)}
+#topbar .brand{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.1rem;font-weight:300;
+  letter-spacing:0.08em;color:var(--pale);cursor:pointer;white-space:nowrap}
+#topbar .nav-pills{display:flex;gap:14px}
+#topbar .nav-pill{padding:4px 14px;border-radius:14px;border:1px solid rgba(175,195,228,0.2);background:transparent;
+  font-size:0.78rem;cursor:pointer;transition:all 0.3s;font-family:inherit;color:var(--silver)}
+#topbar .nav-pill.active,#topbar .nav-pill:hover{border-color:rgba(175,195,228,0.5);color:var(--pale);background:rgba(255,255,255,0.05)}
+#topbar .top-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
+#logout-btn{font-size:0.72rem;color:var(--text-muted);cursor:pointer;background:none;border:none;letter-spacing:0.06em}
+#logout-btn:hover{color:var(--pale)}
+
+/* ── Main Content ── */
+#main{padding-top:72px;max-width:1100px;margin:0 auto;padding-left:24px;padding-right:24px}
+
+/* ── Star Map ── */
+.mem-sky{position:relative;border-radius:16px;overflow:hidden;height:380px;margin-bottom:20px;
+  background:rgba(14,22,42,0.55);border:1px solid rgba(155,185,232,0.15)}
+.mem-sky canvas{position:absolute;inset:0;width:100%;height:100%}
+.sky-axl{position:absolute;z-index:5;font-size:0.72rem;color:var(--text-muted);font-family:'Noto Serif SC',serif}
+.sky-axl.l{bottom:8px;left:12px}.sky-axl.r{bottom:8px;right:12px}
+.sky-axl.t{top:12px;left:50%;transform:translateX(-50%)}.sky-axl.b{bottom:30px;left:50%;transform:translateX(-50%)}
+.sky-cap{font-size:0.58rem;opacity:0.5;margin-left:4px;font-family:Raleway,sans-serif}
+.mem-sky-legend{display:flex;gap:20px;justify-content:center;padding:10px 0;font-size:0.72rem;color:var(--text-muted);flex-wrap:wrap}
+.mem-sky-legend span{display:flex;align-items:center;gap:6px}
+.mem-sky-legend-desc{opacity:0.8;font-style:italic}
+.lg-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+
+/* ── Dashboard ── */
+.mem-dash{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.mem-stat{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:14px;padding:18px 12px;
+  text-align:center;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  box-shadow:0 6px 28px rgba(0,0,0,0.14);transition:border-color 0.3s}
+.mem-stat:hover{border-color:rgba(155,185,232,0.38)}
+.mem-stat-num{font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:300;color:var(--accent-light)}
+.mem-stat-label{font-size:0.72rem;color:var(--silver);margin-top:4px;letter-spacing:0.08em;text-transform:uppercase}
+
+/* ── Domain Bar ── */
+.mem-domain-wrap{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:14px;
+  padding:16px 20px;margin-bottom:20px;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.mem-domain-wrap-h{font-size:0.78rem;color:var(--silver);margin-bottom:10px;letter-spacing:0.08em}
+.mem-domain-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;gap:2px;background:transparent}
+.mem-domain-seg{height:100%;border-radius:2px;transition:width 0.5s ease}
+.mem-domain-leg{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px;font-size:0.68rem}
+.mem-domain-leg span{display:flex;align-items:center;gap:4px}
+.dleg-swatch{width:10px;height:10px;border-radius:2px;display:inline-block}
+
+/* ── Quote Banner ── */
+.mem-quote-banner{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:14px;
+  padding:24px 20px;margin-bottom:20px;text-align:center;cursor:pointer;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.mem-quote-text{font-family:'Noto Serif SC',serif;font-weight:500;font-size:1.05rem;color:var(--pale);
+  font-style:italic;line-height:1.8;letter-spacing:0.04em}
+.mem-quote-attr{font-size:0.72rem;color:var(--text-muted);margin-top:8px;opacity:0.7}
+.mqb-line{color:var(--accent);opacity:0.4;font-size:0.7rem;margin:8px 0}
+.mqb-line i{font-size:0.5rem;vertical-align:middle}
+
+/* ── Memory Cards ── */
+.mem-section-title{font-family:'Cormorant Garamond',serif;font-weight:300;font-size:1.2rem;
+  color:var(--pale);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;letter-spacing:0.12em}
+.mem-section-title small{font-size:0.65rem;opacity:0.5;margin-left:10px}
+.mem-toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.mem-toolbar select,.mem-toolbar input{padding:7px 12px;border-radius:8px;font-size:0.8rem;
+  background:rgba(175,195,228,0.06);border:1px solid var(--glass-border);color:var(--text-primary);
+  font-family:inherit;outline:none;transition:border-color 0.3s}
+.mem-toolbar select:focus,.mem-toolbar input:focus{border-color:var(--accent-light)}
+.mem-toolbar input{flex:1;min-width:180px;max-width:300px}
+
+/* ── Card ── */
+.mem-card{background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:14px;
+  margin-bottom:10px;cursor:pointer;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  transition:border-color 0.3s,box-shadow 0.3s;position:relative;overflow:hidden}
+.mem-card:hover{border-color:rgba(155,185,232,0.4);box-shadow:0 4px 20px rgba(0,0,0,0.15)}
+.mem-card.pinned{border-color:rgba(201,160,85,0.3);box-shadow:0 0 16px rgba(201,160,85,0.08)}
+.mem-card-head{padding:14px 18px 8px;display:flex;align-items:center;gap:10px}
+.mem-card-title{flex:1;font-family:'Noto Serif SC',serif;font-weight:500;font-size:0.95rem;color:var(--pale);letter-spacing:0.04em}
+.mem-card-score{font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:var(--accent-light);font-weight:300}
+.mem-card.pinned .mem-card-score{color:#c9a055}
+.mem-card-summary{padding:0 18px 8px;font-size:0.78rem;color:var(--text-secondary);line-height:1.5}
+.mem-card-oneline{padding:0 18px 8px;font-family:'Noto Serif SC',serif;font-style:italic;font-size:0.85rem;color:var(--silver)}
+.mem-card-creator{padding:0 18px 8px;font-size:0.68rem;color:var(--text-muted)}
+.mem-pin-nail{position:absolute;top:6px;right:10px;width:6px;height:6px;border-radius:50%;
+  background:radial-gradient(circle,#f0d080,#c9a055);box-shadow:0 0 6px rgba(201,160,85,0.5)}
+.mem-card-detail{display:none;padding:0 18px 16px;border-top:1px solid var(--glass-border);margin-top:4px;padding-top:10px}
+.mem-card.expanded .mem-card-detail{display:block}
+.mem-card-meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.mem-card-tag{padding:2px 8px;border-radius:10px;font-size:0.66rem;background:rgba(175,195,228,0.1);color:var(--silver);border:1px solid rgba(175,195,228,0.15)}
+.mem-resolved-badge{color:#7eb896;font-size:0.66rem}
+.mem-vis-badge{color:var(--accent-light);font-size:0.66rem;opacity:0.7}
+.mem-card-content{font-size:0.82rem;color:var(--text-primary);line-height:1.7;white-space:pre-wrap;margin-bottom:10px}
+.mem-card-actions{display:flex;gap:8px;flex-wrap:wrap}
+.mem-card-actions .btn{padding:4px 12px;border-radius:14px;border:1px solid var(--glass-border);
+  background:rgba(255,255,255,0.04);color:var(--silver);cursor:pointer;font-size:0.7rem;font-family:inherit;transition:all 0.3s}
+.mem-card-actions .btn:hover{border-color:rgba(175,195,228,0.5);color:var(--pale)}
+
+/* ── Empty State ── */
+.empty-state{text-align:center;padding:60px 20px;color:var(--text-muted);font-size:0.9rem}
+.empty-state span{font-size:2rem;display:block;margin-bottom:12px;opacity:0.5}
+
+/* ── Modal Overlay ── */
+.modal-overlay{position:fixed;inset:0;z-index:1000;display:none;align-items:center;justify-content:center;
+  background:rgba(10,16,30,0.7);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.modal-overlay.open{display:flex}
+.modal-box{background:rgba(24,38,64,0.95);border:1px solid var(--glass-border);border-radius:18px;
+  padding:0;max-width:560px;width:92%;max-height:85vh;overflow-y:auto;
+  backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);box-shadow:0 16px 60px rgba(0,0,0,0.4)}
+.modal-header{padding:20px 24px 0;display:flex;align-items:center;gap:14px}
+.modal-header h3{margin:0;font-family:'Noto Serif SC',serif;font-size:1.2rem;color:var(--pale)}
+.modal-header .star-ic{width:32px;height:32px;border-radius:50%;
+  background:radial-gradient(circle at 36% 32%,#fff,var(--accent) 55%);box-shadow:0 0 12px rgba(114,168,216,0.4)}
+.modal-body{padding:16px 24px}
+.modal-body label{display:block;font-size:0.72rem;color:var(--silver);margin-bottom:4px;margin-top:12px;letter-spacing:0.04em}
+.modal-body input,.modal-body textarea,.modal-body select{width:100%;padding:9px 12px;border-radius:8px;
+  background:rgba(175,195,228,0.06);border:1px solid var(--glass-border);color:var(--text-primary);
+  font-family:inherit;font-size:0.85rem;outline:none;resize:vertical}
+.modal-body input:focus,.modal-body textarea:focus,.modal-body select:focus{border-color:var(--accent-light)}
+.modal-body textarea{min-height:80px}
+.modal-body .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-body .range-wrap{display:flex;align-items:center;gap:10px}
+.modal-body .range-wrap input[type=range]{flex:1;accent-color:var(--accent)}
+.modal-body .range-pole{font-size:0.68rem;color:var(--text-muted);white-space:nowrap}
+.modal-fsec{font-size:0.72rem;color:var(--accent-light);margin-top:18px;margin-bottom:4px;
+  letter-spacing:0.12em;text-transform:uppercase;font-weight:500}
+.modal-preview{display:flex;align-items:center;gap:12px;padding:12px;border-radius:10px;
+  background:rgba(14,22,42,0.5);border:1px solid var(--glass-border);margin-top:12px}
+.modal-preview .mini-dot{width:24px;height:24px;border-radius:50%;flex-shrink:0;
+  background:radial-gradient(circle at 36% 32%,#fff,var(--accent) 55%)}
+.modal-preview .preview-txt{font-size:0.74rem;color:var(--text-secondary);line-height:1.6}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;padding:10px 24px 20px}
+.modal-actions .btn{padding:8px 22px;border-radius:8px;font-size:0.82rem;cursor:pointer;font-family:inherit;transition:all 0.3s}
+.modal-actions .btn-cancel{background:transparent;border:1px solid var(--glass-border);color:var(--silver)}
+.modal-actions .btn-save{background:rgba(114,168,216,0.2);border:1px solid rgba(114,168,216,0.4);color:var(--white)}
+.modal-actions .btn-save:hover{background:rgba(114,168,216,0.35)}
+
+/* ── Toast ── */
+#toast{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);z-index:2000;padding:10px 24px;
+  border-radius:20px;background:rgba(24,38,64,0.9);border:1px solid var(--glass-border);
+  color:var(--white);font-size:0.82rem;opacity:0;transition:opacity 0.3s;pointer-events:none;
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+#toast.show{opacity:1}
+
+/* ── Responsive ── */
+@media(max-width:768px){.mem-dash{grid-template-columns:repeat(2,1fr)}.mem-sky{height:240px}
+  .form-row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="login-overlay">
+  <div id="login-box">
+    <h2>Memory Constellations</h2>
+    <input id="login-pw" type="password" placeholder="输入密码…" autocomplete="current-password">
+    <button id="login-btn">进入星图</button>
+    <div id="login-error">密码不正确</div>
+  </div>
+</div>
+
+<!-- Top Bar -->
+<div id="topbar" style="display:none">
+  <span class="brand" onclick="location.reload()">Memory Constellations</span>
+  <span class="nav-pills" id="domain-pills"></span>
+  <div class="top-actions">
+    <button id="new-mem-btn" class="nav-pill active">+ 落一颗星</button>
+    <button id="logout-btn" onclick="logout()">离开</button>
+  </div>
+</div>
+
+<!-- Main -->
+<div id="main" style="display:none">
+
+  <!-- Star Map -->
+  <div class="mem-sky" id="mem-sky">
+    <canvas id="mem-sky-canvas"></canvas>
+    <div class="sky-axl l">消极</div><div class="sky-axl r">积极<span class="sky-cap">效价 VALENCE</span></div>
+    <div class="sky-axl t">炽烈<span class="sky-cap">唤醒 AROUSAL</span></div><div class="sky-axl b">平静</div>
+  </div>
+  <div class="mem-sky-legend">
+    <span class="mem-sky-legend-desc">每一个记忆都会化为星图上的一颗恒星</span>
+    <span><i class="lg-dot" style="background:radial-gradient(circle at 38% 34%,#fff,var(--accent) 65%)"></i>大小 = 重要性</span>
+    <span><i class="lg-dot" style="background:rgba(114,168,216,0.35)"></i>明暗 = 活跃度</span>
+    <span><i class="lg-dot" style="background:radial-gradient(circle at 38% 34%,#fff,#c9a055 65%);box-shadow:0 0 5px rgba(201,160,85,0.5)"></i>金色 = 置顶记忆</span>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="mem-dash">
+    <div class="mem-stat"><div class="mem-stat-num" id="dash-total">0</div><div class="mem-stat-label">总计</div></div>
+    <div class="mem-stat"><div class="mem-stat-num" id="dash-pinned">0</div><div class="mem-stat-label">置顶</div></div>
+    <div class="mem-stat"><div class="mem-stat-num" id="dash-unresolved">0</div><div class="mem-stat-label">未解决</div></div>
+    <div class="mem-stat"><div class="mem-stat-num" id="dash-resolved">0</div><div class="mem-stat-label">已解决</div></div>
+  </div>
+
+  <!-- Domain Distribution -->
+  <div class="mem-domain-wrap">
+    <div class="mem-domain-wrap-h">领域分布</div>
+    <div class="mem-domain-bar" id="domain-bar"></div>
+    <div class="mem-domain-leg" id="domain-leg"></div>
+  </div>
+
+  <!-- Quote Banner -->
+  <div class="mem-quote-banner" onclick="shuffleQuote()">
+    <div class="mqb-line mqb-top"><i>&#10022;</i></div>
+    <div class="mem-quote-text" id="quote-text">每一段记忆，都是一颗星。</div>
+    <div class="mem-quote-attr" id="quote-attr"></div>
+    <div class="mqb-line"><i>&#10022;</i></div>
+  </div>
+
+  <!-- Memory List -->
+  <div class="mem-section-title">
+    <div><span>Memories</span><small>The Constellation Index</small></div>
+  </div>
+  <div class="mem-toolbar">
+    <input id="mem-search" placeholder="搜索记忆..." oninput="renderCards()">
+    <select id="mem-filter-domain" onchange="renderCards()">
+      <option value="all">全部领域</option>
+      <option value="情感">情感</option><option value="日常">日常</option>
+      <option value="创作">创作</option><option value="思考">思考</option>
+    </select>
+    <select id="mem-filter-status" onchange="renderCards()">
+      <option value="all">全部</option><option value="pinned">置顶</option>
+      <option value="unresolved">未解决</option><option value="resolved">已解决</option>
+    </select>
+    <select id="mem-sort" onchange="renderCards()">
+      <option value="created">按时间</option><option value="score">按权重</option>
+      <option value="importance">按重要性</option>
+    </select>
+  </div>
+  <div id="mem-list"></div>
+</div>
+
+<!-- Create/Edit Modal -->
+<div class="modal-overlay" id="mem-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="star-ic"></div>
+      <div><h3 id="modal-title">新建记忆</h3>
+      <div style="font-size:0.65rem;opacity:0.6;letter-spacing:0.1em">New Memory · 落一颗星</div></div>
+    </div>
+    <div class="modal-body">
+      <label>标题</label><input id="mf-title" placeholder="这段记忆的标题…">
+      <label>概括</label><textarea id="mf-summary" placeholder="简要概括…" style="min-height:40px"></textarea>
+      <label>内容</label><textarea id="mf-content" placeholder="记录这段记忆的内容…"></textarea>
+      <label>写一句话 <span style="font-size:0.65rem;opacity:0.5">· 斜体金句</span></label>
+      <input id="mf-oneline" placeholder="留空则不显示">
+      <div class="form-row">
+        <div><label>领域</label><select id="mf-domain">
+          <option value="情感">情感</option><option value="日常">日常</option>
+          <option value="创作">创作</option><option value="思考">思考</option>
+        </select></div>
+        <div><label>来源</label><select id="mf-source">
+          <option value="manual">手动创建</option><option value="chat">Chat</option>
+          <option value="letter">Letter</option><option value="blog">Blog</option>
+        </select></div>
+      </div>
+      <label>标签（逗号分隔）</label><input id="mf-tags" placeholder="深夜, 音乐, 灵感…">
+      <div class="modal-fsec">情感坐标</div>
+      <label>效价 (Valence)</label>
+      <div class="range-wrap">
+        <span class="range-pole">消极</span>
+        <input type="range" id="mf-valence" min="0" max="1" step="0.01" value="0.5" oninput="document.getElementById('mf-valence-val').textContent=this.value;updatePreview()">
+        <span class="range-pole">积极</span><span id="mf-valence-val">0.5</span>
+      </div>
+      <label>唤醒度 (Arousal)</label>
+      <div class="range-wrap">
+        <span class="range-pole">平静</span>
+        <input type="range" id="mf-arousal" min="0" max="1" step="0.05" value="0.3" oninput="document.getElementById('mf-arousal-val').textContent=this.value;updatePreview()">
+        <span class="range-pole">炽烈</span><span id="mf-arousal-val">0.3</span>
+      </div>
+      <label>重要性（决定星点大小）</label>
+      <div class="range-wrap">
+        <input type="range" id="mf-importance" min="1" max="10" step="1" value="5" oninput="document.getElementById('mf-imp-val').textContent=this.value;updatePreview()">
+        <span id="mf-imp-val">5</span>
+      </div>
+      <div class="modal-preview">
+        <div class="mini-dot" id="preview-dot"></div>
+        <div class="preview-txt" id="preview-txt">星图预览</div>
+      </div>
+      <div class="modal-fsec">状态</div>
+      <div class="form-row">
+        <div><label>状态</label><select id="mf-resolved"><option value="false">未解决</option><option value="true">已解决</option></select></div>
+        <div><label>置顶</label><select id="mf-pinned"><option value="false">否</option><option value="true">是</option></select></div>
+      </div>
+      <div><label>可见性</label><select id="mf-visibility">
+        <option value="public">全部公开</option><option value="private">完全私密</option>
+        <option value="only">仅指定可见</option><option value="except">排除指定</option>
+      </select></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal()">取消</button>
+      <button class="btn btn-save" onclick="saveMemory()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════
+// State & Auth
+// ═══════════════════════════════════════════════
+let memories = [], editingId = null;
+const DOMAINS = ['情感','日常','创作','思考'];
+const DOMAIN_COLORS = {情感:{c:'#e895a8',name:'情感'},日常:{c:'#72a8d8',name:'日常'},
+                       创作:{c:'#c9a96e',name:'创作'},思考:{c:'#8eb896',name:'思考'}};
+
+async function login(){
+  const pw = document.getElementById('login-pw').value;
+  const r = await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({password:pw})});
+  if(r.ok){ document.getElementById('login-overlay').style.display='none';
+    document.getElementById('topbar').style.display='flex';document.getElementById('main').style.display='block';
+    loadAll();} else { document.getElementById('login-error').style.display='block'; }
+  else { document.getElementById('login-error').style.display='block'; }
+}
+function logout(){ document.cookie='connect.sid=;expires=Thu,01 Jan 1970 00:00:00 GMT;path=/';location.reload(); }
+
+async function api(path,opts={}){
+  const r = await fetch(path,{headers:{'Content-Type':'application/json'},...opts});
+  if(r.status===401){ logout(); throw new Error('unauthorized'); }
+  return r.json();
+}
+
+// ═══════════════════════════════════════════════
+// Load All
+// ═══════════════════════════════════════════════
+async function loadAll(){
+  try{
+    const data = await api('/api/memories');
+    memories = (data.memories||[]).map(m=>({...m,
+      valence: m.valence!=null?m.valence:0.5,
+      arousal: m.arousal!=null?m.arousal:0.3,
+      importance: m.importance||5,
+      pinned: !!m.pinned,
+      resolved: !!m.resolved,
+      domain: m.domain||'日常',
+      visibility: m.visibility||'public',
+      summary: m.summary||'',
+      one_line: m.one_line||'',
+      source: m.source||'manual',
+      tags: typeof m.tags==='string'?JSON.parse(m.tags||'[]'):(m.tags||[]),
+      activation_count: m.activation_count||0,
+      last_activated: m.last_activated||m.last_accessed_at||m.created_at
+    }));
+    updateDashboard();
+    renderDomainBar();
+    renderCards();
+    initStarMap();
+    shuffleQuote();
+  }catch(e){ console.error('loadAll:',e); }
+}
+
+// ═══════════════════════════════════════════════
+// Memory Scoring (from InternalBeyond)
+// ═══════════════════════════════════════════════
+function getScore(m){
+  if(m.pinned) return 999;
+  const lastAct = m.last_activated||m.last_accessed_at||m.created_at;
+  const daysSince = (Date.now()-new Date(lastAct).getTime())/(86400000);
+  const lambda = m.resolved?0.12:0.05;
+  const emotion = 1.0+(m.arousal||0.3)*0.8;
+  const activation = Math.pow(Math.max(1,m.activation_count||1),0.3);
+  const decay = Math.exp(-lambda*daysSince);
+  return Math.round((m.importance||5)*activation*decay*emotion*100)/100;
+}
+
+// ═══════════════════════════════════════════════
+// Dashboard
+// ═══════════════════════════════════════════════
+function updateDashboard(){
+  document.getElementById('dash-total').textContent = memories.length;
+  document.getElementById('dash-pinned').textContent = memories.filter(m=>m.pinned).length;
+  document.getElementById('dash-unresolved').textContent = memories.filter(m=>!m.resolved).length;
+  document.getElementById('dash-resolved').textContent = memories.filter(m=>m.resolved).length;
+}
+
+// ═══════════════════════════════════════════════
+// Domain Bar
+// ═══════════════════════════════════════════════
+function renderDomainBar(){
+  const counts = {}; DOMAINS.forEach(d=>counts[d]=0);
+  memories.forEach(m=>{ if(counts[m.domain]!=null) counts[m.domain]++; });
+  const total = memories.length||1;
+  const bar = document.getElementById('domain-bar');
+  bar.innerHTML = DOMAINS.map(d=>{
+    const pct = (counts[d]/total*100).toFixed(1);
+    return pct>0?`<div class="mem-domain-seg" style="width:${pct}%;background:${DOMAIN_COLORS[d].c}"></div>`:'';
+  }).join('');
+  document.getElementById('domain-leg').innerHTML = DOMAINS.map(d=>
+    `<span><span class="dleg-swatch" style="background:${DOMAIN_COLORS[d].c}"></span>${d} (${counts[d]})</span>`
+  ).join('');
+}
+
+// ═══════════════════════════════════════════════
+// Quote Shuffle
+// ═══════════════════════════════════════════════
+function shuffleQuote(){
+  const withLines = memories.filter(m=>m.one_line&&m.one_line.trim());
+  if(withLines.length===0){
+    document.getElementById('quote-text').textContent='每一段记忆，都是一颗星。';
+    document.getElementById('quote-attr').textContent='';
+    return;
+  }
+  const m = withLines[Math.floor(Math.random()*withLines.length)];
+  document.getElementById('quote-text').textContent = '"'+m.one_line+'"';
+  document.getElementById('quote-attr').textContent = '— '+ (m.title||'无标题');
+}
+
+// ═══════════════════════════════════════════════
+// Memory Cards
+// ═══════════════════════════════════════════════
+function renderCards(){
+  const search = (document.getElementById('mem-search')?.value||'').toLowerCase();
+  const domainFilter = document.getElementById('mem-filter-domain')?.value||'all';
+  const statusFilter = document.getElementById('mem-filter-status')?.value||'all';
+  const sortBy = document.getElementById('mem-sort')?.value||'created';
+
+  let filtered = memories.filter(m=>{
+    if(domainFilter!=='all'&&m.domain!==domainFilter) return false;
+    if(statusFilter==='pinned'&&!m.pinned) return false;
+    if(statusFilter==='unresolved'&&m.resolved) return false;
+    if(statusFilter==='resolved'&&!m.resolved) return false;
+    if(search){ const hay=(m.title||'')+(m.summary||'')+(m.content||'')+(m.tags||[]).join('');
+      if(!hay.toLowerCase().includes(search)) return false; }
+    return true;
+  });
+
+  filtered = filtered.map(m=>({...m,_score:getScore(m)}));
+  if(sortBy==='score') filtered.sort((a,b)=>b._score-a._score);
+  else if(sortBy==='created') filtered.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+  else if(sortBy==='importance') filtered.sort((a,b)=>(b.importance||5)-(a.importance||5));
+
+  const pinned = filtered.filter(m=>m.pinned);
+  const unpinned = filtered.filter(m=>!m.pinned);
+  filtered = [...pinned,...unpinned];
+
+  const visLabels = {public:'全部公开',only:'仅指定',except:'排除指定',private:'私密'};
+  const container = document.getElementById('mem-list');
+  if(!filtered.length){
+    container.innerHTML='<div class="empty-state"><span>◇</span>还没有记忆…点击「+ 落一颗星」开始记录</div>';
+    return;
+  }
+
+  let html='', addedDivider=false;
+  filtered.forEach(m=>{
+    if(!addedDivider&&!m.pinned&&pinned.length>0){html+='<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.7rem">— 置顶记忆以上 —</div>';addedDivider=true;}
+    const date = new Date(m.created_at).toLocaleDateString('zh-CN');
+    const tags = (m.tags||[]).map(t=>`<span class="mem-card-tag">${esc(t)}</span>`).join('');
+    html+=`<div class="mem-card${m.pinned?' pinned':''}" id="mc-${m.id}" onclick="toggleCard('${m.id}',event)">
+      ${m.pinned?'<div class="mem-pin-nail"></div>':''}
+      <div class="mem-card-head">
+        <div class="mem-card-title">${esc(m.title||'无标题')}</div>
+        <div class="mem-card-score">${m.pinned?'★':m._score}</div>
+      </div>
+      ${m.summary?`<div class="mem-card-summary">${esc(m.summary)}</div>`:''}
+      ${m.one_line?`<div class="mem-card-oneline">"${esc(m.one_line)}"</div>`:''}
+      <div class="mem-card-creator">${esc(m.source||'手动')} · ${date}</div>
+      <div class="mem-card-detail">
+        <div class="mem-card-meta">
+          <span class="mem-card-tag">${esc(m.domain||'记忆')}</span>${tags}
+          ${m.resolved?'<span class="mem-resolved-badge">✓ 已解决</span>':''}
+          <span class="mem-vis-badge">${visLabels[m.visibility]||'公开'}</span>
+        </div>
+        <div class="mem-card-content">${esc(m.content||'')}</div>
+        <div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:10px">
+          V:${(m.valence||0.5).toFixed(2)} A:${(m.arousal||0.3).toFixed(2)} · ${m.activation_count||0}次激活 · 权重:${m._score}
+        </div>
+        <div class="mem-card-actions">
+          <button class="btn" onclick="event.stopPropagation();togglePin('${m.id}')">${m.pinned?'取消置顶':'置顶'}</button>
+          <button class="btn" onclick="event.stopPropagation();toggleResolved('${m.id}')">${m.resolved?'未解决':'解决'}</button>
+          <button class="btn" onclick="event.stopPropagation();editMemory('${m.id}')">编辑</button>
+          <button class="btn" onclick="event.stopPropagation();deleteMemory('${m.id}')">删除</button>
+        </div>
+      </div>
+    </div>`;
+  });
+  container.innerHTML = html;
+}
+
+function esc(s){ const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+
+function toggleCard(id,ev){
+  if(ev.target.closest('button')) return;
+  const card = document.getElementById('mc-'+id);
+  if(card) card.classList.toggle('expanded');
+}
+
+// ═══════════════════════════════════════════════
+// CRUD Operations
+// ═══════════════════════════════════════════════
+function openModal(editing=null){
+  editingId = editing?editing.id:null;
+  document.getElementById('modal-title').textContent = editing?'编辑记忆':'新建记忆';
+  document.getElementById('mf-title').value = editing?editing.title||'':'';
+  document.getElementById('mf-summary').value = editing?editing.summary||'':'';
+  document.getElementById('mf-content').value = editing?editing.content||'':'';
+  document.getElementById('mf-oneline').value = editing?editing.one_line||'':'';
+  document.getElementById('mf-domain').value = editing?editing.domain||'日常':'日常';
+  document.getElementById('mf-source').value = editing?editing.source||'manual':'manual';
+  document.getElementById('mf-tags').value = editing?(editing.tags||[]).join(','):'';
+  document.getElementById('mf-valence').value = editing?editing.valence||0.5:0.5;
+  document.getElementById('mf-arousal').value = editing?editing.arousal||0.3:0.3;
+  document.getElementById('mf-importance').value = editing?editing.importance||5:5;
+  document.getElementById('mf-resolved').value = editing?(editing.resolved?'true':'false'):'false';
+  document.getElementById('mf-pinned').value = editing?(editing.pinned?'true':'false'):'false';
+  document.getElementById('mf-visibility').value = editing?editing.visibility||'public':'public';
+  document.getElementById('mf-valence-val').textContent = document.getElementById('mf-valence').value;
+  document.getElementById('mf-arousal-val').textContent = document.getElementById('mf-arousal').value;
+  document.getElementById('mf-imp-val').textContent = document.getElementById('mf-importance').value;
+  updatePreview();
+  document.getElementById('mem-modal').classList.add('open');
+}
+
+function closeModal(){ document.getElementById('mem-modal').classList.remove('open'); editingId=null; }
+function editMemory(id){ const m=memories.find(x=>x.id==id); if(m) openModal(m); }
+
+function updatePreview(){
+  const v=parseFloat(document.getElementById('mf-valence').value);
+  const a=parseFloat(document.getElementById('mf-arousal').value);
+  const imp=parseInt(document.getElementById('mf-importance').value);
+  const dot=document.getElementById('preview-dot');
+  const size=18+imp*3;
+  dot.style.width=size+'px';dot.style.height=size+'px';
+  dot.style.background=`radial-gradient(circle at 36% 32%,#fff,${DOMAIN_COLORS[document.getElementById('mf-domain').value]?.c||'#72a8d8'} 55%)`;
+  document.getElementById('preview-txt').textContent=`坐标 (${v.toFixed(2)}, ${a.toFixed(2)}) · 重要性 ${imp}/10`;
+}
+
+async function saveMemory(){
+  const data = {
+    title: document.getElementById('mf-title').value.trim()||'无标题',
+    content: document.getElementById('mf-content').value.trim(),
+    summary: document.getElementById('mf-summary').value.trim(),
+    one_line: document.getElementById('mf-oneline').value.trim(),
+    domain: document.getElementById('mf-domain').value,
+    source: document.getElementById('mf-source').value,
+    tags: document.getElementById('mf-tags').value.split(',').map(s=>s.trim()).filter(Boolean),
+    valence: parseFloat(document.getElementById('mf-valence').value),
+    arousal: parseFloat(document.getElementById('mf-arousal').value),
+    importance: parseInt(document.getElementById('mf-importance').value),
+    resolved: document.getElementById('mf-resolved').value==='true',
+    pinned: document.getElementById('mf-pinned').value==='true',
+    visibility: document.getElementById('mf-visibility').value
+  };
+
+  try{
+    if(editingId){
+      await api('/api/memory/'+editingId,{method:'PUT',body:JSON.stringify(data)});
+    } else {
+      await api('/api/memory',{method:'POST',body:JSON.stringify(data)});
+    }
+    closeModal();
+    toast('记忆已保存 ✓');
+    loadAll();
+  }catch(e){ toast('保存失败: '+e.message); }
+}
+
+async function deleteMemory(id){
+  if(!confirm('确定删除这条记忆？')) return;
+  try{ await api('/api/memory/'+id,{method:'DELETE'}); toast('已删除'); loadAll(); }
+  catch(e){ toast('删除失败'); }
+}
+
+async function togglePin(id){
+  const m = memories.find(x=>x.id==id); if(!m) return;
+  await api('/api/memory/'+id,{method:'PUT',body:JSON.stringify({pinned:!m.pinned})});
+  loadAll();
+}
+
+async function toggleResolved(id){
+  const m = memories.find(x=>x.id==id); if(!m) return;
+  await api('/api/memory/'+id,{method:'PUT',body:JSON.stringify({resolved:!m.resolved})});
+  loadAll();
+}
+
+// ═══════════════════════════════════════════════
+// Star Map Canvas
+// ═══════════════════════════════════════════════
+function initStarMap(){
+  const canvas = document.getElementById('mem-sky-canvas');
+  const container = document.getElementById('mem-sky');
+  let W,H,DPR,raf=0,vis=true;
+
+  function build(){
+    DPR=Math.min(window.devicePixelRatio||1,2);
+    const b=container.getBoundingClientRect();
+    W=b.width; H=b.height;
+    if(W<2||H<2) return;
+    canvas.width=W*DPR;canvas.height=H*DPR;
+    const ctx=canvas.getContext('2d');ctx.setTransform(DPR,0,0,DPR,0,0);
+
+    // Memory stars on emotion map
+    const memoryStars = memories.map(m=>({
+      x: (m.valence||0.5)*W,
+      y: (1-(m.arousal||0.3))*H,
+      r: 2+(m.importance||5)*0.8,
+      alpha: Math.min(1,0.35+getScore(m)/100*0.65),
+      color: m.pinned?'#e8c860':(DOMAIN_COLORS[m.domain]||DOMAIN_COLORS['日常']).c,
+      pinned: !!m.pinned,
+      title: m.title||''
+    }));
+
+    // Draw function
+    function draw(t){
+      ctx.clearRect(0,0,W,H);
+
+      // Axis lines (subtle)
+      ctx.strokeStyle='rgba(175,195,228,0.12)';ctx.lineWidth=0.5;
+      ctx.beginPath();ctx.moveTo(W/2,0);ctx.lineTo(W/2,H);ctx.moveTo(0,H/2);ctx.lineTo(W,H/2);ctx.stroke();
+
+      // Memory stars
+      memoryStars.forEach(s=>{
+        ctx.save();
+        // Glow
+        const glow = ctx.createRadialGradient(s.x,s.y,0,s.x,s.y,s.r*2.5);
+        glow.addColorStop(0,s.color+'80');
+        glow.addColorStop(0.5,s.color+'18');
+        glow.addColorStop(1,'transparent');
+        ctx.fillStyle=glow;
+        ctx.beginPath();ctx.arc(s.x,s.y,s.r*2.5,0,Math.PI*2);ctx.fill();
+
+        // Core
+        ctx.globalAlpha=s.alpha;
+        const core=ctx.createRadialGradient(s.x-s.r*0.2,s.y-s.r*0.2,s.r*0.1,s.x,s.y,s.r);
+        core.addColorStop(0,'rgba(255,255,255,0.95)');
+        core.addColorStop(0.4,s.color);
+        core.addColorStop(1,s.color+'00');
+        ctx.fillStyle=core;
+        ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();
+
+        if(s.pinned){
+          ctx.strokeStyle='rgba(232,200,96,0.4)';ctx.lineWidth=0.5;
+          ctx.beginPath();ctx.arc(s.x,s.y,s.r+3,0,Math.PI*2);ctx.stroke();
+        }
+        ctx.restore();
+      });
+
+      // Tick marks
+      ctx.fillStyle='rgba(175,195,228,0.3)';ctx.font='9px sans-serif';
+      ctx.textAlign='center';
+      for(let i=0.2;i<1;i+=0.2){
+        ctx.fillText(i.toFixed(1),i*W,H-6);
+        ctx.fillText((1-i).toFixed(1),8,H*i+4);
+      }
+    }
+
+    draw(Date.now());
+  }
+
+  // Resize
+  if('ResizeObserver' in window){
+    new ResizeObserver(()=>build()).observe(container);
+  }
+
+  // Visibility
+  if('IntersectionObserver' in window){
+    new IntersectionObserver(es=>{vis=es[0].isIntersecting;if(vis)build();},{threshold:0}).observe(canvas);
+  }
+  build();
+}
+
+// ═══════════════════════════════════════════════
+// Toast
+// ═══════════════════════════════════════════════
+function toast(msg){
+  const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2000);
+}
+
+// ═══════════════════════════════════════════════
+// Event Bindings
+// ═══════════════════════════════════════════════
+document.getElementById('login-btn').addEventListener('click',login);
+document.getElementById('login-pw').addEventListener('keydown',e=>{if(e.key==='Enter')login();});
+document.getElementById('new-mem-btn').addEventListener('click',()=>openModal());
+document.getElementById('mem-modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+</script>
+</body>
+</html>

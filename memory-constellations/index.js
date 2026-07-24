@@ -13,6 +13,8 @@ const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
 
 initDatabase();
+var mcdb2 = getDb();
+var encLib = encryption;
 
 const sessions = new Map();
 const SESSION_TTL = 30 * 24 * 60 * 60 * 1000;
@@ -186,6 +188,7 @@ http.createServer(function(req, res) {
   if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
 
   var url = req.url.split('?')[0];
+  var ck = cookies(req);
 
   // API
   if (req.method === 'POST' && url === '/api/login') {
@@ -198,6 +201,79 @@ http.createServer(function(req, res) {
         res.end(JSON.stringify({ ok: true }));
       } else { res.writeHead(401); res.end(JSON.stringify({ error: 'wrong password' })); }
     });
+  }
+
+  // ══════ 多端口 API 配置管理 ══════
+  if (req.method === 'GET' && url === '/api/api-configs') {
+    if (!authed(ck.mc_session)) { res.writeHead(401); return res.end(JSON.stringify({error:'unauthorized'})); }
+    try {
+      var configs = mcdb2.prepare('SELECT id, nickname, relationship, provider, model, base_url, system_prompt, auto_mem, auto_mem_mode, auto_mem_budget, archived, sort_order, created_at, updated_at FROM mc_api_configs ORDER BY sort_order ASC, created_at ASC').all();
+      var safe = configs.map(function(c) { return {...c, has_key: !!(c.api_key_enc), api_key_enc: undefined}; });
+      res.writeHead(200, {'Content-Type':'application/json'});
+      return res.end(JSON.stringify({configs:safe}));
+    } catch(e) {
+      res.writeHead(500, {'Content-Type':'application/json'});
+      return res.end(JSON.stringify({error:e.message}));
+    }
+  }
+  if (req.method === 'POST' && url === '/api/api-configs') {
+    if (!authed(ck.mc_session)) { res.writeHead(401); return res.end(JSON.stringify({error:'unauthorized'})); }
+    return parseBody(req, function(b) {
+      try {
+        if (!b.id) { res.writeHead(400, {'Content-Type':'application/json'}); return res.end(JSON.stringify({error:'id required'})); }
+        var count = mcdb2.prepare('SELECT COUNT(*) as c FROM mc_api_configs WHERE archived = 0').get();
+        if (count.c >= 10) { res.writeHead(400, {'Content-Type':'application/json'}); return res.end(JSON.stringify({error:'max 10'})); }
+        var enc = b.api_key ? encLib.encrypt(b.api_key) : '';
+        var maxOrder = mcdb2.prepare('SELECT MAX(sort_order) as m FROM mc_api_configs').get();
+        mcdb2.prepare('INSERT INTO mc_api_configs (id, nickname, relationship, provider, model, base_url, api_key_enc, system_prompt, auto_mem, auto_mem_mode, auto_mem_budget, sort_order) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)').run(
+          b.id, b.nickname||'', b.relationship||'', b.provider||'custom', b.model||'deepseek-chat', b.base_url||'', enc, b.system_prompt||'',
+          b.auto_mem?1:0, b.auto_mem_mode||'hybrid', b.auto_mem_budget||1200, (maxOrder.m||0)+1);
+        res.writeHead(200, {'Content-Type':'application/json'});
+        return res.end(JSON.stringify({success:true}));
+      } catch(e) {
+        res.writeHead(500, {'Content-Type':'application/json'});
+        return res.end(JSON.stringify({error:e.message}));
+      }
+    });
+  }
+  if (req.method === 'PUT' && url.startsWith('/api/api-configs/')) {
+    if (!authed(ck.mc_session)) { res.writeHead(401); return res.end(JSON.stringify({error:'unauthorized'})); }
+    var cfgId = url.split('/api/api-configs/')[1];
+    return parseBody(req, function(b) {
+      try {
+        var ex = mcdb2.prepare('SELECT * FROM mc_api_configs WHERE id = ?').get(cfgId);
+        if (!ex) { res.writeHead(404); return res.end(JSON.stringify({error:'not found'})); }
+        var sets = [], vals = [];
+        var fields = ['nickname','relationship','provider','model','base_url','system_prompt','auto_mem_mode'];
+        fields.forEach(function(f) { if (b[f] !== undefined) { sets.push(f+' = ?'); vals.push(b[f]); } });
+        if (b.auto_mem !== undefined) { sets.push('auto_mem = ?'); vals.push(b.auto_mem?1:0); }
+        if (b.auto_mem_budget !== undefined) { sets.push('auto_mem_budget = ?'); vals.push(b.auto_mem_budget); }
+        if (b.archived !== undefined) { sets.push('archived = ?'); vals.push(b.archived?1:0); }
+        if (b.sort_order !== undefined) { sets.push('sort_order = ?'); vals.push(b.sort_order); }
+        if (b.api_key) { sets.push('api_key_enc = ?'); vals.push(encLib.encrypt(b.api_key)); }
+        if (!sets.length) { res.writeHead(200, {'Content-Type':'application/json'}); return res.end(JSON.stringify({success:true})); }
+        sets.push("updated_at = datetime('now')");
+        vals.push(cfgId);
+        mcdb2.prepare('UPDATE mc_api_configs SET '+sets.join(', ')+' WHERE id = ?').run(...vals);
+        res.writeHead(200, {'Content-Type':'application/json'});
+        return res.end(JSON.stringify({success:true}));
+      } catch(e) {
+        res.writeHead(500, {'Content-Type':'application/json'});
+        return res.end(JSON.stringify({error:e.message}));
+      }
+    });
+  }
+  if (req.method === 'DELETE' && url.startsWith('/api/api-configs/')) {
+    if (!authed(ck.mc_session)) { res.writeHead(401); return res.end(JSON.stringify({error:'unauthorized'})); }
+    var cfgId2 = url.split('/api/api-configs/')[1];
+    try {
+      mcdb2.prepare('DELETE FROM mc_api_configs WHERE id = ?').run(cfgId2);
+      res.writeHead(200, {'Content-Type':'application/json'});
+      return res.end(JSON.stringify({success:true}));
+    } catch(e) {
+      res.writeHead(500, {'Content-Type':'application/json'});
+      return res.end(JSON.stringify({error:e.message}));
+    }
   }
 
   if (req.method === 'POST' && url === '/api/recall') {
@@ -213,14 +289,139 @@ http.createServer(function(req, res) {
     });
   }
 
+  // ══════ Memory CRUD（记忆星图页面用）══════
+
+  // GET /api/memories — 列出所有记忆
+  if (req.method === 'GET' && url === '/api/memories') {
+    if (!authed(ck.mc_session)) { res.writeHead(401); return res.end(JSON.stringify({error:'unauthorized'})); }
+    try {
+      var allMems = mcdb2.prepare('SELECT * FROM memories ORDER BY pinned DESC, created_at DESC').all();
+      var decrypted = allMems.map(function(m) {
+        try {
+          var content = encLib.decrypt(m.content || '');
+          return { ...m, content: content };
+        } catch(e) { return { ...m, content: m.content || '' }; }
+      });
+      res.writeHead(200, {'Content-Type':'application/json'});
+      return res.end(JSON.stringify({memories:decrypted}));
+    } catch(e) {
+      res.writeHead(500, {'Content-Type':'application/json'});
+      return res.end(JSON.stringify({error:e.message}));
+    }
+  }
+
+  // GET /api/memory/:id — 获取单条记忆
+  if (req.method === 'GET' && url.startsWith('/api/memory/') && url.split('/').length === 4) {
+    if (!authed(ck.mc_session)) { res.writeHead(401); return res.end(JSON.stringify({error:'unauthorized'})); }
+    try {
+      var memId = parseInt(url.split('/api/memory/')[1]);
+      var mem = mcdb2.prepare('SELECT * FROM memories WHERE id = ?').get(memId);
+      if (!mem) { res.writeHead(404); return res.end(JSON.stringify({error:'not found'})); }
+      try { mem.content = encLib.decrypt(mem.content || ''); } catch(e) {}
+      res.writeHead(200, {'Content-Type':'application/json'});
+      return res.end(JSON.stringify({memory:mem}));
+    } catch(e) {
+      res.writeHead(500, {'Content-Type':'application/json'});
+      return res.end(JSON.stringify({error:e.message}));
+    }
+  }
+
+  // POST /api/memory — 创建记忆
+  if (req.method === 'POST' && url === '/api/memory') {
+    if (!authed(ck.mc_session)) { res.writeHead(401); return res.end(JSON.stringify({error:'unauthorized'})); }
+    return parseBody(req, function(b) {
+      try {
+        var title = b.title || '无标题';
+        var content = b.content || '';
+        var tags = JSON.stringify(b.tags || []);
+        var encContent = encLib.encrypt(content);
+        var now = new Date().toISOString();
+        var result = mcdb2.prepare(
+          'INSERT INTO memories (title, content, tags, status, valence, arousal, importance, pinned, domain, visibility, summary, one_line, source, resolved, visible_to, exclude_from, activation_count, last_activated, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+        ).run(
+          title, encContent, tags, 'permanent',
+          b.valence != null ? b.valence : 0.5,
+          b.arousal != null ? b.arousal : 0.3,
+          b.importance || 5,
+          b.pinned ? 1 : 0,
+          b.domain || '日常',
+          b.visibility || 'public',
+          b.summary || '',
+          b.one_line || '',
+          b.source || 'manual',
+          b.resolved ? 1 : 0,
+          JSON.stringify(b.visible_to || []),
+          JSON.stringify(b.exclude_from || []),
+          1, now, now, now
+        );
+        res.writeHead(200, {'Content-Type':'application/json'});
+        return res.end(JSON.stringify({success:true, id: result.lastInsertRowid}));
+      } catch(e) {
+        res.writeHead(500, {'Content-Type':'application/json'});
+        return res.end(JSON.stringify({error:e.message}));
+      }
+    });
+  }
+
+  // PUT /api/memory/:id — 更新记忆
+  if (req.method === 'PUT' && url.startsWith('/api/memory/') && url.split('/').length === 4) {
+    if (!authed(ck.mc_session)) { res.writeHead(401); return res.end(JSON.stringify({error:'unauthorized'})); }
+    var memId2 = parseInt(url.split('/api/memory/')[1]);
+    return parseBody(req, function(b) {
+      try {
+        var oldMem = mcdb2.prepare('SELECT * FROM memories WHERE id = ?').get(memId2);
+        if (!oldMem) { res.writeHead(404); return res.end(JSON.stringify({error:'not found'})); }
+        var sets = [], vals = [];
+        if (b.title !== undefined) { sets.push('title = ?'); vals.push(b.title); }
+        if (b.content !== undefined) { sets.push('content = ?'); vals.push(encLib.encrypt(b.content)); }
+        if (b.tags !== undefined) { sets.push('tags = ?'); vals.push(JSON.stringify(b.tags)); }
+        if (b.status !== undefined) { sets.push('status = ?'); vals.push(b.status); }
+        if (b.valence !== undefined) { sets.push('valence = ?'); vals.push(b.valence); }
+        if (b.arousal !== undefined) { sets.push('arousal = ?'); vals.push(b.arousal); }
+        if (b.importance !== undefined) { sets.push('importance = ?'); vals.push(b.importance); }
+        if (b.pinned !== undefined) { sets.push('pinned = ?'); vals.push(b.pinned ? 1 : 0); }
+        if (b.domain !== undefined) { sets.push('domain = ?'); vals.push(b.domain); }
+        if (b.visibility !== undefined) { sets.push('visibility = ?'); vals.push(b.visibility); }
+        if (b.summary !== undefined) { sets.push('summary = ?'); vals.push(b.summary); }
+        if (b.one_line !== undefined) { sets.push('one_line = ?'); vals.push(b.one_line); }
+        if (b.source !== undefined) { sets.push('source = ?'); vals.push(b.source); }
+        if (b.resolved !== undefined) { sets.push('resolved = ?'); vals.push(b.resolved ? 1 : 0); }
+        if (b.visible_to !== undefined) { sets.push('visible_to = ?'); vals.push(JSON.stringify(b.visible_to)); }
+        if (b.exclude_from !== undefined) { sets.push('exclude_from = ?'); vals.push(JSON.stringify(b.exclude_from)); }
+        if (!sets.length) { res.writeHead(200, {'Content-Type':'application/json'}); return res.end(JSON.stringify({success:true})); }
+        sets.push("updated_at = datetime('now')");
+        vals.push(memId2);
+        mcdb2.prepare('UPDATE memories SET '+sets.join(', ')+' WHERE id = ?').run(...vals);
+        res.writeHead(200, {'Content-Type':'application/json'});
+        return res.end(JSON.stringify({success:true}));
+      } catch(e) {
+        res.writeHead(500, {'Content-Type':'application/json'});
+        return res.end(JSON.stringify({error:e.message}));
+      }
+    });
+  }
+
+  // DELETE /api/memory/:id — 删除记忆
+  if (req.method === 'DELETE' && url.startsWith('/api/memory/') && url.split('/').length === 4) {
+    if (!authed(ck.mc_session)) { res.writeHead(401); return res.end(JSON.stringify({error:'unauthorized'})); }
+    var memId3 = parseInt(url.split('/api/memory/')[1]);
+    try {
+      mcdb2.prepare('DELETE FROM memories WHERE id = ?').run(memId3);
+      res.writeHead(200, {'Content-Type':'application/json'});
+      return res.end(JSON.stringify({success:true}));
+    } catch(e) {
+      res.writeHead(500, {'Content-Type':'application/json'});
+      return res.end(JSON.stringify({error:e.message}));
+    }
+  }
+
   // GET /api/memory/universe — 星图数据
   if (req.method === 'GET' && url === '/api/memory/universe') {
     return serveUniverse(req, res);
   }
 
   // Auth check
-  var ck = cookies(req);
-  if (url !== '/login.html' && url !== '/login' && !url.startsWith('/api/')) {
+  if (url !== '/login.html' && url !== '/login' && url !== '/memory-stars.html' && !url.startsWith('/api/')) {
     if (!authed(ck.mc_session)) { res.writeHead(302, { 'Location': '/login' }); return res.end(); }
   }
 

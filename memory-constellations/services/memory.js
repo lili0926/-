@@ -203,6 +203,53 @@ async function cleanupStaleChromaEntries() {
     return { cleaned, scanned: stale.length };
 }
 
+// ═══════════════════════════════════════════════
+// 衰减评分（借鉴 InternalBeyond）
+// score = importance × activation^0.3 × e^(-λ×days) × (1 + arousal×0.8)
+// 置顶记忆固定 999 分。resolved=true 的记忆衰减更快（λ=0.12 vs 0.05）
+// ═══════════════════════════════════════════════
+function getMemoryScore(mem) {
+    if (mem.pinned) return 999;
+    const now = new Date();
+    const lastActivated = mem.last_activated || mem.last_accessed_at || mem.created_at || mem.updated_at;
+    const daysSince = (now - new Date(lastActivated)) / (1000 * 60 * 60 * 24);
+    const lambda = mem.resolved ? 0.12 : 0.05;
+    const emotionFactor = 1.0 + (mem.arousal || 0.3) * 0.8;
+    const activationFactor = Math.pow(Math.max(1, mem.activation_count || 1), 0.3);
+    const decayFactor = Math.exp(-lambda * daysSince);
+    const score = (mem.importance || 5) * activationFactor * decayFactor * emotionFactor;
+    return Math.round(score * 100) / 100;
+}
+
+function isMemoryVisibleTo(mem, apiId) {
+    if (mem.visibility === 'private') return false;
+    if (mem.visibility === 'public') return true;
+    if (mem.visibility === 'only') {
+        try {
+            const visibleTo = JSON.parse(mem.visible_to || '[]');
+            return visibleTo.includes(apiId);
+        } catch (e) { return false; }
+    }
+    if (mem.visibility === 'except') {
+        try {
+            const excludeFrom = JSON.parse(mem.exclude_from || '[]');
+            return !excludeFrom.includes(apiId);
+        } catch (e) { return true; }
+    }
+    return true;
+}
+
+function touchMemory(memId) {
+    try {
+        const db = getDb();
+        db.prepare(
+            'UPDATE memories SET activation_count = activation_count + 1, last_activated = ? WHERE id = ?'
+        ).run(new Date().toISOString(), memId);
+    } catch (e) {
+        console.error('touchMemory error:', e.message);
+    }
+}
+
 module.exports = {
     chromaDBOperation,
     queryMultiCollections,

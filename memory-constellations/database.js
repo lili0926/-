@@ -1345,6 +1345,71 @@ function initDatabase() {
         console.error('[DB] 本体论种子数据插入失败（表已存在则忽略）:', e.message);
     }
 
+    // ═══════════════════════════════════════════════
+    // v86-v100: Memory 情感坐标 + 衰减 + 多端口 API (借鉴 InternalBeyond)
+    // ═══════════════════════════════════════════════
+    runMigration(86, 'memories.valence',
+        "ALTER TABLE memories ADD COLUMN valence REAL DEFAULT 0.5");
+
+    runMigration(87, 'memories.arousal',
+        "ALTER TABLE memories ADD COLUMN arousal REAL DEFAULT 0.3");
+
+    runMigration(88, 'memories.importance',
+        "ALTER TABLE memories ADD COLUMN importance INTEGER DEFAULT 5");
+
+    runMigration(89, 'memories.activation_count',
+        "ALTER TABLE memories ADD COLUMN activation_count INTEGER DEFAULT 0");
+
+    runMigration(90, 'memories.last_activated',
+        "ALTER TABLE memories ADD COLUMN last_activated DATETIME");
+
+    runMigration(91, 'memories.pinned',
+        "ALTER TABLE memories ADD COLUMN pinned INTEGER DEFAULT 0");
+
+    runMigration(92, 'memories.domain',
+        "ALTER TABLE memories ADD COLUMN domain TEXT DEFAULT '日常'");
+
+    runMigration(93, 'memories.visibility',
+        "ALTER TABLE memories ADD COLUMN visibility TEXT DEFAULT 'public'");
+
+    runMigration(94, 'memories.summary',
+        "ALTER TABLE memories ADD COLUMN summary TEXT DEFAULT ''");
+
+    runMigration(95, 'memories.one_line',
+        "ALTER TABLE memories ADD COLUMN one_line TEXT DEFAULT ''");
+
+    runMigration(96, 'memories.source',
+        "ALTER TABLE memories ADD COLUMN source TEXT DEFAULT 'manual'");
+
+    runMigration(97, 'memories.resolved',
+        "ALTER TABLE memories ADD COLUMN resolved INTEGER DEFAULT 0");
+
+    runMigration(98, 'memories.visible_to',
+        "ALTER TABLE memories ADD COLUMN visible_to TEXT DEFAULT '[]'");
+
+    runMigration(99, 'memories.exclude_from',
+        "ALTER TABLE memories ADD COLUMN exclude_from TEXT DEFAULT '[]'");
+
+    // v100: 多端口 API 配置表
+    runMigration(100, 'mc_api_configs',
+        "CREATE TABLE IF NOT EXISTS mc_api_configs (" +
+            "id TEXT PRIMARY KEY," +
+            "nickname TEXT DEFAULT ''," +
+            "relationship TEXT DEFAULT ''," +
+            "provider TEXT DEFAULT 'custom'," +
+            "model TEXT DEFAULT 'deepseek-chat'," +
+            "base_url TEXT DEFAULT 'https://api.deepseek.com'," +
+            "api_key_enc TEXT DEFAULT ''," +
+            "system_prompt TEXT DEFAULT ''," +
+            "auto_mem INTEGER DEFAULT 0," +
+            "auto_mem_mode TEXT DEFAULT 'hybrid'," +
+            "auto_mem_budget INTEGER DEFAULT 1200," +
+            "archived INTEGER DEFAULT 0," +
+            "sort_order INTEGER DEFAULT 0," +
+            "created_at DATETIME DEFAULT CURRENT_TIMESTAMP," +
+            "updated_at DATETIME DEFAULT CURRENT_TIMESTAMP" +
+        ")");
+
     // ── 打印当前 schema 版本 ──
     const currentVersion = db.prepare('SELECT MAX(version) as v FROM schema_version').get();
     console.log(`[DB] 数据库初始化完成, schema v${currentVersion.v || 0}`);
