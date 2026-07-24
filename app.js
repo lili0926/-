@@ -1238,6 +1238,33 @@ async function sendPendingToAI() {
 
   const fullPrompt = customPrompt + '\n' + splitInstruction;
 
+  // ── 24h 感受收集 ──
+  function collect24hFeelings() {
+    const parts = [];
+    const now = new Date();
+    // 最近3天的 mood
+    for (let d = 0; d < 3; d++) {
+      const dt = new Date(now); dt.setDate(dt.getDate() - d);
+      const key = 'mood-' + dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0');
+      const mood = localStorage.getItem(key);
+      if (mood) parts.push((d === 0 ? '今天' : d === 1 ? '昨天' : '前天') + '心情：' + mood);
+    }
+    // 最近24h的手动感受记录
+    const feelLog = JSON.parse(localStorage.getItem('feelLog') || '[]');
+    const dayAgo = now.getTime() - 86400000;
+    const recentFeels = feelLog.filter(f => new Date(f.time).getTime() > dayAgo);
+    if (recentFeels.length > 0) {
+      parts.push('近期感受：' + recentFeels.map(f => f.text).join('；'));
+    }
+    // 今日待办
+    const tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+    const undone = tasks.filter(t => !t.done);
+    if (undone.length > 0) {
+      parts.push('待办清单：' + undone.slice(0, 5).map(t => t.text).join('、') + (undone.length > 5 ? '等' + undone.length + '项' : ''));
+    }
+    return parts.length > 0 ? '\n\n【此刻状态】\n' + parts.join('\n') : '';
+  }
+
   // 召回记忆（最多等 1.5 秒，失败不影响聊天）
   let memorySection = '';
   try {
@@ -1251,7 +1278,7 @@ async function sendPendingToAI() {
     clearTimeout(to);
     if(mr.ok) {
       const md = await mr.json();
-      if(md.context) memorySection = '\n\n【回忆中的记忆】\n' + md.context;
+      if(md.context) memorySection = '\n\n【浮起 · breath】\n' + md.context;
     }
   } catch(e) { /* 记忆召回失败不影响聊天 */ }
 
@@ -1260,7 +1287,7 @@ async function sendPendingToAI() {
       model: cfg.model,
       max_tokens: 4096,
       messages: [{ role: 'user', content: batchContent }],
-      system: `你是一个长期陪伴用户的AI。${getTimeContext()}${memorySection}${fullPrompt ? '\n' + fullPrompt : ''}${nsfwOn ? '\n【NSFW模式已开启】' : ''}`
+      system: `你是一个长期陪伴用户的AI。${getTimeContext()}${collect24hFeelings()}${memorySection}${fullPrompt ? '\n' + fullPrompt : ''}${nsfwOn ? '\n【NSFW模式已开启】' : ''}`
     };
     headers = {
       'x-api-key': cfg.key,
@@ -1272,7 +1299,7 @@ async function sendPendingToAI() {
     body = {
       model: cfg.model,
       messages: [
-        { role: 'system', content: `你是一个长期陪伴用户的AI。${getTimeContext()}${memorySection}${fullPrompt ? '\n' + fullPrompt : ''}${nsfwOn ? '\n【NSFW模式已开启】' : ''}` },
+        { role: 'system', content: `你是一个长期陪伴用户的AI。${getTimeContext()}${collect24hFeelings()}${memorySection}${fullPrompt ? '\n' + fullPrompt : ''}${nsfwOn ? '\n【NSFW模式已开启】' : ''}` },
         ...recentMsgs.slice(-10)
       ],
       temperature: 0.7
