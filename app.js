@@ -1262,6 +1262,12 @@ async function sendPendingToAI() {
     if (undone.length > 0) {
       parts.push('待办清单：' + undone.slice(0, 5).map(t => t.text).join('、') + (undone.length > 5 ? '等' + undone.length + '项' : ''));
     }
+    // 最近小狗按钮
+    const signals = JSON.parse(localStorage.getItem('dogSignals') || '[]');
+    const recentSignals = signals.filter(s => new Date(s.time).getTime() > now.getTime() - 86400000);
+    if (recentSignals.length > 0) {
+      parts.push('主人按了小狗按钮：' + recentSignals.map(s => s.text).join('；'));
+    }
     return parts.length > 0 ? '\n\n【此刻状态】\n' + parts.join('\n') : '';
   }
 
@@ -3888,14 +3894,27 @@ function dogButtonsAwayPress(){
   }
 }
 
-// 监听小狗按钮的 postMessage 通知
+// 监听小狗按钮的 postMessage 通知 → AI 感知
 window.addEventListener('message', function(e){
   if(e.data && e.data.type === 'dog-button-press'){
     console.log('🐾 小狗按钮:', e.data.text);
-    // 可以在这里推送通知
+    // 存入信号日志，AI 每轮都会感知到
+    const signals = JSON.parse(localStorage.getItem('dogSignals') || '[]');
+    signals.push({ text: e.data.text, time: new Date().toISOString() });
+    if(signals.length > 20) signals.splice(0, signals.length - 20);
+    localStorage.setItem('dogSignals', JSON.stringify(signals));
+    // 本地通知
     if(typeof sendLocalNotification === 'function'){
       sendLocalNotification('🐾 Aries 按了按钮', e.data.text, '/icon.png');
     }
+    // 触发 AI 主动回应（2秒延迟防抖）
+    clearTimeout(window._dogSignalTimer);
+    window._dogSignalTimer = setTimeout(() => {
+      fetch('/api/push/trigger', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ reason: 'dog_button', signal: e.data.text })
+      }).catch(() => {});
+    }, 2000);
   }
 });
 
